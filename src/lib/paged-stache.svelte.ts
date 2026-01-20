@@ -1,6 +1,6 @@
 import { SvelteDate, SvelteMap } from 'svelte/reactivity';
 import { untrack } from 'svelte';
-import { pagedStacheCache } from './global/cache.svelte';
+import { getPagedStacheCache, type GlobalPagedStacheCache } from './global/cache.svelte';
 import {
 	Stache,
 	type BaseStacheParams,
@@ -24,7 +24,7 @@ type CreatePagedStacheOptions<
 		pageSize: number;
 		getData?: (data: FetchReturnData) => Result;
 		getTotalCount?: (data: FetchReturnData) => number;
-		globalCache?: typeof pagedStacheCache;
+		globalCache?: GlobalPagedStacheCache;
 	}
 >;
 
@@ -51,15 +51,7 @@ type CreatePagedStacheFn = <StacheParams extends BaseStacheParams, Result = unkn
 const createPagedStache = <StacheParams extends BaseStacheParams, Result, FetchReturnData>(
 	createOptions: CreatePagedStacheOptions<StacheParams, Result, FetchReturnData>
 ) => {
-	const globalCache = createOptions.globalCache ?? pagedStacheCache;
-	let cache = globalCache.get(createOptions.id);
-	if (!cache) {
-		cache = new SvelteMap<
-			string,
-			SvelteMap<string, Stache<StacheParams, Result, FetchReturnData>>
-		>();
-		globalCache.set(createOptions.id, cache);
-	}
+	const cache = getPagedStacheCache(createOptions.id, createOptions.globalCache);
 
 	type UseStacheOptionsBase<StacheParams extends BaseStacheParams, Result> = UsePagedStacheOptions<
 		StacheParams,
@@ -71,8 +63,7 @@ const createPagedStache = <StacheParams extends BaseStacheParams, Result, FetchR
 	) => {
 		const useOptions = useOptionsFn?.() ?? ({} as UsePagedStacheOptions<StacheParams, Result>);
 		const { getData, getTotalCount } = createOptions;
-		const allOpts = { ...createOptions, ...useOptions };
-		const stacheKey = allOpts.params ? hashKey(allOpts.params) : 'no-params';
+		const stacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
 
 		let staches = $state(cache.get(stacheKey)) as SvelteMap<
 			string,
@@ -84,7 +75,7 @@ const createPagedStache = <StacheParams extends BaseStacheParams, Result, FetchR
 			cache.set(stacheKey, staches);
 		}
 
-		const { pageSize = 10 } = allOpts;
+		const { pageSize = 10 } = createOptions;
 
 		// Make pages reactive to pageParams changes
 		let pages = $state<Array<Stache<StacheParams, Result, FetchReturnData>>>([]);
@@ -110,23 +101,25 @@ const createPagedStache = <StacheParams extends BaseStacheParams, Result, FetchR
 						StacheParams,
 						Result,
 						FetchReturnData
-					> &
-						UsePagedStacheOptions<StacheParams, Result> = {
-						id: allOpts.id,
-						fetch: allOpts.fetch,
-						params: allOpts.params as StacheParams,
-						initialData: allOpts.initialData as Result,
-						enabled: allOpts.enabled,
-						retries: allOpts.retries,
-						staleTime: allOpts.staleTime,
-						cleanupTime: allOpts.cleanupTime,
-						refetchOnStale: allOpts.refetchOnStale,
-						refetchOnWindowFocus: allOpts.refetchOnWindowFocus,
-						globalCache: allOpts.globalCache
+					> = {
+						id: createOptions.id,
+						fetch: createOptions.fetch,
+						retries: createOptions.retries,
+						staleTime: createOptions.staleTime,
+						cleanupTime: createOptions.cleanupTime,
+						refetchOnStale: createOptions.refetchOnStale,
+						refetchOnWindowFocus: createOptions.refetchOnWindowFocus,
+						globalCache: createOptions.globalCache
+					};
+
+					const usePagedOptions: UsePagedStacheOptions<StacheParams, Result> = {
+						params: useOptions.params as StacheParams,
+						enabled: useOptions.enabled
 					};
 
 					stache = new Stache<StacheParams, Result, FetchReturnData>(
 						stacheConstructorOptions,
+						usePagedOptions,
 						staches,
 						fetchPageParams
 					);
@@ -216,7 +209,7 @@ const createPagedStache = <StacheParams extends BaseStacheParams, Result, FetchR
 						: 'expired';
 			},
 			get params() {
-				return allOpts.params;
+				return useOptions.params;
 			},
 			get hasMore() {
 				return Array.isArray(this.data) ? this.data.length < this.totalCount : false;

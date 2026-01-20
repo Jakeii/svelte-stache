@@ -1,11 +1,10 @@
-import { SvelteMap } from 'svelte/reactivity';
 import {
 	Stache,
 	type BaseStacheParams,
 	type FetchFn,
 	type StacheOptions
 } from './stache.class.svelte';
-import { stacheCache, type GlobalStacheCache } from './global/cache.svelte';
+import { getStache, getStacheCache, type GlobalStacheCache } from './global/cache.svelte';
 import { hashKey } from './utils';
 import { untrack } from 'svelte';
 
@@ -118,24 +117,19 @@ const createStache = <
 >(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
-	const globalCache = createOptions.globalCache ?? stacheCache;
-	let cache = globalCache.get(createOptions.id);
-
-	if (!cache) {
-		cache = new SvelteMap<string, Stache<StacheParams, Result, FetchReturnData>>();
-		globalCache.set(createOptions.id, cache);
-	}
+	const cache = getStacheCache(createOptions.id, createOptions.globalCache);
 
 	const useStache = (useOptionsFn?: () => StacheOptions<StacheParams, Result>) => {
 		const useOptions = useOptionsFn?.() ?? ({} as StacheOptions<StacheParams, Result>);
-		const allOpts = { ...createOptions, ...useOptions };
-		const stacheKey = allOpts.params ? hashKey(allOpts.params) : 'no-params';
-		let stache = $state(cache.get(stacheKey)) as
+
+		const stacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
+
+		let stache = $state(getStache(cache, stacheKey)) as
 			| Stache<StacheParams, Result, FetchReturnData>
 			| undefined;
 
 		if (!stache) {
-			stache = new Stache<StacheParams, Result, FetchReturnData>(allOpts, cache);
+			stache = new Stache<StacheParams, Result, FetchReturnData>(createOptions, useOptions, cache);
 			cache.set(stacheKey, stache);
 		} else {
 			stache.referenceCount++;
@@ -143,18 +137,18 @@ const createStache = <
 
 		$effect(() => {
 			const useOptions = useOptionsFn?.() ?? ({} as StacheOptions<StacheParams, Result>);
-			const allOpts = { ...createOptions, ...useOptions };
 			untrack(() => {
 				if (stache) {
-					const newStacheKey = allOpts.params ? hashKey(allOpts.params) : 'no-params';
+					const newStacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
 					if (newStacheKey === stacheKey) {
 						// if params didn't change, just update options
-						stache.setOptions(allOpts);
+						stache.setOptions(useOptions);
 						return;
 					}
-					const matchExisting = cache?.get(newStacheKey) as
-						| Stache<StacheParams, Result, FetchReturnData>
-						| undefined;
+					const matchExisting = getStache<StacheParams, Result, FetchReturnData>(
+						cache,
+						newStacheKey
+					);
 					if (matchExisting) {
 						// if params changed and existing stache found, switch to it
 						stache.referenceCount--;
@@ -163,7 +157,11 @@ const createStache = <
 						stache.referenceCount++;
 					} else if (!matchExisting) {
 						// if params changed but no existing stache, create new one with existing data
-						stache = new Stache<StacheParams, Result, FetchReturnData>(allOpts, cache);
+						stache = new Stache<StacheParams, Result, FetchReturnData>(
+							createOptions,
+							useOptions,
+							cache
+						);
 						cache?.set(newStacheKey, stache);
 					}
 				}

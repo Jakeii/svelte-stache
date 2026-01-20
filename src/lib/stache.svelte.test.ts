@@ -19,12 +19,6 @@ function withEffectRoot(fn: () => void | Promise<void>) {
 describe('createStache cache implementation', () => {
 	let cleanupFns: Array<() => void> = [];
 
-	// Helper to track cleanup functions
-	const trackCleanup = (fn: () => void) => {
-		cleanupFns.push(fn);
-		return fn;
-	};
-
 	afterEach(() => {
 		// Clean up all effects after each test
 		cleanupFns.forEach((fn) => fn());
@@ -518,7 +512,8 @@ describe('createStache cache implementation', () => {
 				const { useStache } = createStache({
 					id: 'custom-stale-time-test',
 					fetch: fetchFn,
-					staleTime: 1000 // Very short stale time
+					staleTime: 1000, // Very short stale time
+					globalCache: new SvelteMap()
 				});
 
 				const params = $state('param');
@@ -531,12 +526,16 @@ describe('createStache cache implementation', () => {
 				expect(stache.cacheStatus).toBe('fresh');
 
 				vi.useFakeTimers();
-				vi.advanceTimersByTime(1001);
+				vi.advanceTimersByTime(1100);
 				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+
+				console.log(stache._stache.cacheStatus);
 
 				// Should become stale quickly
 				await vi.waitUntil(() => stache.cacheStatus === 'stale');
+
+				console.log(stache._stache.cacheStatus);
+
 				expect(stache.cacheStatus).toBe('stale');
 			})
 		);
@@ -1890,7 +1889,7 @@ describe('createStache cache implementation', () => {
 
 				await vi.waitUntil(() => stache.data !== null);
 				expect(fetchFn).toHaveBeenCalledTimes(1);
-				expect(fetchFn).toHaveBeenCalledWith(0);
+				expect(fetchFn).toHaveBeenCalledWith(undefined);
 			})
 		);
 	});

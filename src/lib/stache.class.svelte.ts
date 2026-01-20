@@ -226,17 +226,14 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 	constructor(
 		{
 			id,
-			params,
 			fetch: fetchFn,
 			retries,
-			initialData,
-			enabled,
 			staleTime,
 			cleanupTime,
 			refetchOnStale,
 			refetchOnWindowFocus
-		}: StacheConstructorOptions<FetchParams, Result, FetchReturnData> &
-			UseStacheOptions<FetchParams, Result>,
+		}: StacheConstructorOptions<FetchParams, Result, FetchReturnData>,
+		{ params, initialData, enabled }: UseStacheOptions<FetchParams, Result>,
 		stacheCache: StacheCache,
 		fetchPageParams?: FetchPageParams
 	) {
