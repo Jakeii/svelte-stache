@@ -20,6 +20,7 @@ describe('createStache cache implementation', () => {
 	let cleanupFns: Array<() => void> = [];
 
 	afterEach(() => {
+		vi.useRealTimers();
 		// Clean up all effects after each test
 		cleanupFns.forEach((fn) => fn());
 		cleanupFns = [];
@@ -1510,7 +1511,6 @@ describe('createStache cache implementation', () => {
 		);
 
 		it('should handle cache cleanup interaction with stale status', async () => {
-			vi.useFakeTimers();
 			const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
 			const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 			const { useStache } = createStache({
