@@ -1,4 +1,4 @@
-import { SvelteMap } from 'svelte/reactivity';
+import { SvelteDate, SvelteMap } from 'svelte/reactivity';
 import { untrack } from 'svelte';
 import { pagedStacheCache } from './global/cache.svelte';
 import {
@@ -117,7 +117,6 @@ const createPagedStache = <StacheParams extends BaseStacheParams, Result, FetchR
 						params: allOpts.params as StacheParams,
 						initialData: allOpts.initialData as Result,
 						enabled: allOpts.enabled,
-						disableIfParamsMissing: allOpts.disableIfParamsMissing,
 						retries: allOpts.retries,
 						staleTime: allOpts.staleTime,
 						cleanupTime: allOpts.cleanupTime,
@@ -206,8 +205,8 @@ const createPagedStache = <StacheParams extends BaseStacheParams, Result, FetchR
 			get lastFetched() {
 				const dates = pages
 					.map((stache) => stache.lastFetched)
-					.filter((date): date is Date => date instanceof Date);
-				return dates.length ? new Date(Math.max(...dates.map((d) => d.getTime()))) : null;
+					.filter((date): date is SvelteDate => date instanceof Date);
+				return dates.length ? new SvelteDate(Math.max(...dates.map((d) => d.getTime()))) : null;
 			},
 			get cacheStatus() {
 				return pages.every((stache) => stache.cacheStatus === 'fresh')

@@ -1,9 +1,17 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
+import tailwindcss from '@tailwindcss/vite';
+import { resolve } from 'path';
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [sveltekit(), tailwindcss()],
+
+	server: {
+		fs: {
+			allow: [resolve(__dirname, './.velite')]
+		}
+	},
 
 	test: {
 		expect: { requireAssertions: true },

@@ -1,0 +1,335 @@
+---
+title: createPagedStache
+description: API reference for creating paginated query definitions
+section: API
+---
+
+# createPagedStache
+
+Creates a paginated query definition that manages multiple pages of data. Built on top of `createStache` with additional pagination features.
+
+## Import
+
+```typescript
+import { createPagedStache } from 'svelte-stache';
+```
+
+## Signature
+
+```typescript
+function createPagedStache<Params, Result, FetchReturn>(
+  options: CreatePagedStacheOptions<Params, Result, FetchReturn>
+): {
+  useStache: UsePagedStacheFn<Params, Result>;
+  invalidate: (params: Params) => void;
+}
+```
+
+## Options
+
+Inherits all options from [`createStache`](/docs/api/create-stache), plus:
+
+### Required Options
+
+#### `pageSize`
+
+**Type:** `number`
+
+The number of items per page. This is passed to your fetch function.
+
+```typescript
+createPagedStache({
+  id: 'posts',
+  pageSize: 20,
+  fetch: fetchPosts
+});
+```
+
+#### `fetch`
+
+**Type:** `(params: Params, pageParams: { pageIndex: number; pageSize: number }) => Promise<FetchReturn>`
+
+An async function that fetches a single page. Receives both your params and pagination info.
+
+```typescript
+createPagedStache({
+  id: 'posts',
+  pageSize: 20,
+  fetch: async (filters, { pageIndex, pageSize }) => {
+    const res = await fetch(
+      `/api/posts?page=${pageIndex}&size=${pageSize}&category=${filters.category}`
+    );
+    return res.json();
+  }
+});
+```
+
+### Optional Options
+
+#### `getData`
+
+**Type:** `(response: FetchReturn) => Result[]`
+
+Extracts the data array from the API response. Use when your API wraps data in an object.
+
+```typescript
+createPagedStache({
+  id: 'posts',
+  pageSize: 20,
+  fetch: fetchPosts,
+  // API returns { items: [...], total: 100 }
+  getData: (response) => response.items,
+});
+```
+
+#### `getTotalCount`
+
+**Type:** `(response: FetchReturn) => number`
+
+Extracts the total count from the API response. Used to determine if more pages exist.
+
+```typescript
+createPagedStache({
+  id: 'posts',
+  pageSize: 20,
+  fetch: fetchPosts,
+  getData: (response) => response.items,
+  getTotalCount: (response) => response.total,
+});
+```
+
+## Return Value
+
+Same as `createStache`:
+
+### `useStache`
+
+A function to use the paginated query in a component.
+
+### `invalidate`
+
+A function to manually invalidate cached pages.
+
+## useStache Options
+
+When calling `useStache`, you pass pagination params in addition to regular params:
+
+```typescript
+const posts = getPosts(() => ({
+  params: { category: 'tech' },
+  pageParams: {
+    pageOffset: 0,
+    pageCount: 3
+  }
+}));
+```
+
+### `params`
+
+**Type:** `Params`
+
+Your custom parameters passed to the fetch function.
+
+### `pageParams`
+
+**Type:** `{ pageOffset: number; pageCount: number }`
+
+Controls which pages to fetch:
+
+- `pageOffset` - The starting page index (0-based)
+- `pageCount` - How many pages to fetch
+
+```typescript
+// Fetch pages 0, 1, 2
+pageParams: { pageOffset: 0, pageCount: 3 }
+
+// Fetch pages 5, 6
+pageParams: { pageOffset: 5, pageCount: 2 }
+```
+
+### `enabled`
+
+**Type:** `boolean`
+**Default:** `true`
+
+Same as `createStache` - controls whether fetching is enabled.
+
+### `initialData`
+
+**Type:** `Result[]`
+
+Initial flattened data array to use before fetching.
+
+## Paged Stache Object
+
+Returns all properties from a regular stache, plus pagination-specific ones:
+
+### Pagination Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `data` | `Result[]` | Flattened array of all loaded items |
+| `pages` | `Result[][]` | Array of page arrays |
+| `totalCount` | `number` | Total items across all pages (if `getTotalCount` provided) |
+| `hasMore` | `boolean` | Whether more pages exist |
+
+### Status Aggregation
+
+Status properties are aggregated across all loaded pages:
+
+- `isLoading` - True if any page is loading
+- `isFetching` - True if any page is fetching
+- `isError` - True if any page has an error
+- `isSuccess` - True only if all pages succeeded
+
+## Examples
+
+### Basic Pagination
+
+```typescript
+const { useStache: getPosts } = createPagedStache({
+  id: 'posts',
+  pageSize: 10,
+  fetch: async (_, { pageIndex, pageSize }) => {
+    const res = await fetch(`/api/posts?page=${pageIndex}&limit=${pageSize}`);
+    return res.json();
+  }
+});
+```
+
+### With API Response Parsing
+
+```typescript
+interface ApiResponse {
+  data: Post[];
+  meta: {
+    total: number;
+    page: number;
+    perPage: number;
+  };
+}
+
+const { useStache: getPosts } = createPagedStache({
+  id: 'posts',
+  pageSize: 20,
+  fetch: async (filters, { pageIndex, pageSize }): Promise<ApiResponse> => {
+    const res = await fetch(
+      `/api/posts?page=${pageIndex}&limit=${pageSize}&status=${filters.status}`
+    );
+    return res.json();
+  },
+  getData: (response) => response.data,
+  getTotalCount: (response) => response.meta.total,
+});
+```
+
+### Infinite Scroll Component
+
+```svelte
+<script lang="ts">
+  import { getPosts } from '$lib/queries/posts';
+
+  let pageCount = $state(1);
+
+  const posts = getPosts(() => ({
+    params: null,
+    pageParams: { pageOffset: 0, pageCount }
+  }));
+
+  const loadMore = () => {
+    if (posts.hasMore && !posts.isFetching) {
+      pageCount++;
+    }
+  };
+</script>
+
+<div class="posts">
+  {#each posts.data ?? [] as post}
+    <article>
+      <h2>{post.title}</h2>
+      <p>{post.excerpt}</p>
+    </article>
+  {/each}
+</div>
+
+{#if posts.isFetching}
+  <div class="loading">Loading...</div>
+{/if}
+
+{#if posts.hasMore && !posts.isFetching}
+  <button onclick={loadMore}>Load More</button>
+{/if}
+
+{#if !posts.hasMore && posts.data?.length}
+  <p>No more posts</p>
+{/if}
+```
+
+### With Filters
+
+```svelte
+<script lang="ts">
+  import { getPosts } from '$lib/queries/posts';
+
+  let category = $state('all');
+  let pageCount = $state(1);
+
+  // Reset page count when category changes
+  $effect(() => {
+    category; // Track category
+    pageCount = 1;
+  });
+
+  const posts = getPosts(() => ({
+    params: { category },
+    pageParams: { pageOffset: 0, pageCount }
+  }));
+</script>
+
+<select bind:value={category}>
+  <option value="all">All Categories</option>
+  <option value="tech">Technology</option>
+  <option value="design">Design</option>
+</select>
+
+<div class="posts">
+  {#each posts.data ?? [] as post}
+    <article>{post.title}</article>
+  {/each}
+</div>
+
+{#if posts.hasMore}
+  <button onclick={() => pageCount++}>Load More</button>
+{/if}
+```
+
+### Page Window (Virtualized)
+
+Load a "window" of pages around the current view:
+
+```svelte
+<script lang="ts">
+  import { getPosts } from '$lib/queries/posts';
+
+  let currentPage = $state(0);
+  const windowSize = 3; // Load 3 pages around current
+
+  const posts = getPosts(() => ({
+    params: null,
+    pageParams: {
+      pageOffset: Math.max(0, currentPage - 1),
+      pageCount: windowSize
+    }
+  }));
+</script>
+
+<button onclick={() => currentPage = Math.max(0, currentPage - 1)}>
+  Previous
+</button>
+
+<span>Page {currentPage + 1}</span>
+
+<button onclick={() => currentPage++} disabled={!posts.hasMore}>
+  Next
+</button>
+```

@@ -1,0 +1,919 @@
+[
+  {
+    "title": "Getting Started",
+    "description": "Install and start using Svelte Stache in your project",
+    "path": "getting-started",
+    "content": "<h1>Getting Started</h1>\n<p>This guide will walk you through installing Svelte Stache and creating your first query.</p>\n<h2>Installation</h2>\n<p>Install Svelte Stache using your preferred package manager:</p>\n<pre><code class=\"language-bash\">npm install svelte-stache\n</code></pre>\n<pre><code class=\"language-bash\">pnpm add svelte-stache\n</code></pre>\n<pre><code class=\"language-bash\">yarn add svelte-stache\n</code></pre>\n<h2>Your First Query</h2>\n<p>Let's create a simple query that fetches user data from an API.</p>\n<h3>1. Create a Stache Definition</h3>\n<p>First, define your query using <code>createStache</code>. This is typically done in a shared module:</p>\n<pre><code class=\"language-typescript\" metastring=\"title=&#x22;src/lib/queries/user.ts&#x22;\">import { createStache } from 'svelte-stache';\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n}\n\nexport const { useStache: getUser, invalidate: invalidateUser } = createStache({\n  id: 'user',\n  fetch: async (userId: string): Promise&#x3C;User> => {\n    const response = await fetch(`/api/users/${userId}`);\n    if (!response.ok) throw new Error('Failed to fetch user');\n    return response.json();\n  }\n});\n</code></pre>\n<h3>2. Use in a Component</h3>\n<p>Now use the query in your Svelte component:</p>\n<pre><code class=\"language-svelte\" metastring=\"title=&#x22;src/routes/profile/+page.svelte&#x22;\">&#x3C;script lang=\"ts\">\n  import { getUser } from '$lib/queries/user';\n\n  let { data } = $props();\n\n  const user = getUser(() => ({ params: data.userId }));\n&#x3C;/script>\n\n{#if user.isLoading}\n  &#x3C;div class=\"loading\">Loading user...&#x3C;/div>\n{:else if user.isError}\n  &#x3C;div class=\"error\">\n    Error: {user.error instanceof Error ? user.error.message : 'Unknown error'}\n  &#x3C;/div>\n{:else if user.data}\n  &#x3C;div class=\"profile\">\n    &#x3C;h1>{user.data.name}&#x3C;/h1>\n    &#x3C;p>{user.data.email}&#x3C;/p>\n  &#x3C;/div>\n{/if}\n</code></pre>\n<h2>Understanding the Return Value</h2>\n<p>The <code>useStache</code> function returns an object with reactive properties:</p>\n<pre><code class=\"language-typescript\">const user = getUser(() => ({ params: 'user-123' }));\n\n// Data\nuser.data        // The fetched data (or undefined)\nuser.error       // Error if fetch failed\n\n// Status flags\nuser.isLoading   // True during initial load\nuser.isFetching  // True during any fetch (initial or refetch)\nuser.isError     // True if fetch failed\nuser.isSuccess   // True if fetch succeeded\n\n// Cache information\nuser.fetchStatus // 'idle' | 'loading' | 'error' | 'success'\nuser.cacheStatus // 'fresh' | 'stale'\nuser.lastFetched // Date of last successful fetch\n\n// Actions\nuser.invalidate() // Force a refetch\n</code></pre>\n<h2>Reactive Parameters</h2>\n<p>Parameters can be reactive. When they change, a new fetch is triggered:</p>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  import { getUser } from '$lib/queries/user';\n\n  let userId = $state('user-1');\n\n  // Automatically refetches when userId changes\n  const user = getUser(() => ({ params: userId }));\n&#x3C;/script>\n\n&#x3C;select bind:value={userId}>\n  &#x3C;option value=\"user-1\">User 1&#x3C;/option>\n  &#x3C;option value=\"user-2\">User 2&#x3C;/option>\n&#x3C;/select>\n\n&#x3C;p>Current user: {user.data?.name ?? 'Loading...'}&#x3C;/p>\n</code></pre>\n<h2>Configuration Options</h2>\n<p>Customize caching behavior when creating a stache:</p>\n<pre><code class=\"language-typescript\">const { useStache } = createStache({\n  id: 'user',\n  fetch: fetchUser,\n\n  // Time until data is considered stale (default: 5 minutes)\n  staleTime: 1000 * 60 * 5,\n\n  // Time to keep unused data in cache (default: 5 minutes)\n  cleanupTime: 1000 * 60 * 5,\n\n  // Auto-refetch when data becomes stale\n  refetchOnStale: false,\n\n  // Refetch when window regains focus (default: true)\n  refetchOnWindowFocus: true,\n});\n</code></pre>\n<h2>Next Steps</h2>\n<p>Now that you have the basics, explore more features:</p>\n<ul>\n<li><a href=\"/docs/api/create-stache\">createStache API</a> - Full API reference</li>\n<li><a href=\"/docs/api/create-paged-stache\">createPagedStache</a> - Paginated queries</li>\n<li><a href=\"/docs/api/create-mutation\">createMutation</a> - Data mutations</li>\n<li><a href=\"/docs/examples/basic-fetch\">Examples</a> - Working examples</li>\n</ul>",
+    "raw": "# Getting Started\n\nThis guide will walk you through installing Svelte Stache and creating your first query.\n\n## Installation\n\nInstall Svelte Stache using your preferred package manager:\n\n```bash\nnpm install svelte-stache\n```\n\n```bash\npnpm add svelte-stache\n```\n\n```bash\nyarn add svelte-stache\n```\n\n## Your First Query\n\nLet's create a simple query that fetches user data from an API.\n\n### 1. Create a Stache Definition\n\nFirst, define your query using `createStache`. This is typically done in a shared module:\n\n```typescript title=\"src/lib/queries/user.ts\"\nimport { createStache } from 'svelte-stache';\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n}\n\nexport const { useStache: getUser, invalidate: invalidateUser } = createStache({\n  id: 'user',\n  fetch: async (userId: string): Promise<User> => {\n    const response = await fetch(`/api/users/${userId}`);\n    if (!response.ok) throw new Error('Failed to fetch user');\n    return response.json();\n  }\n});\n```\n\n### 2. Use in a Component\n\nNow use the query in your Svelte component:\n\n```svelte title=\"src/routes/profile/+page.svelte\"\n<script lang=\"ts\">\n  import { getUser } from '$lib/queries/user';\n\n  let { data } = $props();\n\n  const user = getUser(() => ({ params: data.userId }));\n</script>\n\n{#if user.isLoading}\n  <div class=\"loading\">Loading user...</div>\n{:else if user.isError}\n  <div class=\"error\">\n    Error: {user.error instanceof Error ? user.error.message : 'Unknown error'}\n  </div>\n{:else if user.data}\n  <div class=\"profile\">\n    <h1>{user.data.name}</h1>\n    <p>{user.data.email}</p>\n  </div>\n{/if}\n```\n\n## Understanding the Return Value\n\nThe `useStache` function returns an object with reactive properties:\n\n```typescript\nconst user = getUser(() => ({ params: 'user-123' }));\n\n// Data\nuser.data        // The fetched data (or undefined)\nuser.error       // Error if fetch failed\n\n// Status flags\nuser.isLoading   // True during initial load\nuser.isFetching  // True during any fetch (initial or refetch)\nuser.isError     // True if fetch failed\nuser.isSuccess   // True if fetch succeeded\n\n// Cache information\nuser.fetchStatus // 'idle' | 'loading' | 'error' | 'success'\nuser.cacheStatus // 'fresh' | 'stale'\nuser.lastFetched // Date of last successful fetch\n\n// Actions\nuser.invalidate() // Force a refetch\n```\n\n## Reactive Parameters\n\nParameters can be reactive. When they change, a new fetch is triggered:\n\n```svelte\n<script lang=\"ts\">\n  import { getUser } from '$lib/queries/user';\n\n  let userId = $state('user-1');\n\n  // Automatically refetches when userId changes\n  const user = getUser(() => ({ params: userId }));\n</script>\n\n<select bind:value={userId}>\n  <option value=\"user-1\">User 1</option>\n  <option value=\"user-2\">User 2</option>\n</select>\n\n<p>Current user: {user.data?.name ?? 'Loading...'}</p>\n```\n\n## Configuration Options\n\nCustomize caching behavior when creating a stache:\n\n```typescript\nconst { useStache } = createStache({\n  id: 'user',\n  fetch: fetchUser,\n\n  // Time until data is considered stale (default: 5 minutes)\n  staleTime: 1000 * 60 * 5,\n\n  // Time to keep unused data in cache (default: 5 minutes)\n  cleanupTime: 1000 * 60 * 5,\n\n  // Auto-refetch when data becomes stale\n  refetchOnStale: false,\n\n  // Refetch when window regains focus (default: true)\n  refetchOnWindowFocus: true,\n});\n```\n\n## Next Steps\n\nNow that you have the basics, explore more features:\n\n- [createStache API](/docs/api/create-stache) - Full API reference\n- [createPagedStache](/docs/api/create-paged-stache) - Paginated queries\n- [createMutation](/docs/api/create-mutation) - Data mutations\n- [Examples](/docs/examples/basic-fetch) - Working examples",
+    "toc": [
+      {
+        "title": "Getting Started",
+        "url": "#getting-started",
+        "items": [
+          {
+            "title": "Installation",
+            "url": "#installation",
+            "items": []
+          },
+          {
+            "title": "Your First Query",
+            "url": "#your-first-query",
+            "items": [
+              {
+                "title": "1. Create a Stache Definition",
+                "url": "#1-create-a-stache-definition",
+                "items": []
+              },
+              {
+                "title": "2. Use in a Component",
+                "url": "#2-use-in-a-component",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Understanding the Return Value",
+            "url": "#understanding-the-return-value",
+            "items": []
+          },
+          {
+            "title": "Reactive Parameters",
+            "url": "#reactive-parameters",
+            "items": []
+          },
+          {
+            "title": "Configuration Options",
+            "url": "#configuration-options",
+            "items": []
+          },
+          {
+            "title": "Next Steps",
+            "url": "#next-steps",
+            "items": []
+          }
+        ]
+      }
+    ],
+    "section": "Overview",
+    "slug": "getting-started",
+    "slugFull": "/getting-started"
+  },
+  {
+    "title": "Introduction",
+    "description": "A state management library for Svelte 5 inspired by TanStack Query, using runes for reactive data fetching and caching.",
+    "path": "index",
+    "content": "<h1>Svelte Stache</h1>\n<p>Svelte Stache is a state management library for Svelte 5 that brings the powerful patterns of <a href=\"https://tanstack.com/query\">TanStack Query</a> to the Svelte ecosystem, built entirely with Svelte 5 runes.</p>\n<h2>Why Svelte Stache?</h2>\n<p>Data fetching in modern web applications involves more than just making API calls. You need to handle:</p>\n<ul>\n<li><strong>Caching</strong> - Avoid redundant network requests</li>\n<li><strong>Loading states</strong> - Show feedback while fetching</li>\n<li><strong>Error handling</strong> - Gracefully handle failures</li>\n<li><strong>Stale data</strong> - Know when to refetch</li>\n<li><strong>Memory management</strong> - Clean up unused data</li>\n</ul>\n<p>Svelte Stache handles all of this with a simple, declarative API that feels natural in Svelte.</p>\n<h2>Core Concepts</h2>\n<h3>Stache</h3>\n<p>A \"stache\" (short for cache + state) represents a cached piece of server data. Each stache is identified by a unique ID and parameters, and automatically manages its lifecycle.</p>\n<pre><code class=\"language-typescript\">const { useStache } = createStache({\n  id: 'user',\n  fetch: (userId) => api.getUser(userId)\n});\n\nconst user = useStache(() => ({ params: 'user-123' }));\n// user.data, user.isLoading, user.error, etc.\n</code></pre>\n<h3>Automatic Caching</h3>\n<p>When multiple components request the same data (same ID + params), they share a single stache instance. No duplicate requests, no wasted memory.</p>\n<h3>Reference Counting</h3>\n<p>Staches track how many components are using them. When a component unmounts, the reference count decreases. When it reaches zero, the stache schedules cleanup after a configurable delay.</p>\n<h3>Cache Status</h3>\n<p>Data transitions through states:</p>\n<ul>\n<li><strong>Fresh</strong> - Recently fetched, within <code>staleTime</code></li>\n<li><strong>Stale</strong> - Older than <code>staleTime</code>, may need refresh</li>\n</ul>\n<h2>Main Exports</h2>\n<p>Svelte Stache provides three main functions:</p>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table><thead><tr><th>Function</th><th>Purpose</th></tr></thead><tbody><tr><td><code>createStache</code></td><td>Create cacheable query definitions</td></tr><tr><td><code>createPagedStache</code></td><td>Create paginated query definitions</td></tr><tr><td><code>createMutation</code></td><td>Create mutation handlers for data modifications</td></tr></tbody></table>\n<h2>Quick Example</h2>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  import { createStache } from 'svelte-stache';\n\n  const { useStache: getUser } = createStache({\n    id: 'user',\n    fetch: async (id: string) => {\n      const res = await fetch(`/api/users/${id}`);\n      return res.json();\n    }\n  });\n\n  const user = getUser(() => ({ params: 'user-123' }));\n&#x3C;/script>\n\n{#if user.isLoading}\n  &#x3C;p>Loading...&#x3C;/p>\n{:else if user.isError}\n  &#x3C;p>Error: {user.error}&#x3C;/p>\n{:else}\n  &#x3C;h1>Hello, {user.data.name}!&#x3C;/h1>\n{/if}\n</code></pre>\n<h2>Requirements</h2>\n<ul>\n<li>Svelte 5.0.0 or higher</li>\n<li>A modern browser or Node.js environment</li>\n</ul>",
+    "raw": "# Svelte Stache\n\nSvelte Stache is a state management library for Svelte 5 that brings the powerful patterns of [TanStack Query](https://tanstack.com/query) to the Svelte ecosystem, built entirely with Svelte 5 runes.\n\n## Why Svelte Stache?\n\nData fetching in modern web applications involves more than just making API calls. You need to handle:\n\n- **Caching** - Avoid redundant network requests\n- **Loading states** - Show feedback while fetching\n- **Error handling** - Gracefully handle failures\n- **Stale data** - Know when to refetch\n- **Memory management** - Clean up unused data\n\nSvelte Stache handles all of this with a simple, declarative API that feels natural in Svelte.\n\n## Core Concepts\n\n### Stache\n\nA \"stache\" (short for cache + state) represents a cached piece of server data. Each stache is identified by a unique ID and parameters, and automatically manages its lifecycle.\n\n```typescript\nconst { useStache } = createStache({\n  id: 'user',\n  fetch: (userId) => api.getUser(userId)\n});\n\nconst user = useStache(() => ({ params: 'user-123' }));\n// user.data, user.isLoading, user.error, etc.\n```\n\n### Automatic Caching\n\nWhen multiple components request the same data (same ID + params), they share a single stache instance. No duplicate requests, no wasted memory.\n\n### Reference Counting\n\nStaches track how many components are using them. When a component unmounts, the reference count decreases. When it reaches zero, the stache schedules cleanup after a configurable delay.\n\n### Cache Status\n\nData transitions through states:\n- **Fresh** - Recently fetched, within `staleTime`\n- **Stale** - Older than `staleTime`, may need refresh\n\n## Main Exports\n\nSvelte Stache provides three main functions:\n\n| Function | Purpose |\n|----------|---------|\n| `createStache` | Create cacheable query definitions |\n| `createPagedStache` | Create paginated query definitions |\n| `createMutation` | Create mutation handlers for data modifications |\n\n## Quick Example\n\n```svelte\n<script lang=\"ts\">\n  import { createStache } from 'svelte-stache';\n\n  const { useStache: getUser } = createStache({\n    id: 'user',\n    fetch: async (id: string) => {\n      const res = await fetch(`/api/users/${id}`);\n      return res.json();\n    }\n  });\n\n  const user = getUser(() => ({ params: 'user-123' }));\n</script>\n\n{#if user.isLoading}\n  <p>Loading...</p>\n{:else if user.isError}\n  <p>Error: {user.error}</p>\n{:else}\n  <h1>Hello, {user.data.name}!</h1>\n{/if}\n```\n\n## Requirements\n\n- Svelte 5.0.0 or higher\n- A modern browser or Node.js environment",
+    "toc": [
+      {
+        "title": "Svelte Stache",
+        "url": "#svelte-stache",
+        "items": [
+          {
+            "title": "Why Svelte Stache?",
+            "url": "#why-svelte-stache",
+            "items": []
+          },
+          {
+            "title": "Core Concepts",
+            "url": "#core-concepts",
+            "items": [
+              {
+                "title": "Stache",
+                "url": "#stache",
+                "items": []
+              },
+              {
+                "title": "Automatic Caching",
+                "url": "#automatic-caching",
+                "items": []
+              },
+              {
+                "title": "Reference Counting",
+                "url": "#reference-counting",
+                "items": []
+              },
+              {
+                "title": "Cache Status",
+                "url": "#cache-status",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Main Exports",
+            "url": "#main-exports",
+            "items": []
+          },
+          {
+            "title": "Quick Example",
+            "url": "#quick-example",
+            "items": []
+          },
+          {
+            "title": "Requirements",
+            "url": "#requirements",
+            "items": []
+          }
+        ]
+      }
+    ],
+    "section": "Overview",
+    "slug": "index",
+    "slugFull": "/index"
+  },
+  {
+    "title": "createMutation",
+    "description": "API reference for creating mutation handlers",
+    "path": "api/create-mutation",
+    "content": "<h1>createMutation</h1>\n<p>Creates a mutation handler for modifying data. Mutations are used for create, update, and delete operations.</p>\n<h2>Import</h2>\n<pre><code class=\"language-typescript\">import { createMutation } from 'svelte-stache';\n</code></pre>\n<h2>Signature</h2>\n<pre><code class=\"language-typescript\">function createMutation&#x3C;Params, Result>(\n  options: MutationOptions&#x3C;Params, Result>\n): (instanceOptions?: MutationInstanceOptions&#x3C;Params, Result>) => Mutation&#x3C;Params, Result>\n</code></pre>\n<h2>Options</h2>\n<h3>Required Options</h3>\n<h4><code>mutationFn</code></h4>\n<p><strong>Type:</strong> <code>(params: Params) => Promise&#x3C;Result></code></p>\n<p>The async function that performs the mutation.</p>\n<pre><code class=\"language-typescript\">createMutation({\n  mutationFn: async (data: CreatePostInput) => {\n    const res = await fetch('/api/posts', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(data)\n    });\n    return res.json();\n  }\n});\n</code></pre>\n<h3>Optional Options</h3>\n<h4><code>beforeMutate</code></h4>\n<p><strong>Type:</strong> <code>(params: Params) => void | Promise&#x3C;void></code></p>\n<p>Called before the mutation executes. Useful for optimistic updates.</p>\n<pre><code class=\"language-typescript\">createMutation({\n  mutationFn: createPost,\n  beforeMutate: (data) => {\n    console.log('About to create post:', data.title);\n  }\n});\n</code></pre>\n<h4><code>afterMutate</code></h4>\n<p><strong>Type:</strong> <code>(params: Params) => void | Promise&#x3C;void></code></p>\n<p>Called after the mutation completes (success or failure). Useful for cleanup.</p>\n<pre><code class=\"language-typescript\">createMutation({\n  mutationFn: createPost,\n  afterMutate: (data) => {\n    console.log('Mutation completed for:', data.title);\n  }\n});\n</code></pre>\n<h4><code>onSuccess</code></h4>\n<p><strong>Type:</strong> <code>(context: { params: Params; result: Result }) => void</code></p>\n<p>Called when the mutation succeeds. Common use case: invalidate related queries.</p>\n<pre><code class=\"language-typescript\">createMutation({\n  mutationFn: createPost,\n  onSuccess: ({ params, result }) => {\n    console.log('Created post:', result.id);\n    // Invalidate posts list to refetch\n    invalidatePosts();\n  }\n});\n</code></pre>\n<h4><code>onError</code></h4>\n<p><strong>Type:</strong> <code>(error: unknown) => void</code></p>\n<p>Called when the mutation fails.</p>\n<pre><code class=\"language-typescript\">createMutation({\n  mutationFn: createPost,\n  onError: (error) => {\n    console.error('Failed to create post:', error);\n    showToast('Failed to create post');\n  }\n});\n</code></pre>\n<h2>Return Value</h2>\n<p><code>createMutation</code> returns a factory function. Call it to create a mutation instance:</p>\n<pre><code class=\"language-typescript\">const useCreatePost = createMutation({ ... });\n\n// In a component:\nconst mutation = useCreatePost();\n</code></pre>\n<h3>Instance Options</h3>\n<p>When creating a mutation instance, you can override or extend callbacks:</p>\n<pre><code class=\"language-typescript\">const mutation = useCreatePost({\n  onSuccess: ({ result }) => {\n    // This runs IN ADDITION to the base onSuccess\n    goto(`/posts/${result.id}`);\n  },\n  onError: (error) => {\n    // This runs IN ADDITION to the base onError\n    showErrorDialog(error);\n  }\n});\n</code></pre>\n<h2>Mutation Object</h2>\n<p>The mutation instance with reactive properties and methods:</p>\n<h3>Properties</h3>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>status</code></td><td><code>'idle' | 'loading' | 'error' | 'success'</code></td><td>Current mutation status</td></tr><tr><td><code>isLoading</code></td><td><code>boolean</code></td><td>True while mutation is executing</td></tr><tr><td><code>isError</code></td><td><code>boolean</code></td><td>True if mutation failed</td></tr><tr><td><code>isSuccess</code></td><td><code>boolean</code></td><td>True if mutation succeeded</td></tr><tr><td><code>data</code></td><td><code>Result | undefined</code></td><td>The mutation result</td></tr><tr><td><code>error</code></td><td><code>unknown</code></td><td>Error if mutation failed</td></tr></tbody></table>\n<h3>Methods</h3>\n<h4><code>mutate(params)</code></h4>\n<p><strong>Type:</strong> <code>(params: Params) => Promise&#x3C;Result></code></p>\n<p>Execute the mutation. Returns a promise that resolves to the result.</p>\n<pre><code class=\"language-typescript\">await mutation.mutate({ title: 'New Post', content: '...' });\n</code></pre>\n<h2>Examples</h2>\n<h3>Basic Create</h3>\n<pre><code class=\"language-typescript\">import { createMutation } from 'svelte-stache';\n\ninterface CreatePostInput {\n  title: string;\n  content: string;\n}\n\ninterface Post {\n  id: string;\n  title: string;\n  content: string;\n  createdAt: string;\n}\n\nconst useCreatePost = createMutation({\n  mutationFn: async (data: CreatePostInput): Promise&#x3C;Post> => {\n    const res = await fetch('/api/posts', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(data)\n    });\n    if (!res.ok) throw new Error('Failed to create post');\n    return res.json();\n  }\n});\n\nexport { useCreatePost };\n</code></pre>\n<h3>With Cache Invalidation</h3>\n<pre><code class=\"language-typescript\">import { createMutation } from 'svelte-stache';\nimport { invalidatePosts } from './posts-query';\n\nconst useCreatePost = createMutation({\n  mutationFn: createPostApi,\n  onSuccess: () => {\n    // Refetch the posts list after creating a new post\n    invalidatePosts();\n  }\n});\n</code></pre>\n<h3>Form Component</h3>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  import { useCreatePost } from '$lib/mutations/post';\n  import { goto } from '$app/navigation';\n\n  const mutation = useCreatePost({\n    onSuccess: ({ result }) => {\n      goto(`/posts/${result.id}`);\n    }\n  });\n\n  let title = $state('');\n  let content = $state('');\n\n  const handleSubmit = async (e: Event) => {\n    e.preventDefault();\n    await mutation.mutate({ title, content });\n  };\n&#x3C;/script>\n\n&#x3C;form onsubmit={handleSubmit}>\n  &#x3C;div>\n    &#x3C;label for=\"title\">Title&#x3C;/label>\n    &#x3C;input id=\"title\" bind:value={title} required />\n  &#x3C;/div>\n\n  &#x3C;div>\n    &#x3C;label for=\"content\">Content&#x3C;/label>\n    &#x3C;textarea id=\"content\" bind:value={content} required>&#x3C;/textarea>\n  &#x3C;/div>\n\n  {#if mutation.isError}\n    &#x3C;div class=\"error\">\n      {mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}\n    &#x3C;/div>\n  {/if}\n\n  &#x3C;button type=\"submit\" disabled={mutation.isLoading}>\n    {mutation.isLoading ? 'Creating...' : 'Create Post'}\n  &#x3C;/button>\n&#x3C;/form>\n</code></pre>\n<h3>Update Mutation</h3>\n<pre><code class=\"language-typescript\">const useUpdatePost = createMutation({\n  mutationFn: async ({ id, ...data }: UpdatePostInput) => {\n    const res = await fetch(`/api/posts/${id}`, {\n      method: 'PATCH',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(data)\n    });\n    return res.json();\n  },\n  onSuccess: ({ params }) => {\n    // Invalidate the specific post\n    invalidatePost(params.id);\n    // Also invalidate the list\n    invalidatePosts();\n  }\n});\n</code></pre>\n<h3>Delete with Confirmation</h3>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  import { useDeletePost } from '$lib/mutations/post';\n\n  let { postId } = $props();\n\n  const mutation = useDeletePost({\n    onSuccess: () => {\n      goto('/posts');\n    }\n  });\n\n  const handleDelete = async () => {\n    if (confirm('Are you sure you want to delete this post?')) {\n      await mutation.mutate(postId);\n    }\n  };\n&#x3C;/script>\n\n&#x3C;button\n  onclick={handleDelete}\n  disabled={mutation.isLoading}\n  class=\"delete-btn\"\n>\n  {mutation.isLoading ? 'Deleting...' : 'Delete Post'}\n&#x3C;/button>\n</code></pre>\n<h3>Optimistic Updates</h3>\n<pre><code class=\"language-typescript\">const useToggleLike = createMutation({\n  mutationFn: async (postId: string) => {\n    const res = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });\n    return res.json();\n  },\n  beforeMutate: (postId) => {\n    // Optimistically update the UI\n    // (You might use a store or context for this)\n    updatePostLikeStatus(postId, true);\n  },\n  onError: (error, postId) => {\n    // Revert on error\n    updatePostLikeStatus(postId, false);\n    showToast('Failed to like post');\n  }\n});\n</code></pre>\n<h3>Multiple Mutations in One Component</h3>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  import { useCreatePost, useUpdatePost, useDeletePost } from '$lib/mutations/post';\n\n  const createMutation = useCreatePost();\n  const updateMutation = useUpdatePost();\n  const deleteMutation = useDeletePost();\n\n  // Each mutation has independent state\n  const isAnyLoading = $derived(\n    createMutation.isLoading ||\n    updateMutation.isLoading ||\n    deleteMutation.isLoading\n  );\n&#x3C;/script>\n</code></pre>",
+    "raw": "# createMutation\n\nCreates a mutation handler for modifying data. Mutations are used for create, update, and delete operations.\n\n## Import\n\n```typescript\nimport { createMutation } from 'svelte-stache';\n```\n\n## Signature\n\n```typescript\nfunction createMutation<Params, Result>(\n  options: MutationOptions<Params, Result>\n): (instanceOptions?: MutationInstanceOptions<Params, Result>) => Mutation<Params, Result>\n```\n\n## Options\n\n### Required Options\n\n#### `mutationFn`\n\n**Type:** `(params: Params) => Promise<Result>`\n\nThe async function that performs the mutation.\n\n```typescript\ncreateMutation({\n  mutationFn: async (data: CreatePostInput) => {\n    const res = await fetch('/api/posts', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(data)\n    });\n    return res.json();\n  }\n});\n```\n\n### Optional Options\n\n#### `beforeMutate`\n\n**Type:** `(params: Params) => void | Promise<void>`\n\nCalled before the mutation executes. Useful for optimistic updates.\n\n```typescript\ncreateMutation({\n  mutationFn: createPost,\n  beforeMutate: (data) => {\n    console.log('About to create post:', data.title);\n  }\n});\n```\n\n#### `afterMutate`\n\n**Type:** `(params: Params) => void | Promise<void>`\n\nCalled after the mutation completes (success or failure). Useful for cleanup.\n\n```typescript\ncreateMutation({\n  mutationFn: createPost,\n  afterMutate: (data) => {\n    console.log('Mutation completed for:', data.title);\n  }\n});\n```\n\n#### `onSuccess`\n\n**Type:** `(context: { params: Params; result: Result }) => void`\n\nCalled when the mutation succeeds. Common use case: invalidate related queries.\n\n```typescript\ncreateMutation({\n  mutationFn: createPost,\n  onSuccess: ({ params, result }) => {\n    console.log('Created post:', result.id);\n    // Invalidate posts list to refetch\n    invalidatePosts();\n  }\n});\n```\n\n#### `onError`\n\n**Type:** `(error: unknown) => void`\n\nCalled when the mutation fails.\n\n```typescript\ncreateMutation({\n  mutationFn: createPost,\n  onError: (error) => {\n    console.error('Failed to create post:', error);\n    showToast('Failed to create post');\n  }\n});\n```\n\n## Return Value\n\n`createMutation` returns a factory function. Call it to create a mutation instance:\n\n```typescript\nconst useCreatePost = createMutation({ ... });\n\n// In a component:\nconst mutation = useCreatePost();\n```\n\n### Instance Options\n\nWhen creating a mutation instance, you can override or extend callbacks:\n\n```typescript\nconst mutation = useCreatePost({\n  onSuccess: ({ result }) => {\n    // This runs IN ADDITION to the base onSuccess\n    goto(`/posts/${result.id}`);\n  },\n  onError: (error) => {\n    // This runs IN ADDITION to the base onError\n    showErrorDialog(error);\n  }\n});\n```\n\n## Mutation Object\n\nThe mutation instance with reactive properties and methods:\n\n### Properties\n\n| Property | Type | Description |\n|----------|------|-------------|\n| `status` | `'idle' \\| 'loading' \\| 'error' \\| 'success'` | Current mutation status |\n| `isLoading` | `boolean` | True while mutation is executing |\n| `isError` | `boolean` | True if mutation failed |\n| `isSuccess` | `boolean` | True if mutation succeeded |\n| `data` | `Result \\| undefined` | The mutation result |\n| `error` | `unknown` | Error if mutation failed |\n\n### Methods\n\n#### `mutate(params)`\n\n**Type:** `(params: Params) => Promise<Result>`\n\nExecute the mutation. Returns a promise that resolves to the result.\n\n```typescript\nawait mutation.mutate({ title: 'New Post', content: '...' });\n```\n\n## Examples\n\n### Basic Create\n\n```typescript\nimport { createMutation } from 'svelte-stache';\n\ninterface CreatePostInput {\n  title: string;\n  content: string;\n}\n\ninterface Post {\n  id: string;\n  title: string;\n  content: string;\n  createdAt: string;\n}\n\nconst useCreatePost = createMutation({\n  mutationFn: async (data: CreatePostInput): Promise<Post> => {\n    const res = await fetch('/api/posts', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(data)\n    });\n    if (!res.ok) throw new Error('Failed to create post');\n    return res.json();\n  }\n});\n\nexport { useCreatePost };\n```\n\n### With Cache Invalidation\n\n```typescript\nimport { createMutation } from 'svelte-stache';\nimport { invalidatePosts } from './posts-query';\n\nconst useCreatePost = createMutation({\n  mutationFn: createPostApi,\n  onSuccess: () => {\n    // Refetch the posts list after creating a new post\n    invalidatePosts();\n  }\n});\n```\n\n### Form Component\n\n```svelte\n<script lang=\"ts\">\n  import { useCreatePost } from '$lib/mutations/post';\n  import { goto } from '$app/navigation';\n\n  const mutation = useCreatePost({\n    onSuccess: ({ result }) => {\n      goto(`/posts/${result.id}`);\n    }\n  });\n\n  let title = $state('');\n  let content = $state('');\n\n  const handleSubmit = async (e: Event) => {\n    e.preventDefault();\n    await mutation.mutate({ title, content });\n  };\n</script>\n\n<form onsubmit={handleSubmit}>\n  <div>\n    <label for=\"title\">Title</label>\n    <input id=\"title\" bind:value={title} required />\n  </div>\n\n  <div>\n    <label for=\"content\">Content</label>\n    <textarea id=\"content\" bind:value={content} required></textarea>\n  </div>\n\n  {#if mutation.isError}\n    <div class=\"error\">\n      {mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}\n    </div>\n  {/if}\n\n  <button type=\"submit\" disabled={mutation.isLoading}>\n    {mutation.isLoading ? 'Creating...' : 'Create Post'}\n  </button>\n</form>\n```\n\n### Update Mutation\n\n```typescript\nconst useUpdatePost = createMutation({\n  mutationFn: async ({ id, ...data }: UpdatePostInput) => {\n    const res = await fetch(`/api/posts/${id}`, {\n      method: 'PATCH',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(data)\n    });\n    return res.json();\n  },\n  onSuccess: ({ params }) => {\n    // Invalidate the specific post\n    invalidatePost(params.id);\n    // Also invalidate the list\n    invalidatePosts();\n  }\n});\n```\n\n### Delete with Confirmation\n\n```svelte\n<script lang=\"ts\">\n  import { useDeletePost } from '$lib/mutations/post';\n\n  let { postId } = $props();\n\n  const mutation = useDeletePost({\n    onSuccess: () => {\n      goto('/posts');\n    }\n  });\n\n  const handleDelete = async () => {\n    if (confirm('Are you sure you want to delete this post?')) {\n      await mutation.mutate(postId);\n    }\n  };\n</script>\n\n<button\n  onclick={handleDelete}\n  disabled={mutation.isLoading}\n  class=\"delete-btn\"\n>\n  {mutation.isLoading ? 'Deleting...' : 'Delete Post'}\n</button>\n```\n\n### Optimistic Updates\n\n```typescript\nconst useToggleLike = createMutation({\n  mutationFn: async (postId: string) => {\n    const res = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });\n    return res.json();\n  },\n  beforeMutate: (postId) => {\n    // Optimistically update the UI\n    // (You might use a store or context for this)\n    updatePostLikeStatus(postId, true);\n  },\n  onError: (error, postId) => {\n    // Revert on error\n    updatePostLikeStatus(postId, false);\n    showToast('Failed to like post');\n  }\n});\n```\n\n### Multiple Mutations in One Component\n\n```svelte\n<script lang=\"ts\">\n  import { useCreatePost, useUpdatePost, useDeletePost } from '$lib/mutations/post';\n\n  const createMutation = useCreatePost();\n  const updateMutation = useUpdatePost();\n  const deleteMutation = useDeletePost();\n\n  // Each mutation has independent state\n  const isAnyLoading = $derived(\n    createMutation.isLoading ||\n    updateMutation.isLoading ||\n    deleteMutation.isLoading\n  );\n</script>\n```",
+    "toc": [
+      {
+        "title": "createMutation",
+        "url": "#createmutation",
+        "items": [
+          {
+            "title": "Import",
+            "url": "#import",
+            "items": []
+          },
+          {
+            "title": "Signature",
+            "url": "#signature",
+            "items": []
+          },
+          {
+            "title": "Options",
+            "url": "#options",
+            "items": [
+              {
+                "title": "Required Options",
+                "url": "#required-options",
+                "items": [
+                  {
+                    "title": "mutationFn",
+                    "url": "#mutationfn",
+                    "items": []
+                  }
+                ]
+              },
+              {
+                "title": "Optional Options",
+                "url": "#optional-options",
+                "items": [
+                  {
+                    "title": "beforeMutate",
+                    "url": "#beforemutate",
+                    "items": []
+                  },
+                  {
+                    "title": "afterMutate",
+                    "url": "#aftermutate",
+                    "items": []
+                  },
+                  {
+                    "title": "onSuccess",
+                    "url": "#onsuccess",
+                    "items": []
+                  },
+                  {
+                    "title": "onError",
+                    "url": "#onerror",
+                    "items": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Return Value",
+            "url": "#return-value",
+            "items": [
+              {
+                "title": "Instance Options",
+                "url": "#instance-options",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Mutation Object",
+            "url": "#mutation-object",
+            "items": [
+              {
+                "title": "Properties",
+                "url": "#properties",
+                "items": []
+              },
+              {
+                "title": "Methods",
+                "url": "#methods",
+                "items": [
+                  {
+                    "title": "mutate(params)",
+                    "url": "#mutateparams",
+                    "items": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Examples",
+            "url": "#examples",
+            "items": [
+              {
+                "title": "Basic Create",
+                "url": "#basic-create",
+                "items": []
+              },
+              {
+                "title": "With Cache Invalidation",
+                "url": "#with-cache-invalidation",
+                "items": []
+              },
+              {
+                "title": "Form Component",
+                "url": "#form-component",
+                "items": []
+              },
+              {
+                "title": "Update Mutation",
+                "url": "#update-mutation",
+                "items": []
+              },
+              {
+                "title": "Delete with Confirmation",
+                "url": "#delete-with-confirmation",
+                "items": []
+              },
+              {
+                "title": "Optimistic Updates",
+                "url": "#optimistic-updates",
+                "items": []
+              },
+              {
+                "title": "Multiple Mutations in One Component",
+                "url": "#multiple-mutations-in-one-component",
+                "items": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "section": "API",
+    "slug": "api/create-mutation",
+    "slugFull": "/api/create-mutation"
+  },
+  {
+    "title": "createPagedStache",
+    "description": "API reference for creating paginated query definitions",
+    "path": "api/create-paged-stache",
+    "content": "<h1>createPagedStache</h1>\n<p>Creates a paginated query definition that manages multiple pages of data. Built on top of <code>createStache</code> with additional pagination features.</p>\n<h2>Import</h2>\n<pre><code class=\"language-typescript\">import { createPagedStache } from 'svelte-stache';\n</code></pre>\n<h2>Signature</h2>\n<pre><code class=\"language-typescript\">function createPagedStache&#x3C;Params, Result, FetchReturn>(\n  options: CreatePagedStacheOptions&#x3C;Params, Result, FetchReturn>\n): {\n  useStache: UsePagedStacheFn&#x3C;Params, Result>;\n  invalidate: (params: Params) => void;\n}\n</code></pre>\n<h2>Options</h2>\n<p>Inherits all options from <a href=\"/docs/api/create-stache\"><code>createStache</code></a>, plus:</p>\n<h3>Required Options</h3>\n<h4><code>pageSize</code></h4>\n<p><strong>Type:</strong> <code>number</code></p>\n<p>The number of items per page. This is passed to your fetch function.</p>\n<pre><code class=\"language-typescript\">createPagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: fetchPosts\n});\n</code></pre>\n<h4><code>fetch</code></h4>\n<p><strong>Type:</strong> <code>(params: Params, pageParams: { pageIndex: number; pageSize: number }) => Promise&#x3C;FetchReturn></code></p>\n<p>An async function that fetches a single page. Receives both your params and pagination info.</p>\n<pre><code class=\"language-typescript\">createPagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: async (filters, { pageIndex, pageSize }) => {\n    const res = await fetch(\n      `/api/posts?page=${pageIndex}&#x26;size=${pageSize}&#x26;category=${filters.category}`\n    );\n    return res.json();\n  }\n});\n</code></pre>\n<h3>Optional Options</h3>\n<h4><code>getData</code></h4>\n<p><strong>Type:</strong> <code>(response: FetchReturn) => Result[]</code></p>\n<p>Extracts the data array from the API response. Use when your API wraps data in an object.</p>\n<pre><code class=\"language-typescript\">createPagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: fetchPosts,\n  // API returns { items: [...], total: 100 }\n  getData: (response) => response.items,\n});\n</code></pre>\n<h4><code>getTotalCount</code></h4>\n<p><strong>Type:</strong> <code>(response: FetchReturn) => number</code></p>\n<p>Extracts the total count from the API response. Used to determine if more pages exist.</p>\n<pre><code class=\"language-typescript\">createPagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: fetchPosts,\n  getData: (response) => response.items,\n  getTotalCount: (response) => response.total,\n});\n</code></pre>\n<h2>Return Value</h2>\n<p>Same as <code>createStache</code>:</p>\n<h3><code>useStache</code></h3>\n<p>A function to use the paginated query in a component.</p>\n<h3><code>invalidate</code></h3>\n<p>A function to manually invalidate cached pages.</p>\n<h2>useStache Options</h2>\n<p>When calling <code>useStache</code>, you pass pagination params in addition to regular params:</p>\n<pre><code class=\"language-typescript\">const posts = getPosts(() => ({\n  params: { category: 'tech' },\n  pageParams: {\n    pageOffset: 0,\n    pageCount: 3\n  }\n}));\n</code></pre>\n<h3><code>params</code></h3>\n<p><strong>Type:</strong> <code>Params</code></p>\n<p>Your custom parameters passed to the fetch function.</p>\n<h3><code>pageParams</code></h3>\n<p><strong>Type:</strong> <code>{ pageOffset: number; pageCount: number }</code></p>\n<p>Controls which pages to fetch:</p>\n<ul>\n<li><code>pageOffset</code> - The starting page index (0-based)</li>\n<li><code>pageCount</code> - How many pages to fetch</li>\n</ul>\n<pre><code class=\"language-typescript\">// Fetch pages 0, 1, 2\npageParams: { pageOffset: 0, pageCount: 3 }\n\n// Fetch pages 5, 6\npageParams: { pageOffset: 5, pageCount: 2 }\n</code></pre>\n<h3><code>enabled</code></h3>\n<p><strong>Type:</strong> <code>boolean</code>\n<strong>Default:</strong> <code>true</code></p>\n<p>Same as <code>createStache</code> - controls whether fetching is enabled.</p>\n<h3><code>initialData</code></h3>\n<p><strong>Type:</strong> <code>Result[]</code></p>\n<p>Initial flattened data array to use before fetching.</p>\n<h2>Paged Stache Object</h2>\n<p>Returns all properties from a regular stache, plus pagination-specific ones:</p>\n<h3>Pagination Properties</h3>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>Result[]</code></td><td>Flattened array of all loaded items</td></tr><tr><td><code>pages</code></td><td><code>Result[][]</code></td><td>Array of page arrays</td></tr><tr><td><code>totalCount</code></td><td><code>number</code></td><td>Total items across all pages (if <code>getTotalCount</code> provided)</td></tr><tr><td><code>hasMore</code></td><td><code>boolean</code></td><td>Whether more pages exist</td></tr></tbody></table>\n<h3>Status Aggregation</h3>\n<p>Status properties are aggregated across all loaded pages:</p>\n<ul>\n<li><code>isLoading</code> - True if any page is loading</li>\n<li><code>isFetching</code> - True if any page is fetching</li>\n<li><code>isError</code> - True if any page has an error</li>\n<li><code>isSuccess</code> - True only if all pages succeeded</li>\n</ul>\n<h2>Examples</h2>\n<h3>Basic Pagination</h3>\n<pre><code class=\"language-typescript\">const { useStache: getPosts } = createPagedStache({\n  id: 'posts',\n  pageSize: 10,\n  fetch: async (_, { pageIndex, pageSize }) => {\n    const res = await fetch(`/api/posts?page=${pageIndex}&#x26;limit=${pageSize}`);\n    return res.json();\n  }\n});\n</code></pre>\n<h3>With API Response Parsing</h3>\n<pre><code class=\"language-typescript\">interface ApiResponse {\n  data: Post[];\n  meta: {\n    total: number;\n    page: number;\n    perPage: number;\n  };\n}\n\nconst { useStache: getPosts } = createPagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: async (filters, { pageIndex, pageSize }): Promise&#x3C;ApiResponse> => {\n    const res = await fetch(\n      `/api/posts?page=${pageIndex}&#x26;limit=${pageSize}&#x26;status=${filters.status}`\n    );\n    return res.json();\n  },\n  getData: (response) => response.data,\n  getTotalCount: (response) => response.meta.total,\n});\n</code></pre>\n<h3>Infinite Scroll Component</h3>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  import { getPosts } from '$lib/queries/posts';\n\n  let pageCount = $state(1);\n\n  const posts = getPosts(() => ({\n    params: null,\n    pageParams: { pageOffset: 0, pageCount }\n  }));\n\n  const loadMore = () => {\n    if (posts.hasMore &#x26;&#x26; !posts.isFetching) {\n      pageCount++;\n    }\n  };\n&#x3C;/script>\n\n&#x3C;div class=\"posts\">\n  {#each posts.data ?? [] as post}\n    &#x3C;article>\n      &#x3C;h2>{post.title}&#x3C;/h2>\n      &#x3C;p>{post.excerpt}&#x3C;/p>\n    &#x3C;/article>\n  {/each}\n&#x3C;/div>\n\n{#if posts.isFetching}\n  &#x3C;div class=\"loading\">Loading...&#x3C;/div>\n{/if}\n\n{#if posts.hasMore &#x26;&#x26; !posts.isFetching}\n  &#x3C;button onclick={loadMore}>Load More&#x3C;/button>\n{/if}\n\n{#if !posts.hasMore &#x26;&#x26; posts.data?.length}\n  &#x3C;p>No more posts&#x3C;/p>\n{/if}\n</code></pre>\n<h3>With Filters</h3>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  import { getPosts } from '$lib/queries/posts';\n\n  let category = $state('all');\n  let pageCount = $state(1);\n\n  // Reset page count when category changes\n  $effect(() => {\n    category; // Track category\n    pageCount = 1;\n  });\n\n  const posts = getPosts(() => ({\n    params: { category },\n    pageParams: { pageOffset: 0, pageCount }\n  }));\n&#x3C;/script>\n\n&#x3C;select bind:value={category}>\n  &#x3C;option value=\"all\">All Categories&#x3C;/option>\n  &#x3C;option value=\"tech\">Technology&#x3C;/option>\n  &#x3C;option value=\"design\">Design&#x3C;/option>\n&#x3C;/select>\n\n&#x3C;div class=\"posts\">\n  {#each posts.data ?? [] as post}\n    &#x3C;article>{post.title}&#x3C;/article>\n  {/each}\n&#x3C;/div>\n\n{#if posts.hasMore}\n  &#x3C;button onclick={() => pageCount++}>Load More&#x3C;/button>\n{/if}\n</code></pre>\n<h3>Page Window (Virtualized)</h3>\n<p>Load a \"window\" of pages around the current view:</p>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  import { getPosts } from '$lib/queries/posts';\n\n  let currentPage = $state(0);\n  const windowSize = 3; // Load 3 pages around current\n\n  const posts = getPosts(() => ({\n    params: null,\n    pageParams: {\n      pageOffset: Math.max(0, currentPage - 1),\n      pageCount: windowSize\n    }\n  }));\n&#x3C;/script>\n\n&#x3C;button onclick={() => currentPage = Math.max(0, currentPage - 1)}>\n  Previous\n&#x3C;/button>\n\n&#x3C;span>Page {currentPage + 1}&#x3C;/span>\n\n&#x3C;button onclick={() => currentPage++} disabled={!posts.hasMore}>\n  Next\n&#x3C;/button>\n</code></pre>",
+    "raw": "# createPagedStache\n\nCreates a paginated query definition that manages multiple pages of data. Built on top of `createStache` with additional pagination features.\n\n## Import\n\n```typescript\nimport { createPagedStache } from 'svelte-stache';\n```\n\n## Signature\n\n```typescript\nfunction createPagedStache<Params, Result, FetchReturn>(\n  options: CreatePagedStacheOptions<Params, Result, FetchReturn>\n): {\n  useStache: UsePagedStacheFn<Params, Result>;\n  invalidate: (params: Params) => void;\n}\n```\n\n## Options\n\nInherits all options from [`createStache`](/docs/api/create-stache), plus:\n\n### Required Options\n\n#### `pageSize`\n\n**Type:** `number`\n\nThe number of items per page. This is passed to your fetch function.\n\n```typescript\ncreatePagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: fetchPosts\n});\n```\n\n#### `fetch`\n\n**Type:** `(params: Params, pageParams: { pageIndex: number; pageSize: number }) => Promise<FetchReturn>`\n\nAn async function that fetches a single page. Receives both your params and pagination info.\n\n```typescript\ncreatePagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: async (filters, { pageIndex, pageSize }) => {\n    const res = await fetch(\n      `/api/posts?page=${pageIndex}&size=${pageSize}&category=${filters.category}`\n    );\n    return res.json();\n  }\n});\n```\n\n### Optional Options\n\n#### `getData`\n\n**Type:** `(response: FetchReturn) => Result[]`\n\nExtracts the data array from the API response. Use when your API wraps data in an object.\n\n```typescript\ncreatePagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: fetchPosts,\n  // API returns { items: [...], total: 100 }\n  getData: (response) => response.items,\n});\n```\n\n#### `getTotalCount`\n\n**Type:** `(response: FetchReturn) => number`\n\nExtracts the total count from the API response. Used to determine if more pages exist.\n\n```typescript\ncreatePagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: fetchPosts,\n  getData: (response) => response.items,\n  getTotalCount: (response) => response.total,\n});\n```\n\n## Return Value\n\nSame as `createStache`:\n\n### `useStache`\n\nA function to use the paginated query in a component.\n\n### `invalidate`\n\nA function to manually invalidate cached pages.\n\n## useStache Options\n\nWhen calling `useStache`, you pass pagination params in addition to regular params:\n\n```typescript\nconst posts = getPosts(() => ({\n  params: { category: 'tech' },\n  pageParams: {\n    pageOffset: 0,\n    pageCount: 3\n  }\n}));\n```\n\n### `params`\n\n**Type:** `Params`\n\nYour custom parameters passed to the fetch function.\n\n### `pageParams`\n\n**Type:** `{ pageOffset: number; pageCount: number }`\n\nControls which pages to fetch:\n\n- `pageOffset` - The starting page index (0-based)\n- `pageCount` - How many pages to fetch\n\n```typescript\n// Fetch pages 0, 1, 2\npageParams: { pageOffset: 0, pageCount: 3 }\n\n// Fetch pages 5, 6\npageParams: { pageOffset: 5, pageCount: 2 }\n```\n\n### `enabled`\n\n**Type:** `boolean`\n**Default:** `true`\n\nSame as `createStache` - controls whether fetching is enabled.\n\n### `initialData`\n\n**Type:** `Result[]`\n\nInitial flattened data array to use before fetching.\n\n## Paged Stache Object\n\nReturns all properties from a regular stache, plus pagination-specific ones:\n\n### Pagination Properties\n\n| Property | Type | Description |\n|----------|------|-------------|\n| `data` | `Result[]` | Flattened array of all loaded items |\n| `pages` | `Result[][]` | Array of page arrays |\n| `totalCount` | `number` | Total items across all pages (if `getTotalCount` provided) |\n| `hasMore` | `boolean` | Whether more pages exist |\n\n### Status Aggregation\n\nStatus properties are aggregated across all loaded pages:\n\n- `isLoading` - True if any page is loading\n- `isFetching` - True if any page is fetching\n- `isError` - True if any page has an error\n- `isSuccess` - True only if all pages succeeded\n\n## Examples\n\n### Basic Pagination\n\n```typescript\nconst { useStache: getPosts } = createPagedStache({\n  id: 'posts',\n  pageSize: 10,\n  fetch: async (_, { pageIndex, pageSize }) => {\n    const res = await fetch(`/api/posts?page=${pageIndex}&limit=${pageSize}`);\n    return res.json();\n  }\n});\n```\n\n### With API Response Parsing\n\n```typescript\ninterface ApiResponse {\n  data: Post[];\n  meta: {\n    total: number;\n    page: number;\n    perPage: number;\n  };\n}\n\nconst { useStache: getPosts } = createPagedStache({\n  id: 'posts',\n  pageSize: 20,\n  fetch: async (filters, { pageIndex, pageSize }): Promise<ApiResponse> => {\n    const res = await fetch(\n      `/api/posts?page=${pageIndex}&limit=${pageSize}&status=${filters.status}`\n    );\n    return res.json();\n  },\n  getData: (response) => response.data,\n  getTotalCount: (response) => response.meta.total,\n});\n```\n\n### Infinite Scroll Component\n\n```svelte\n<script lang=\"ts\">\n  import { getPosts } from '$lib/queries/posts';\n\n  let pageCount = $state(1);\n\n  const posts = getPosts(() => ({\n    params: null,\n    pageParams: { pageOffset: 0, pageCount }\n  }));\n\n  const loadMore = () => {\n    if (posts.hasMore && !posts.isFetching) {\n      pageCount++;\n    }\n  };\n</script>\n\n<div class=\"posts\">\n  {#each posts.data ?? [] as post}\n    <article>\n      <h2>{post.title}</h2>\n      <p>{post.excerpt}</p>\n    </article>\n  {/each}\n</div>\n\n{#if posts.isFetching}\n  <div class=\"loading\">Loading...</div>\n{/if}\n\n{#if posts.hasMore && !posts.isFetching}\n  <button onclick={loadMore}>Load More</button>\n{/if}\n\n{#if !posts.hasMore && posts.data?.length}\n  <p>No more posts</p>\n{/if}\n```\n\n### With Filters\n\n```svelte\n<script lang=\"ts\">\n  import { getPosts } from '$lib/queries/posts';\n\n  let category = $state('all');\n  let pageCount = $state(1);\n\n  // Reset page count when category changes\n  $effect(() => {\n    category; // Track category\n    pageCount = 1;\n  });\n\n  const posts = getPosts(() => ({\n    params: { category },\n    pageParams: { pageOffset: 0, pageCount }\n  }));\n</script>\n\n<select bind:value={category}>\n  <option value=\"all\">All Categories</option>\n  <option value=\"tech\">Technology</option>\n  <option value=\"design\">Design</option>\n</select>\n\n<div class=\"posts\">\n  {#each posts.data ?? [] as post}\n    <article>{post.title}</article>\n  {/each}\n</div>\n\n{#if posts.hasMore}\n  <button onclick={() => pageCount++}>Load More</button>\n{/if}\n```\n\n### Page Window (Virtualized)\n\nLoad a \"window\" of pages around the current view:\n\n```svelte\n<script lang=\"ts\">\n  import { getPosts } from '$lib/queries/posts';\n\n  let currentPage = $state(0);\n  const windowSize = 3; // Load 3 pages around current\n\n  const posts = getPosts(() => ({\n    params: null,\n    pageParams: {\n      pageOffset: Math.max(0, currentPage - 1),\n      pageCount: windowSize\n    }\n  }));\n</script>\n\n<button onclick={() => currentPage = Math.max(0, currentPage - 1)}>\n  Previous\n</button>\n\n<span>Page {currentPage + 1}</span>\n\n<button onclick={() => currentPage++} disabled={!posts.hasMore}>\n  Next\n</button>\n```",
+    "toc": [
+      {
+        "title": "createPagedStache",
+        "url": "#createpagedstache",
+        "items": [
+          {
+            "title": "Import",
+            "url": "#import",
+            "items": []
+          },
+          {
+            "title": "Signature",
+            "url": "#signature",
+            "items": []
+          },
+          {
+            "title": "Options",
+            "url": "#options",
+            "items": [
+              {
+                "title": "Required Options",
+                "url": "#required-options",
+                "items": [
+                  {
+                    "title": "pageSize",
+                    "url": "#pagesize",
+                    "items": []
+                  },
+                  {
+                    "title": "fetch",
+                    "url": "#fetch",
+                    "items": []
+                  }
+                ]
+              },
+              {
+                "title": "Optional Options",
+                "url": "#optional-options",
+                "items": [
+                  {
+                    "title": "getData",
+                    "url": "#getdata",
+                    "items": []
+                  },
+                  {
+                    "title": "getTotalCount",
+                    "url": "#gettotalcount",
+                    "items": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Return Value",
+            "url": "#return-value",
+            "items": [
+              {
+                "title": "useStache",
+                "url": "#usestache",
+                "items": []
+              },
+              {
+                "title": "invalidate",
+                "url": "#invalidate",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "useStache Options",
+            "url": "#usestache-options",
+            "items": [
+              {
+                "title": "params",
+                "url": "#params",
+                "items": []
+              },
+              {
+                "title": "pageParams",
+                "url": "#pageparams",
+                "items": []
+              },
+              {
+                "title": "enabled",
+                "url": "#enabled",
+                "items": []
+              },
+              {
+                "title": "initialData",
+                "url": "#initialdata",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Paged Stache Object",
+            "url": "#paged-stache-object",
+            "items": [
+              {
+                "title": "Pagination Properties",
+                "url": "#pagination-properties",
+                "items": []
+              },
+              {
+                "title": "Status Aggregation",
+                "url": "#status-aggregation",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Examples",
+            "url": "#examples",
+            "items": [
+              {
+                "title": "Basic Pagination",
+                "url": "#basic-pagination",
+                "items": []
+              },
+              {
+                "title": "With API Response Parsing",
+                "url": "#with-api-response-parsing",
+                "items": []
+              },
+              {
+                "title": "Infinite Scroll Component",
+                "url": "#infinite-scroll-component",
+                "items": []
+              },
+              {
+                "title": "With Filters",
+                "url": "#with-filters",
+                "items": []
+              },
+              {
+                "title": "Page Window (Virtualized)",
+                "url": "#page-window-virtualized",
+                "items": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "section": "API",
+    "slug": "api/create-paged-stache",
+    "slugFull": "/api/create-paged-stache"
+  },
+  {
+    "title": "createStache",
+    "description": "API reference for creating cacheable query definitions",
+    "path": "api/create-stache",
+    "content": "<h1>createStache</h1>\n<p>Creates a reusable, cacheable query definition. This is the primary function for data fetching in Svelte Stache.</p>\n<h2>Import</h2>\n<pre><code class=\"language-typescript\">import { createStache } from 'svelte-stache';\n</code></pre>\n<h2>Signature</h2>\n<pre><code class=\"language-typescript\">function createStache&#x3C;Params, Result, FetchReturn = Result>(\n  options: CreateStacheOptions&#x3C;Params, Result, FetchReturn>\n): {\n  useStache: UseStacheFn&#x3C;Params, Result>;\n  invalidate: (params: Params) => void;\n}\n</code></pre>\n<h2>Options</h2>\n<h3>Required Options</h3>\n<h4><code>id</code></h4>\n<p><strong>Type:</strong> <code>string</code></p>\n<p>A unique identifier for this query type. Used as part of the cache key.</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user', // Unique identifier\n  fetch: fetchUser\n});\n</code></pre>\n<h4><code>fetch</code></h4>\n<p><strong>Type:</strong> <code>(params: Params) => Promise&#x3C;FetchReturn></code></p>\n<p>An async function that fetches the data. Receives the params and should return the data.</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: async (userId: string) => {\n    const res = await fetch(`/api/users/${userId}`);\n    return res.json();\n  }\n});\n</code></pre>\n<h3>Optional Options</h3>\n<h4><code>staleTime</code></h4>\n<p><strong>Type:</strong> <code>number</code>\n<strong>Default:</strong> <code>300000</code> (5 minutes)</p>\n<p>Time in milliseconds until data is considered stale. During this time, cached data is returned immediately without refetching.</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: fetchUser,\n  staleTime: 1000 * 60 * 10, // 10 minutes\n});\n</code></pre>\n<h4><code>cleanupTime</code></h4>\n<p><strong>Type:</strong> <code>number</code>\n<strong>Default:</strong> <code>300000</code> (5 minutes)</p>\n<p>Time in milliseconds to wait before removing unused data from the cache. The countdown starts when the last component using this data unmounts.</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: fetchUser,\n  cleanupTime: 1000 * 60 * 30, // Keep in cache for 30 minutes after last use\n});\n</code></pre>\n<h4><code>refetchOnStale</code></h4>\n<p><strong>Type:</strong> <code>boolean</code>\n<strong>Default:</strong> <code>false</code></p>\n<p>When <code>true</code>, automatically triggers a refetch when data becomes stale, even if no component explicitly requests it.</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: fetchUser,\n  refetchOnStale: true, // Keep data fresh automatically\n});\n</code></pre>\n<h4><code>refetchOnWindowFocus</code></h4>\n<p><strong>Type:</strong> <code>boolean</code>\n<strong>Default:</strong> <code>true</code></p>\n<p>When <code>true</code>, refetches stale data when the browser window regains focus. Useful for keeping data fresh when users return to your app.</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: fetchUser,\n  refetchOnWindowFocus: false, // Disable window focus refetch\n});\n</code></pre>\n<h4><code>retries</code></h4>\n<p><strong>Type:</strong> <code>number</code>\n<strong>Default:</strong> <code>0</code></p>\n<p>Number of times to retry a failed fetch before giving up.</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: fetchUser,\n  retries: 3, // Retry up to 3 times on failure\n});\n</code></pre>\n<h2>Return Value</h2>\n<h3><code>useStache</code></h3>\n<p>A function to use the query in a component. Returns a reactive stache object.</p>\n<pre><code class=\"language-typescript\">const { useStache: getUser } = createStache({ ... });\n\n// In a component:\nconst user = getUser(() => ({ params: 'user-123' }));\n</code></pre>\n<h3><code>invalidate</code></h3>\n<p>A function to manually invalidate cached data for specific params. Forces a refetch the next time the data is requested.</p>\n<pre><code class=\"language-typescript\">const { invalidate: invalidateUser } = createStache({ ... });\n\n// Force refetch for a specific user\ninvalidateUser('user-123');\n</code></pre>\n<h2>useStache Options</h2>\n<p>When calling <code>useStache</code>, you can pass an options function:</p>\n<pre><code class=\"language-typescript\">const user = getUser(() => ({\n  params: userId,\n  enabled: true,\n  initialData: cachedUser,\n}));\n</code></pre>\n<h3><code>params</code></h3>\n<p><strong>Type:</strong> <code>Params</code></p>\n<p>The parameters to pass to the fetch function.</p>\n<h3><code>enabled</code></h3>\n<p><strong>Type:</strong> <code>boolean</code>\n<strong>Default:</strong> <code>true</code></p>\n<p>When <code>false</code>, the query won't execute. Useful for dependent queries.</p>\n<pre><code class=\"language-typescript\">const user = getUser(() => ({\n  params: userId,\n  enabled: !!userId, // Only fetch when userId is truthy\n}));\n</code></pre>\n<h3><code>initialData</code></h3>\n<p><strong>Type:</strong> <code>Result</code></p>\n<p>Initial data to use before the first fetch completes. Useful for SSR hydration.</p>\n<pre><code class=\"language-typescript\">const user = getUser(() => ({\n  params: userId,\n  initialData: ssrUser, // Use server-rendered data initially\n}));\n</code></pre>\n<h2>Stache Object</h2>\n<p>The object returned by <code>useStache</code> with reactive properties:</p>\n<h3>Data Properties</h3>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>data</code></td><td><code>Result | undefined</code></td><td>The fetched data</td></tr><tr><td><code>error</code></td><td><code>unknown</code></td><td>Error if the fetch failed</td></tr><tr><td><code>params</code></td><td><code>Params</code></td><td>Current parameters</td></tr></tbody></table>\n<h3>Status Properties</h3>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>fetchStatus</code></td><td><code>'idle' | 'loading' | 'error' | 'success'</code></td><td>Current fetch status</td></tr><tr><td><code>cacheStatus</code></td><td><code>'fresh' | 'stale'</code></td><td>Whether data is fresh or stale</td></tr><tr><td><code>isLoading</code></td><td><code>boolean</code></td><td>True during initial load</td></tr><tr><td><code>isFetching</code></td><td><code>boolean</code></td><td>True during any fetch</td></tr><tr><td><code>isError</code></td><td><code>boolean</code></td><td>True if fetch failed</td></tr><tr><td><code>isSuccess</code></td><td><code>boolean</code></td><td>True if fetch succeeded</td></tr></tbody></table>\n<h3>Metadata Properties</h3>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>lastFetched</code></td><td><code>Date | undefined</code></td><td>Time of last successful fetch</td></tr><tr><td><code>referenceCount</code></td><td><code>number</code></td><td>Number of components using this stache</td></tr></tbody></table>\n<h3>Methods</h3>\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody><tr><td><code>invalidate()</code></td><td>Force a refetch</td></tr></tbody></table>\n<h2>Examples</h2>\n<h3>Basic Usage</h3>\n<pre><code class=\"language-typescript\">const { useStache: getUser } = createStache({\n  id: 'user',\n  fetch: async (id: string) => {\n    const res = await fetch(`/api/users/${id}`);\n    return res.json();\n  }\n});\n</code></pre>\n<h3>With All Options</h3>\n<pre><code class=\"language-typescript\">const { useStache: getUser, invalidate: invalidateUser } = createStache({\n  id: 'user',\n  fetch: async (id: string) => {\n    const res = await fetch(`/api/users/${id}`);\n    if (!res.ok) throw new Error('Failed to fetch');\n    return res.json();\n  },\n  staleTime: 1000 * 60 * 10,      // 10 minutes\n  cleanupTime: 1000 * 60 * 30,    // 30 minutes\n  refetchOnStale: true,\n  refetchOnWindowFocus: true,\n  retries: 2,\n});\n</code></pre>\n<h3>Conditional Fetching</h3>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  let selectedUserId = $state&#x3C;string | null>(null);\n\n  const user = getUser(() => ({\n    params: selectedUserId!,\n    enabled: selectedUserId !== null,\n  }));\n&#x3C;/script>\n</code></pre>\n<h3>With Initial Data (SSR)</h3>\n<pre><code class=\"language-svelte\">&#x3C;script lang=\"ts\">\n  let { data } = $props(); // From +page.server.ts\n\n  const user = getUser(() => ({\n    params: data.userId,\n    initialData: data.user, // Server-side loaded user\n  }));\n&#x3C;/script>\n</code></pre>",
+    "raw": "# createStache\n\nCreates a reusable, cacheable query definition. This is the primary function for data fetching in Svelte Stache.\n\n## Import\n\n```typescript\nimport { createStache } from 'svelte-stache';\n```\n\n## Signature\n\n```typescript\nfunction createStache<Params, Result, FetchReturn = Result>(\n  options: CreateStacheOptions<Params, Result, FetchReturn>\n): {\n  useStache: UseStacheFn<Params, Result>;\n  invalidate: (params: Params) => void;\n}\n```\n\n## Options\n\n### Required Options\n\n#### `id`\n\n**Type:** `string`\n\nA unique identifier for this query type. Used as part of the cache key.\n\n```typescript\ncreateStache({\n  id: 'user', // Unique identifier\n  fetch: fetchUser\n});\n```\n\n#### `fetch`\n\n**Type:** `(params: Params) => Promise<FetchReturn>`\n\nAn async function that fetches the data. Receives the params and should return the data.\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: async (userId: string) => {\n    const res = await fetch(`/api/users/${userId}`);\n    return res.json();\n  }\n});\n```\n\n### Optional Options\n\n#### `staleTime`\n\n**Type:** `number`\n**Default:** `300000` (5 minutes)\n\nTime in milliseconds until data is considered stale. During this time, cached data is returned immediately without refetching.\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: fetchUser,\n  staleTime: 1000 * 60 * 10, // 10 minutes\n});\n```\n\n#### `cleanupTime`\n\n**Type:** `number`\n**Default:** `300000` (5 minutes)\n\nTime in milliseconds to wait before removing unused data from the cache. The countdown starts when the last component using this data unmounts.\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: fetchUser,\n  cleanupTime: 1000 * 60 * 30, // Keep in cache for 30 minutes after last use\n});\n```\n\n#### `refetchOnStale`\n\n**Type:** `boolean`\n**Default:** `false`\n\nWhen `true`, automatically triggers a refetch when data becomes stale, even if no component explicitly requests it.\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: fetchUser,\n  refetchOnStale: true, // Keep data fresh automatically\n});\n```\n\n#### `refetchOnWindowFocus`\n\n**Type:** `boolean`\n**Default:** `true`\n\nWhen `true`, refetches stale data when the browser window regains focus. Useful for keeping data fresh when users return to your app.\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: fetchUser,\n  refetchOnWindowFocus: false, // Disable window focus refetch\n});\n```\n\n#### `retries`\n\n**Type:** `number`\n**Default:** `0`\n\nNumber of times to retry a failed fetch before giving up.\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: fetchUser,\n  retries: 3, // Retry up to 3 times on failure\n});\n```\n\n## Return Value\n\n### `useStache`\n\nA function to use the query in a component. Returns a reactive stache object.\n\n```typescript\nconst { useStache: getUser } = createStache({ ... });\n\n// In a component:\nconst user = getUser(() => ({ params: 'user-123' }));\n```\n\n### `invalidate`\n\nA function to manually invalidate cached data for specific params. Forces a refetch the next time the data is requested.\n\n```typescript\nconst { invalidate: invalidateUser } = createStache({ ... });\n\n// Force refetch for a specific user\ninvalidateUser('user-123');\n```\n\n## useStache Options\n\nWhen calling `useStache`, you can pass an options function:\n\n```typescript\nconst user = getUser(() => ({\n  params: userId,\n  enabled: true,\n  initialData: cachedUser,\n}));\n```\n\n### `params`\n\n**Type:** `Params`\n\nThe parameters to pass to the fetch function.\n\n### `enabled`\n\n**Type:** `boolean`\n**Default:** `true`\n\nWhen `false`, the query won't execute. Useful for dependent queries.\n\n```typescript\nconst user = getUser(() => ({\n  params: userId,\n  enabled: !!userId, // Only fetch when userId is truthy\n}));\n```\n\n### `initialData`\n\n**Type:** `Result`\n\nInitial data to use before the first fetch completes. Useful for SSR hydration.\n\n```typescript\nconst user = getUser(() => ({\n  params: userId,\n  initialData: ssrUser, // Use server-rendered data initially\n}));\n```\n\n## Stache Object\n\nThe object returned by `useStache` with reactive properties:\n\n### Data Properties\n\n| Property | Type | Description |\n|----------|------|-------------|\n| `data` | `Result \\| undefined` | The fetched data |\n| `error` | `unknown` | Error if the fetch failed |\n| `params` | `Params` | Current parameters |\n\n### Status Properties\n\n| Property | Type | Description |\n|----------|------|-------------|\n| `fetchStatus` | `'idle' \\| 'loading' \\| 'error' \\| 'success'` | Current fetch status |\n| `cacheStatus` | `'fresh' \\| 'stale'` | Whether data is fresh or stale |\n| `isLoading` | `boolean` | True during initial load |\n| `isFetching` | `boolean` | True during any fetch |\n| `isError` | `boolean` | True if fetch failed |\n| `isSuccess` | `boolean` | True if fetch succeeded |\n\n### Metadata Properties\n\n| Property | Type | Description |\n|----------|------|-------------|\n| `lastFetched` | `Date \\| undefined` | Time of last successful fetch |\n| `referenceCount` | `number` | Number of components using this stache |\n\n### Methods\n\n| Method | Description |\n|--------|-------------|\n| `invalidate()` | Force a refetch |\n\n## Examples\n\n### Basic Usage\n\n```typescript\nconst { useStache: getUser } = createStache({\n  id: 'user',\n  fetch: async (id: string) => {\n    const res = await fetch(`/api/users/${id}`);\n    return res.json();\n  }\n});\n```\n\n### With All Options\n\n```typescript\nconst { useStache: getUser, invalidate: invalidateUser } = createStache({\n  id: 'user',\n  fetch: async (id: string) => {\n    const res = await fetch(`/api/users/${id}`);\n    if (!res.ok) throw new Error('Failed to fetch');\n    return res.json();\n  },\n  staleTime: 1000 * 60 * 10,      // 10 minutes\n  cleanupTime: 1000 * 60 * 30,    // 30 minutes\n  refetchOnStale: true,\n  refetchOnWindowFocus: true,\n  retries: 2,\n});\n```\n\n### Conditional Fetching\n\n```svelte\n<script lang=\"ts\">\n  let selectedUserId = $state<string | null>(null);\n\n  const user = getUser(() => ({\n    params: selectedUserId!,\n    enabled: selectedUserId !== null,\n  }));\n</script>\n```\n\n### With Initial Data (SSR)\n\n```svelte\n<script lang=\"ts\">\n  let { data } = $props(); // From +page.server.ts\n\n  const user = getUser(() => ({\n    params: data.userId,\n    initialData: data.user, // Server-side loaded user\n  }));\n</script>\n```",
+    "toc": [
+      {
+        "title": "createStache",
+        "url": "#createstache",
+        "items": [
+          {
+            "title": "Import",
+            "url": "#import",
+            "items": []
+          },
+          {
+            "title": "Signature",
+            "url": "#signature",
+            "items": []
+          },
+          {
+            "title": "Options",
+            "url": "#options",
+            "items": [
+              {
+                "title": "Required Options",
+                "url": "#required-options",
+                "items": [
+                  {
+                    "title": "id",
+                    "url": "#id",
+                    "items": []
+                  },
+                  {
+                    "title": "fetch",
+                    "url": "#fetch",
+                    "items": []
+                  }
+                ]
+              },
+              {
+                "title": "Optional Options",
+                "url": "#optional-options",
+                "items": [
+                  {
+                    "title": "staleTime",
+                    "url": "#staletime",
+                    "items": []
+                  },
+                  {
+                    "title": "cleanupTime",
+                    "url": "#cleanuptime",
+                    "items": []
+                  },
+                  {
+                    "title": "refetchOnStale",
+                    "url": "#refetchonstale",
+                    "items": []
+                  },
+                  {
+                    "title": "refetchOnWindowFocus",
+                    "url": "#refetchonwindowfocus",
+                    "items": []
+                  },
+                  {
+                    "title": "retries",
+                    "url": "#retries",
+                    "items": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Return Value",
+            "url": "#return-value",
+            "items": [
+              {
+                "title": "useStache",
+                "url": "#usestache",
+                "items": []
+              },
+              {
+                "title": "invalidate",
+                "url": "#invalidate",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "useStache Options",
+            "url": "#usestache-options",
+            "items": [
+              {
+                "title": "params",
+                "url": "#params",
+                "items": []
+              },
+              {
+                "title": "enabled",
+                "url": "#enabled",
+                "items": []
+              },
+              {
+                "title": "initialData",
+                "url": "#initialdata",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Stache Object",
+            "url": "#stache-object",
+            "items": [
+              {
+                "title": "Data Properties",
+                "url": "#data-properties",
+                "items": []
+              },
+              {
+                "title": "Status Properties",
+                "url": "#status-properties",
+                "items": []
+              },
+              {
+                "title": "Metadata Properties",
+                "url": "#metadata-properties",
+                "items": []
+              },
+              {
+                "title": "Methods",
+                "url": "#methods",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Examples",
+            "url": "#examples",
+            "items": [
+              {
+                "title": "Basic Usage",
+                "url": "#basic-usage",
+                "items": []
+              },
+              {
+                "title": "With All Options",
+                "url": "#with-all-options",
+                "items": []
+              },
+              {
+                "title": "Conditional Fetching",
+                "url": "#conditional-fetching",
+                "items": []
+              },
+              {
+                "title": "With Initial Data (SSR)",
+                "url": "#with-initial-data-ssr",
+                "items": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "section": "API",
+    "slug": "api/create-stache",
+    "slugFull": "/api/create-stache"
+  },
+  {
+    "title": "Basic Fetch",
+    "description": "A simple example of fetching and displaying user data",
+    "path": "examples/basic-fetch",
+    "content": "<script>\n  import BasicFetchDemo from '$lib/docs/examples/BasicFetchDemo.svelte';\n</script>\n<h1>Basic Fetch Example</h1>\n<p>This example demonstrates the core functionality of <code>createStache</code>: fetching data, handling loading states, and displaying the result.</p>\n<h2>Live Demo</h2>\n<basicfetchdemo>\n<h2>The Code</h2>\n<h3>Query Definition</h3>\n<p>First, create a stache definition for fetching user data:</p>\n<pre><code class=\"language-typescript\" metastring=\"title=&#x22;src/lib/queries/user.ts&#x22;\">import { createStache } from 'svelte-stache';\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n  role: string;\n  avatar: string;\n  bio?: string;\n  department?: string;\n  location?: string;\n}\n\nexport const { useStache: getUser, invalidate: invalidateUser } = createStache({\n  id: 'user',\n  fetch: async (userId: string): Promise&#x3C;User> => {\n    const response = await fetch(`/api/users/${userId}`);\n    if (!response.ok) {\n      throw new Error('Failed to fetch user');\n    }\n    return response.json();\n  },\n  staleTime: 1000 * 60 * 5, // 5 minutes\n  refetchOnWindowFocus: true,\n});\n</code></pre>\n<h3>Component Usage</h3>\n<p>Use the query in a Svelte component:</p>\n<pre><code class=\"language-svelte\" metastring=\"title=&#x22;UserProfile.svelte&#x22;\">&#x3C;script lang=\"ts\">\n  import { getUser, invalidateUser } from '$lib/queries/user';\n\n  let userId = $state('user-1');\n\n  // The query automatically fetches when userId changes\n  const user = getUser(() => ({\n    params: userId,\n  }));\n&#x3C;/script>\n\n&#x3C;div class=\"user-selector\">\n  &#x3C;label for=\"user-select\">Select User:&#x3C;/label>\n  &#x3C;select id=\"user-select\" bind:value={userId}>\n    &#x3C;option value=\"user-1\">Alice Johnson&#x3C;/option>\n    &#x3C;option value=\"user-2\">Bob Smith&#x3C;/option>\n    &#x3C;option value=\"user-3\">Carol Williams&#x3C;/option>\n    &#x3C;option value=\"user-4\">David Brown&#x3C;/option>\n    &#x3C;option value=\"user-5\">Eva Martinez&#x3C;/option>\n  &#x3C;/select>\n&#x3C;/div>\n\n{#if user.isLoading}\n  &#x3C;div class=\"loading\">\n    &#x3C;span class=\"spinner\">&#x3C;/span>\n    Loading user...\n  &#x3C;/div>\n{:else if user.isError}\n  &#x3C;div class=\"error\">\n    Error: {user.error instanceof Error ? user.error.message : 'Unknown error'}\n  &#x3C;/div>\n{:else if user.data}\n  &#x3C;div class=\"profile-card\">\n    &#x3C;img src={user.data.avatar} alt={user.data.name} class=\"avatar\" />\n    &#x3C;div class=\"info\">\n      &#x3C;h2>{user.data.name}&#x3C;/h2>\n      &#x3C;p class=\"role\">{user.data.role}&#x3C;/p>\n      &#x3C;p class=\"email\">{user.data.email}&#x3C;/p>\n      {#if user.data.bio}\n        &#x3C;p class=\"bio\">{user.data.bio}&#x3C;/p>\n      {/if}\n    &#x3C;/div>\n  &#x3C;/div>\n\n  &#x3C;div class=\"meta\">\n    &#x3C;span class=\"status\" class:fresh={user.cacheStatus === 'fresh'}>\n      Cache: {user.cacheStatus}\n    &#x3C;/span>\n    &#x3C;button onclick={() => user.invalidate()}>\n      Refresh\n    &#x3C;/button>\n  &#x3C;/div>\n{/if}\n</code></pre>\n<h2>Key Points</h2>\n<ol>\n<li><strong>Reactive Parameters</strong> - When <code>userId</code> changes, the stache automatically fetches the new user</li>\n<li><strong>Cache Sharing</strong> - If you switch back to a previously loaded user, the cached data is shown immediately</li>\n<li><strong>Loading States</strong> - Use <code>isLoading</code>, <code>isError</code>, and <code>isSuccess</code> to handle different states</li>\n<li><strong>Manual Refresh</strong> - Call <code>invalidate()</code> to force a refetch</li>\n<li><strong>Cache Status</strong> - Check <code>cacheStatus</code> to know if data is <code>fresh</code> or <code>stale</code></li>\n</ol>\n<h2>What to Try</h2>\n<ol>\n<li><strong>Select different users</strong> - Notice how the first load shows a spinner, but cached users appear instantly</li>\n<li><strong>Click \"Refresh\"</strong> - Forces a refetch even if the data is fresh</li>\n<li><strong>Switch away and back</strong> - Previously loaded users are served from cache</li>\n<li><strong>Wait for data to become stale</strong> - After 5 minutes, the cache status changes to \"stale\"</li>\n</ol></basicfetchdemo>",
+    "raw": "<script>\n  import BasicFetchDemo from '$lib/docs/examples/BasicFetchDemo.svelte';\n</script>\n\n# Basic Fetch Example\n\nThis example demonstrates the core functionality of `createStache`: fetching data, handling loading states, and displaying the result.\n\n## Live Demo\n\n<BasicFetchDemo />\n\n## The Code\n\n### Query Definition\n\nFirst, create a stache definition for fetching user data:\n\n```typescript title=\"src/lib/queries/user.ts\"\nimport { createStache } from 'svelte-stache';\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n  role: string;\n  avatar: string;\n  bio?: string;\n  department?: string;\n  location?: string;\n}\n\nexport const { useStache: getUser, invalidate: invalidateUser } = createStache({\n  id: 'user',\n  fetch: async (userId: string): Promise<User> => {\n    const response = await fetch(`/api/users/${userId}`);\n    if (!response.ok) {\n      throw new Error('Failed to fetch user');\n    }\n    return response.json();\n  },\n  staleTime: 1000 * 60 * 5, // 5 minutes\n  refetchOnWindowFocus: true,\n});\n```\n\n### Component Usage\n\nUse the query in a Svelte component:\n\n```svelte title=\"UserProfile.svelte\"\n<script lang=\"ts\">\n  import { getUser, invalidateUser } from '$lib/queries/user';\n\n  let userId = $state('user-1');\n\n  // The query automatically fetches when userId changes\n  const user = getUser(() => ({\n    params: userId,\n  }));\n</script>\n\n<div class=\"user-selector\">\n  <label for=\"user-select\">Select User:</label>\n  <select id=\"user-select\" bind:value={userId}>\n    <option value=\"user-1\">Alice Johnson</option>\n    <option value=\"user-2\">Bob Smith</option>\n    <option value=\"user-3\">Carol Williams</option>\n    <option value=\"user-4\">David Brown</option>\n    <option value=\"user-5\">Eva Martinez</option>\n  </select>\n</div>\n\n{#if user.isLoading}\n  <div class=\"loading\">\n    <span class=\"spinner\"></span>\n    Loading user...\n  </div>\n{:else if user.isError}\n  <div class=\"error\">\n    Error: {user.error instanceof Error ? user.error.message : 'Unknown error'}\n  </div>\n{:else if user.data}\n  <div class=\"profile-card\">\n    <img src={user.data.avatar} alt={user.data.name} class=\"avatar\" />\n    <div class=\"info\">\n      <h2>{user.data.name}</h2>\n      <p class=\"role\">{user.data.role}</p>\n      <p class=\"email\">{user.data.email}</p>\n      {#if user.data.bio}\n        <p class=\"bio\">{user.data.bio}</p>\n      {/if}\n    </div>\n  </div>\n\n  <div class=\"meta\">\n    <span class=\"status\" class:fresh={user.cacheStatus === 'fresh'}>\n      Cache: {user.cacheStatus}\n    </span>\n    <button onclick={() => user.invalidate()}>\n      Refresh\n    </button>\n  </div>\n{/if}\n```\n\n## Key Points\n\n1. **Reactive Parameters** - When `userId` changes, the stache automatically fetches the new user\n2. **Cache Sharing** - If you switch back to a previously loaded user, the cached data is shown immediately\n3. **Loading States** - Use `isLoading`, `isError`, and `isSuccess` to handle different states\n4. **Manual Refresh** - Call `invalidate()` to force a refetch\n5. **Cache Status** - Check `cacheStatus` to know if data is `fresh` or `stale`\n\n## What to Try\n\n1. **Select different users** - Notice how the first load shows a spinner, but cached users appear instantly\n2. **Click \"Refresh\"** - Forces a refetch even if the data is fresh\n3. **Switch away and back** - Previously loaded users are served from cache\n4. **Wait for data to become stale** - After 5 minutes, the cache status changes to \"stale\"",
+    "toc": [
+      {
+        "title": "Basic Fetch Example",
+        "url": "#basic-fetch-example",
+        "items": [
+          {
+            "title": "Live Demo",
+            "url": "#live-demo",
+            "items": []
+          },
+          {
+            "title": "The Code",
+            "url": "#the-code",
+            "items": [
+              {
+                "title": "Query Definition",
+                "url": "#query-definition",
+                "items": []
+              },
+              {
+                "title": "Component Usage",
+                "url": "#component-usage",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Key Points",
+            "url": "#key-points",
+            "items": []
+          },
+          {
+            "title": "What to Try",
+            "url": "#what-to-try",
+            "items": []
+          }
+        ]
+      }
+    ],
+    "section": "Examples",
+    "slug": "examples/basic-fetch",
+    "slugFull": "/examples/basic-fetch"
+  },
+  {
+    "title": "Mutations",
+    "description": "Creating and updating data with mutation handlers",
+    "path": "examples/mutations",
+    "content": "<script>\n  import MutationsDemo from '$lib/docs/examples/MutationsDemo.svelte';\n</script>\n<h1>Mutations Example</h1>\n<p>This example demonstrates how to use <code>createMutation</code> to handle form submissions, with loading states and cache invalidation.</p>\n<h2>Live Demo</h2>\n<mutationsdemo>\n<h2>The Code</h2>\n<h3>Mutation Definition</h3>\n<p>Create a mutation for creating posts:</p>\n<pre><code class=\"language-typescript\" metastring=\"title=&#x22;src/lib/mutations/post.ts&#x22;\">import { createMutation } from 'svelte-stache';\nimport { invalidatePosts } from '$lib/queries/posts';\n\ninterface CreatePostInput {\n  title: string;\n  content: string;\n  category: string;\n}\n\ninterface Post {\n  id: string;\n  title: string;\n  content: string;\n  category: string;\n  author: string;\n  publishedAt: string;\n}\n\nexport const useCreatePost = createMutation({\n  mutationFn: async (data: CreatePostInput): Promise&#x3C;Post> => {\n    const response = await fetch('/api/posts', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(data),\n    });\n\n    if (!response.ok) {\n      throw new Error('Failed to create post');\n    }\n\n    return response.json();\n  },\n  onSuccess: () => {\n    // Invalidate the posts list so it refetches\n    invalidatePosts();\n  },\n  onError: (error) => {\n    console.error('Failed to create post:', error);\n  },\n});\n</code></pre>\n<h3>Component Usage</h3>\n<pre><code class=\"language-svelte\" metastring=\"title=&#x22;CreatePostForm.svelte&#x22;\">&#x3C;script lang=\"ts\">\n  import { useCreatePost } from '$lib/mutations/post';\n\n  const mutation = useCreatePost({\n    onSuccess: ({ result }) => {\n      // Clear form on success\n      title = '';\n      content = '';\n      category = 'Technology';\n      successMessage = `Post \"${result.title}\" created!`;\n\n      // Clear success message after 3 seconds\n      setTimeout(() => successMessage = '', 3000);\n    },\n  });\n\n  let title = $state('');\n  let content = $state('');\n  let category = $state('Technology');\n  let successMessage = $state('');\n\n  const handleSubmit = async (e: Event) => {\n    e.preventDefault();\n\n    if (!title.trim() || !content.trim()) return;\n\n    await mutation.mutate({\n      title: title.trim(),\n      content: content.trim(),\n      category,\n    });\n  };\n\n  const isValid = $derived(title.trim().length > 0 &#x26;&#x26; content.trim().length > 0);\n&#x3C;/script>\n\n&#x3C;form onsubmit={handleSubmit}>\n  &#x3C;div class=\"field\">\n    &#x3C;label for=\"title\">Title&#x3C;/label>\n    &#x3C;input\n      id=\"title\"\n      type=\"text\"\n      bind:value={title}\n      placeholder=\"Enter post title\"\n      disabled={mutation.isLoading}\n    />\n  &#x3C;/div>\n\n  &#x3C;div class=\"field\">\n    &#x3C;label for=\"category\">Category&#x3C;/label>\n    &#x3C;select id=\"category\" bind:value={category} disabled={mutation.isLoading}>\n      &#x3C;option value=\"Technology\">Technology&#x3C;/option>\n      &#x3C;option value=\"Design\">Design&#x3C;/option>\n      &#x3C;option value=\"Business\">Business&#x3C;/option>\n      &#x3C;option value=\"Lifestyle\">Lifestyle&#x3C;/option>\n    &#x3C;/select>\n  &#x3C;/div>\n\n  &#x3C;div class=\"field\">\n    &#x3C;label for=\"content\">Content&#x3C;/label>\n    &#x3C;textarea\n      id=\"content\"\n      bind:value={content}\n      placeholder=\"Write your post content...\"\n      rows=\"4\"\n      disabled={mutation.isLoading}\n    >&#x3C;/textarea>\n  &#x3C;/div>\n\n  {#if mutation.isError}\n    &#x3C;div class=\"error\">\n      {mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}\n    &#x3C;/div>\n  {/if}\n\n  {#if successMessage}\n    &#x3C;div class=\"success\">{successMessage}&#x3C;/div>\n  {/if}\n\n  &#x3C;button type=\"submit\" disabled={mutation.isLoading || !isValid}>\n    {mutation.isLoading ? 'Creating...' : 'Create Post'}\n  &#x3C;/button>\n&#x3C;/form>\n\n&#x3C;div class=\"status-info\">\n  &#x3C;span>Status: {mutation.status}&#x3C;/span>\n  {#if mutation.data}\n    &#x3C;span>Last created: {mutation.data.title}&#x3C;/span>\n  {/if}\n&#x3C;/div>\n</code></pre>\n<h2>Key Points</h2>\n<ol>\n<li><strong>Loading State</strong> - Use <code>isLoading</code> to disable form inputs and show progress</li>\n<li><strong>Error Handling</strong> - <code>isError</code> and <code>error</code> provide error feedback</li>\n<li><strong>Success Callback</strong> - Use <code>onSuccess</code> to clear the form and show confirmation</li>\n<li><strong>Cache Invalidation</strong> - Call <code>invalidatePosts()</code> to refresh related queries</li>\n<li><strong>Instance Callbacks</strong> - Callbacks at mutation definition and usage are both called</li>\n</ol>\n<h2>Mutation Lifecycle</h2>\n<pre><code>mutate() called\n    ↓\nbeforeMutate() → mutationFn() → afterMutate()\n                      ↓\n            ┌────────┴────────┐\n         success            error\n            ↓                  ↓\n       onSuccess()        onError()\n</code></pre>\n<h2>What to Try</h2>\n<ol>\n<li><strong>Fill out the form and submit</strong> - Watch the button text change while loading</li>\n<li><strong>Create multiple posts</strong> - Each submission invalidates the cache</li>\n<li><strong>Try submitting with empty fields</strong> - The button is disabled until valid</li>\n<li><strong>Check the mutation status</strong> - See how it transitions through states</li>\n</ol></mutationsdemo>",
+    "raw": "<script>\n  import MutationsDemo from '$lib/docs/examples/MutationsDemo.svelte';\n</script>\n\n# Mutations Example\n\nThis example demonstrates how to use `createMutation` to handle form submissions, with loading states and cache invalidation.\n\n## Live Demo\n\n<MutationsDemo />\n\n## The Code\n\n### Mutation Definition\n\nCreate a mutation for creating posts:\n\n```typescript title=\"src/lib/mutations/post.ts\"\nimport { createMutation } from 'svelte-stache';\nimport { invalidatePosts } from '$lib/queries/posts';\n\ninterface CreatePostInput {\n  title: string;\n  content: string;\n  category: string;\n}\n\ninterface Post {\n  id: string;\n  title: string;\n  content: string;\n  category: string;\n  author: string;\n  publishedAt: string;\n}\n\nexport const useCreatePost = createMutation({\n  mutationFn: async (data: CreatePostInput): Promise<Post> => {\n    const response = await fetch('/api/posts', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify(data),\n    });\n\n    if (!response.ok) {\n      throw new Error('Failed to create post');\n    }\n\n    return response.json();\n  },\n  onSuccess: () => {\n    // Invalidate the posts list so it refetches\n    invalidatePosts();\n  },\n  onError: (error) => {\n    console.error('Failed to create post:', error);\n  },\n});\n```\n\n### Component Usage\n\n```svelte title=\"CreatePostForm.svelte\"\n<script lang=\"ts\">\n  import { useCreatePost } from '$lib/mutations/post';\n\n  const mutation = useCreatePost({\n    onSuccess: ({ result }) => {\n      // Clear form on success\n      title = '';\n      content = '';\n      category = 'Technology';\n      successMessage = `Post \"${result.title}\" created!`;\n\n      // Clear success message after 3 seconds\n      setTimeout(() => successMessage = '', 3000);\n    },\n  });\n\n  let title = $state('');\n  let content = $state('');\n  let category = $state('Technology');\n  let successMessage = $state('');\n\n  const handleSubmit = async (e: Event) => {\n    e.preventDefault();\n\n    if (!title.trim() || !content.trim()) return;\n\n    await mutation.mutate({\n      title: title.trim(),\n      content: content.trim(),\n      category,\n    });\n  };\n\n  const isValid = $derived(title.trim().length > 0 && content.trim().length > 0);\n</script>\n\n<form onsubmit={handleSubmit}>\n  <div class=\"field\">\n    <label for=\"title\">Title</label>\n    <input\n      id=\"title\"\n      type=\"text\"\n      bind:value={title}\n      placeholder=\"Enter post title\"\n      disabled={mutation.isLoading}\n    />\n  </div>\n\n  <div class=\"field\">\n    <label for=\"category\">Category</label>\n    <select id=\"category\" bind:value={category} disabled={mutation.isLoading}>\n      <option value=\"Technology\">Technology</option>\n      <option value=\"Design\">Design</option>\n      <option value=\"Business\">Business</option>\n      <option value=\"Lifestyle\">Lifestyle</option>\n    </select>\n  </div>\n\n  <div class=\"field\">\n    <label for=\"content\">Content</label>\n    <textarea\n      id=\"content\"\n      bind:value={content}\n      placeholder=\"Write your post content...\"\n      rows=\"4\"\n      disabled={mutation.isLoading}\n    ></textarea>\n  </div>\n\n  {#if mutation.isError}\n    <div class=\"error\">\n      {mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}\n    </div>\n  {/if}\n\n  {#if successMessage}\n    <div class=\"success\">{successMessage}</div>\n  {/if}\n\n  <button type=\"submit\" disabled={mutation.isLoading || !isValid}>\n    {mutation.isLoading ? 'Creating...' : 'Create Post'}\n  </button>\n</form>\n\n<div class=\"status-info\">\n  <span>Status: {mutation.status}</span>\n  {#if mutation.data}\n    <span>Last created: {mutation.data.title}</span>\n  {/if}\n</div>\n```\n\n## Key Points\n\n1. **Loading State** - Use `isLoading` to disable form inputs and show progress\n2. **Error Handling** - `isError` and `error` provide error feedback\n3. **Success Callback** - Use `onSuccess` to clear the form and show confirmation\n4. **Cache Invalidation** - Call `invalidatePosts()` to refresh related queries\n5. **Instance Callbacks** - Callbacks at mutation definition and usage are both called\n\n## Mutation Lifecycle\n\n```\nmutate() called\n    ↓\nbeforeMutate() → mutationFn() → afterMutate()\n                      ↓\n            ┌────────┴────────┐\n         success            error\n            ↓                  ↓\n       onSuccess()        onError()\n```\n\n## What to Try\n\n1. **Fill out the form and submit** - Watch the button text change while loading\n2. **Create multiple posts** - Each submission invalidates the cache\n3. **Try submitting with empty fields** - The button is disabled until valid\n4. **Check the mutation status** - See how it transitions through states",
+    "toc": [
+      {
+        "title": "Mutations Example",
+        "url": "#mutations-example",
+        "items": [
+          {
+            "title": "Live Demo",
+            "url": "#live-demo",
+            "items": []
+          },
+          {
+            "title": "The Code",
+            "url": "#the-code",
+            "items": [
+              {
+                "title": "Mutation Definition",
+                "url": "#mutation-definition",
+                "items": []
+              },
+              {
+                "title": "Component Usage",
+                "url": "#component-usage",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Key Points",
+            "url": "#key-points",
+            "items": []
+          },
+          {
+            "title": "Mutation Lifecycle",
+            "url": "#mutation-lifecycle",
+            "items": []
+          },
+          {
+            "title": "What to Try",
+            "url": "#what-to-try",
+            "items": []
+          }
+        ]
+      }
+    ],
+    "section": "Examples",
+    "slug": "examples/mutations",
+    "slugFull": "/examples/mutations"
+  },
+  {
+    "title": "Pagination",
+    "description": "Loading paginated data with infinite scroll",
+    "path": "examples/pagination",
+    "content": "<script>\n  import PaginationDemo from '$lib/docs/examples/PaginationDemo.svelte';\n</script>\n<h1>Pagination Example</h1>\n<p>This example shows how to use <code>createPagedStache</code> to implement an infinite scroll pattern with paginated data.</p>\n<h2>Live Demo</h2>\n<paginationdemo>\n<h2>The Code</h2>\n<h3>Query Definition</h3>\n<p>Create a paged stache for fetching posts:</p>\n<pre><code class=\"language-typescript\" metastring=\"title=&#x22;src/lib/queries/posts.ts&#x22;\">import { createPagedStache } from 'svelte-stache';\n\ninterface Post {\n  id: string;\n  title: string;\n  excerpt: string;\n  author: string;\n  category: string;\n  publishedAt: string;\n  readTime: number;\n}\n\ninterface PostsResponse {\n  data: Post[];\n  meta: {\n    total: number;\n    page: number;\n    perPage: number;\n    totalPages: number;\n  };\n}\n\ninterface PostFilters {\n  category: string | null;\n}\n\nexport const { useStache: getPosts, invalidate: invalidatePosts } = createPagedStache({\n  id: 'posts',\n  pageSize: 10,\n  fetch: async (filters: PostFilters, { pageIndex, pageSize }): Promise&#x3C;PostsResponse> => {\n    const params = new URLSearchParams({\n      page: String(pageIndex),\n      limit: String(pageSize),\n    });\n\n    if (filters.category &#x26;&#x26; filters.category !== 'all') {\n      params.set('category', filters.category);\n    }\n\n    const response = await fetch(`/api/posts?${params}`);\n    return response.json();\n  },\n  getData: (response) => response.data,\n  getTotalCount: (response) => response.meta.total,\n  staleTime: 1000 * 60 * 2, // 2 minutes\n});\n</code></pre>\n<h3>Component Usage</h3>\n<pre><code class=\"language-svelte\" metastring=\"title=&#x22;PostList.svelte&#x22;\">&#x3C;script lang=\"ts\">\n  import { getPosts } from '$lib/queries/posts';\n\n  let category = $state&#x3C;string>('all');\n  let pageCount = $state(1);\n\n  // Reset page count when category changes\n  $effect(() => {\n    category; // Track category changes\n    pageCount = 1;\n  });\n\n  const posts = getPosts(() => ({\n    params: { category: category === 'all' ? null : category },\n    pageParams: {\n      pageOffset: 0,\n      pageCount,\n    },\n  }));\n\n  const loadMore = () => {\n    if (posts.hasMore &#x26;&#x26; !posts.isFetching) {\n      pageCount++;\n    }\n  };\n&#x3C;/script>\n\n&#x3C;div class=\"filters\">\n  &#x3C;label for=\"category\">Category:&#x3C;/label>\n  &#x3C;select id=\"category\" bind:value={category}>\n    &#x3C;option value=\"all\">All Categories&#x3C;/option>\n    &#x3C;option value=\"technology\">Technology&#x3C;/option>\n    &#x3C;option value=\"design\">Design&#x3C;/option>\n    &#x3C;option value=\"business\">Business&#x3C;/option>\n    &#x3C;option value=\"lifestyle\">Lifestyle&#x3C;/option>\n    &#x3C;option value=\"science\">Science&#x3C;/option>\n  &#x3C;/select>\n&#x3C;/div>\n\n&#x3C;div class=\"stats\">\n  Showing {posts.data?.length ?? 0} of {posts.totalCount} posts\n&#x3C;/div>\n\n&#x3C;div class=\"posts-grid\">\n  {#each posts.data ?? [] as post}\n    &#x3C;article class=\"post-card\">\n      &#x3C;span class=\"category\">{post.category}&#x3C;/span>\n      &#x3C;h3>{post.title}&#x3C;/h3>\n      &#x3C;p>{post.excerpt}&#x3C;/p>\n      &#x3C;div class=\"post-meta\">\n        &#x3C;span>{post.author}&#x3C;/span>\n        &#x3C;span>{post.readTime} min read&#x3C;/span>\n      &#x3C;/div>\n    &#x3C;/article>\n  {/each}\n&#x3C;/div>\n\n{#if posts.isFetching}\n  &#x3C;div class=\"loading\">Loading more posts...&#x3C;/div>\n{/if}\n\n{#if posts.hasMore &#x26;&#x26; !posts.isFetching}\n  &#x3C;button class=\"load-more\" onclick={loadMore}>\n    Load More Posts\n  &#x3C;/button>\n{/if}\n\n{#if !posts.hasMore &#x26;&#x26; posts.data?.length}\n  &#x3C;p class=\"end-message\">You've reached the end!&#x3C;/p>\n{/if}\n</code></pre>\n<h2>Key Points</h2>\n<ol>\n<li><strong>Page Aggregation</strong> - All loaded pages are automatically combined into a single <code>data</code> array</li>\n<li><strong>Total Count</strong> - Use <code>getTotalCount</code> to extract the total from your API response</li>\n<li><strong>Has More</strong> - The <code>hasMore</code> property tells you if there are more pages to load</li>\n<li><strong>Filter Reset</strong> - When filters change, reset <code>pageCount</code> to start fresh</li>\n<li><strong>Loading States</strong> - <code>isFetching</code> is true when loading any page</li>\n</ol>\n<h2>What to Try</h2>\n<ol>\n<li><strong>Click \"Load More\"</strong> - Loads the next page and appends to the list</li>\n<li><strong>Change category</strong> - Resets to page 1 and fetches filtered results</li>\n<li><strong>Load multiple pages, then change category</strong> - Everything resets cleanly</li>\n<li><strong>Watch the stats</strong> - Shows how many posts are loaded vs total</li>\n</ol></paginationdemo>",
+    "raw": "<script>\n  import PaginationDemo from '$lib/docs/examples/PaginationDemo.svelte';\n</script>\n\n# Pagination Example\n\nThis example shows how to use `createPagedStache` to implement an infinite scroll pattern with paginated data.\n\n## Live Demo\n\n<PaginationDemo />\n\n## The Code\n\n### Query Definition\n\nCreate a paged stache for fetching posts:\n\n```typescript title=\"src/lib/queries/posts.ts\"\nimport { createPagedStache } from 'svelte-stache';\n\ninterface Post {\n  id: string;\n  title: string;\n  excerpt: string;\n  author: string;\n  category: string;\n  publishedAt: string;\n  readTime: number;\n}\n\ninterface PostsResponse {\n  data: Post[];\n  meta: {\n    total: number;\n    page: number;\n    perPage: number;\n    totalPages: number;\n  };\n}\n\ninterface PostFilters {\n  category: string | null;\n}\n\nexport const { useStache: getPosts, invalidate: invalidatePosts } = createPagedStache({\n  id: 'posts',\n  pageSize: 10,\n  fetch: async (filters: PostFilters, { pageIndex, pageSize }): Promise<PostsResponse> => {\n    const params = new URLSearchParams({\n      page: String(pageIndex),\n      limit: String(pageSize),\n    });\n\n    if (filters.category && filters.category !== 'all') {\n      params.set('category', filters.category);\n    }\n\n    const response = await fetch(`/api/posts?${params}`);\n    return response.json();\n  },\n  getData: (response) => response.data,\n  getTotalCount: (response) => response.meta.total,\n  staleTime: 1000 * 60 * 2, // 2 minutes\n});\n```\n\n### Component Usage\n\n```svelte title=\"PostList.svelte\"\n<script lang=\"ts\">\n  import { getPosts } from '$lib/queries/posts';\n\n  let category = $state<string>('all');\n  let pageCount = $state(1);\n\n  // Reset page count when category changes\n  $effect(() => {\n    category; // Track category changes\n    pageCount = 1;\n  });\n\n  const posts = getPosts(() => ({\n    params: { category: category === 'all' ? null : category },\n    pageParams: {\n      pageOffset: 0,\n      pageCount,\n    },\n  }));\n\n  const loadMore = () => {\n    if (posts.hasMore && !posts.isFetching) {\n      pageCount++;\n    }\n  };\n</script>\n\n<div class=\"filters\">\n  <label for=\"category\">Category:</label>\n  <select id=\"category\" bind:value={category}>\n    <option value=\"all\">All Categories</option>\n    <option value=\"technology\">Technology</option>\n    <option value=\"design\">Design</option>\n    <option value=\"business\">Business</option>\n    <option value=\"lifestyle\">Lifestyle</option>\n    <option value=\"science\">Science</option>\n  </select>\n</div>\n\n<div class=\"stats\">\n  Showing {posts.data?.length ?? 0} of {posts.totalCount} posts\n</div>\n\n<div class=\"posts-grid\">\n  {#each posts.data ?? [] as post}\n    <article class=\"post-card\">\n      <span class=\"category\">{post.category}</span>\n      <h3>{post.title}</h3>\n      <p>{post.excerpt}</p>\n      <div class=\"post-meta\">\n        <span>{post.author}</span>\n        <span>{post.readTime} min read</span>\n      </div>\n    </article>\n  {/each}\n</div>\n\n{#if posts.isFetching}\n  <div class=\"loading\">Loading more posts...</div>\n{/if}\n\n{#if posts.hasMore && !posts.isFetching}\n  <button class=\"load-more\" onclick={loadMore}>\n    Load More Posts\n  </button>\n{/if}\n\n{#if !posts.hasMore && posts.data?.length}\n  <p class=\"end-message\">You've reached the end!</p>\n{/if}\n```\n\n## Key Points\n\n1. **Page Aggregation** - All loaded pages are automatically combined into a single `data` array\n2. **Total Count** - Use `getTotalCount` to extract the total from your API response\n3. **Has More** - The `hasMore` property tells you if there are more pages to load\n4. **Filter Reset** - When filters change, reset `pageCount` to start fresh\n5. **Loading States** - `isFetching` is true when loading any page\n\n## What to Try\n\n1. **Click \"Load More\"** - Loads the next page and appends to the list\n2. **Change category** - Resets to page 1 and fetches filtered results\n3. **Load multiple pages, then change category** - Everything resets cleanly\n4. **Watch the stats** - Shows how many posts are loaded vs total",
+    "toc": [
+      {
+        "title": "Pagination Example",
+        "url": "#pagination-example",
+        "items": [
+          {
+            "title": "Live Demo",
+            "url": "#live-demo",
+            "items": []
+          },
+          {
+            "title": "The Code",
+            "url": "#the-code",
+            "items": [
+              {
+                "title": "Query Definition",
+                "url": "#query-definition",
+                "items": []
+              },
+              {
+                "title": "Component Usage",
+                "url": "#component-usage",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Key Points",
+            "url": "#key-points",
+            "items": []
+          },
+          {
+            "title": "What to Try",
+            "url": "#what-to-try",
+            "items": []
+          }
+        ]
+      }
+    ],
+    "section": "Examples",
+    "slug": "examples/pagination",
+    "slugFull": "/examples/pagination"
+  },
+  {
+    "title": "Search",
+    "description": "Reactive search with debouncing and caching",
+    "path": "examples/search",
+    "content": "<script>\n  import SearchDemo from '$lib/docs/examples/SearchDemo.svelte';\n</script>\n<h1>Search Example</h1>\n<p>This example shows how to build a reactive search feature with <code>createStache</code>, using debounced parameters and smart caching.</p>\n<h2>Live Demo</h2>\n<searchdemo>\n<h2>The Code</h2>\n<h3>Query Definition</h3>\n<p>Create a stache for searching users:</p>\n<pre><code class=\"language-typescript\" metastring=\"title=&#x22;src/lib/queries/search-users.ts&#x22;\">import { createStache } from 'svelte-stache';\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n  role: string;\n  avatar: string;\n}\n\nexport const { useStache: searchUsers } = createStache({\n  id: 'user-search',\n  fetch: async (query: string): Promise&#x3C;User[]> => {\n    // Don't search if query is empty\n    if (!query.trim()) {\n      return [];\n    }\n\n    const response = await fetch(`/api/users?search=${encodeURIComponent(query)}`);\n    return response.json();\n  },\n  staleTime: 1000 * 60, // 1 minute - search results can be cached briefly\n  refetchOnWindowFocus: false, // Don't refetch search on focus\n});\n</code></pre>\n<h3>Component with Debouncing</h3>\n<pre><code class=\"language-svelte\" metastring=\"title=&#x22;UserSearch.svelte&#x22;\">&#x3C;script lang=\"ts\">\n  import { searchUsers } from '$lib/queries/search-users';\n\n  let inputValue = $state('');\n  let debouncedQuery = $state('');\n  let debounceTimer: ReturnType&#x3C;typeof setTimeout>;\n\n  // Debounce the search query\n  $effect(() => {\n    clearTimeout(debounceTimer);\n    debounceTimer = setTimeout(() => {\n      debouncedQuery = inputValue;\n    }, 300);\n\n    return () => clearTimeout(debounceTimer);\n  });\n\n  // The search only runs when debouncedQuery changes\n  const results = searchUsers(() => ({\n    params: debouncedQuery,\n    enabled: debouncedQuery.length > 0,\n  }));\n&#x3C;/script>\n\n&#x3C;div class=\"search-container\">\n  &#x3C;input\n    type=\"search\"\n    bind:value={inputValue}\n    placeholder=\"Search users by name, email, or role...\"\n  />\n\n  {#if inputValue &#x26;&#x26; inputValue !== debouncedQuery}\n    &#x3C;span class=\"typing-indicator\">Typing...&#x3C;/span>\n  {/if}\n&#x3C;/div>\n\n{#if results.isFetching}\n  &#x3C;div class=\"loading\">Searching...&#x3C;/div>\n{:else if results.isError}\n  &#x3C;div class=\"error\">Search failed&#x3C;/div>\n{:else if debouncedQuery &#x26;&#x26; results.data?.length === 0}\n  &#x3C;div class=\"no-results\">No users found for \"{debouncedQuery}\"&#x3C;/div>\n{:else if results.data &#x26;&#x26; results.data.length > 0}\n  &#x3C;ul class=\"results\">\n    {#each results.data as user}\n      &#x3C;li class=\"user-result\">\n        &#x3C;img src={user.avatar} alt={user.name} />\n        &#x3C;div class=\"user-info\">\n          &#x3C;span class=\"name\">{user.name}&#x3C;/span>\n          &#x3C;span class=\"email\">{user.email}&#x3C;/span>\n        &#x3C;/div>\n        &#x3C;span class=\"role\">{user.role}&#x3C;/span>\n      &#x3C;/li>\n    {/each}\n  &#x3C;/ul>\n{/if}\n\n&#x3C;div class=\"cache-info\">\n  {#if debouncedQuery}\n    &#x3C;span>Cache: {results.cacheStatus}&#x3C;/span>\n  {/if}\n&#x3C;/div>\n</code></pre>\n<h2>Key Points</h2>\n<ol>\n<li><strong>Debouncing</strong> - Wait for the user to stop typing before searching</li>\n<li><strong>Conditional Fetching</strong> - Use <code>enabled: false</code> when the query is empty</li>\n<li><strong>Cache Benefits</strong> - Previous searches are cached, so going back to them is instant</li>\n<li><strong>Typing Indicator</strong> - Show feedback while waiting for debounce</li>\n</ol>\n<h2>Debounce Pattern</h2>\n<p>The debounce effect ensures we don't make a request on every keystroke:</p>\n<pre><code class=\"language-typescript\">let inputValue = $state('');      // Updates immediately\nlet debouncedQuery = $state('');  // Updates after 300ms pause\n\n$effect(() => {\n  const timer = setTimeout(() => {\n    debouncedQuery = inputValue;  // Only update after user stops typing\n  }, 300);\n  return () => clearTimeout(timer);\n});\n\n// Query uses debouncedQuery, not inputValue\nconst results = searchUsers(() => ({ params: debouncedQuery }));\n</code></pre>\n<h2>What to Try</h2>\n<ol>\n<li><strong>Type quickly</strong> - Notice the \"Typing...\" indicator during debounce</li>\n<li><strong>Search for \"Alice\" or \"Developer\"</strong> - See results populate</li>\n<li><strong>Clear and retype the same query</strong> - Results come from cache instantly</li>\n<li><strong>Watch the cache status</strong> - Shows whether data is fresh or stale</li>\n<li><strong>Try invalid searches</strong> - See the \"No results\" message</li>\n</ol></searchdemo>",
+    "raw": "<script>\n  import SearchDemo from '$lib/docs/examples/SearchDemo.svelte';\n</script>\n\n# Search Example\n\nThis example shows how to build a reactive search feature with `createStache`, using debounced parameters and smart caching.\n\n## Live Demo\n\n<SearchDemo />\n\n## The Code\n\n### Query Definition\n\nCreate a stache for searching users:\n\n```typescript title=\"src/lib/queries/search-users.ts\"\nimport { createStache } from 'svelte-stache';\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n  role: string;\n  avatar: string;\n}\n\nexport const { useStache: searchUsers } = createStache({\n  id: 'user-search',\n  fetch: async (query: string): Promise<User[]> => {\n    // Don't search if query is empty\n    if (!query.trim()) {\n      return [];\n    }\n\n    const response = await fetch(`/api/users?search=${encodeURIComponent(query)}`);\n    return response.json();\n  },\n  staleTime: 1000 * 60, // 1 minute - search results can be cached briefly\n  refetchOnWindowFocus: false, // Don't refetch search on focus\n});\n```\n\n### Component with Debouncing\n\n```svelte title=\"UserSearch.svelte\"\n<script lang=\"ts\">\n  import { searchUsers } from '$lib/queries/search-users';\n\n  let inputValue = $state('');\n  let debouncedQuery = $state('');\n  let debounceTimer: ReturnType<typeof setTimeout>;\n\n  // Debounce the search query\n  $effect(() => {\n    clearTimeout(debounceTimer);\n    debounceTimer = setTimeout(() => {\n      debouncedQuery = inputValue;\n    }, 300);\n\n    return () => clearTimeout(debounceTimer);\n  });\n\n  // The search only runs when debouncedQuery changes\n  const results = searchUsers(() => ({\n    params: debouncedQuery,\n    enabled: debouncedQuery.length > 0,\n  }));\n</script>\n\n<div class=\"search-container\">\n  <input\n    type=\"search\"\n    bind:value={inputValue}\n    placeholder=\"Search users by name, email, or role...\"\n  />\n\n  {#if inputValue && inputValue !== debouncedQuery}\n    <span class=\"typing-indicator\">Typing...</span>\n  {/if}\n</div>\n\n{#if results.isFetching}\n  <div class=\"loading\">Searching...</div>\n{:else if results.isError}\n  <div class=\"error\">Search failed</div>\n{:else if debouncedQuery && results.data?.length === 0}\n  <div class=\"no-results\">No users found for \"{debouncedQuery}\"</div>\n{:else if results.data && results.data.length > 0}\n  <ul class=\"results\">\n    {#each results.data as user}\n      <li class=\"user-result\">\n        <img src={user.avatar} alt={user.name} />\n        <div class=\"user-info\">\n          <span class=\"name\">{user.name}</span>\n          <span class=\"email\">{user.email}</span>\n        </div>\n        <span class=\"role\">{user.role}</span>\n      </li>\n    {/each}\n  </ul>\n{/if}\n\n<div class=\"cache-info\">\n  {#if debouncedQuery}\n    <span>Cache: {results.cacheStatus}</span>\n  {/if}\n</div>\n```\n\n## Key Points\n\n1. **Debouncing** - Wait for the user to stop typing before searching\n2. **Conditional Fetching** - Use `enabled: false` when the query is empty\n3. **Cache Benefits** - Previous searches are cached, so going back to them is instant\n4. **Typing Indicator** - Show feedback while waiting for debounce\n\n## Debounce Pattern\n\nThe debounce effect ensures we don't make a request on every keystroke:\n\n```typescript\nlet inputValue = $state('');      // Updates immediately\nlet debouncedQuery = $state('');  // Updates after 300ms pause\n\n$effect(() => {\n  const timer = setTimeout(() => {\n    debouncedQuery = inputValue;  // Only update after user stops typing\n  }, 300);\n  return () => clearTimeout(timer);\n});\n\n// Query uses debouncedQuery, not inputValue\nconst results = searchUsers(() => ({ params: debouncedQuery }));\n```\n\n## What to Try\n\n1. **Type quickly** - Notice the \"Typing...\" indicator during debounce\n2. **Search for \"Alice\" or \"Developer\"** - See results populate\n3. **Clear and retype the same query** - Results come from cache instantly\n4. **Watch the cache status** - Shows whether data is fresh or stale\n5. **Try invalid searches** - See the \"No results\" message",
+    "toc": [
+      {
+        "title": "Search Example",
+        "url": "#search-example",
+        "items": [
+          {
+            "title": "Live Demo",
+            "url": "#live-demo",
+            "items": []
+          },
+          {
+            "title": "The Code",
+            "url": "#the-code",
+            "items": [
+              {
+                "title": "Query Definition",
+                "url": "#query-definition",
+                "items": []
+              },
+              {
+                "title": "Component with Debouncing",
+                "url": "#component-with-debouncing",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Key Points",
+            "url": "#key-points",
+            "items": []
+          },
+          {
+            "title": "Debounce Pattern",
+            "url": "#debounce-pattern",
+            "items": []
+          },
+          {
+            "title": "What to Try",
+            "url": "#what-to-try",
+            "items": []
+          }
+        ]
+      }
+    ],
+    "section": "Examples",
+    "slug": "examples/search",
+    "slugFull": "/examples/search"
+  },
+  {
+    "title": "Caching",
+    "description": "Understanding how Svelte Stache caches and manages data",
+    "path": "guides/caching",
+    "content": "<h1>Caching</h1>\n<p>Svelte Stache uses a smart caching system to minimize network requests and provide instant data when possible. This guide explains how it works.</p>\n<h2>How Caching Works</h2>\n<h3>Cache Keys</h3>\n<p>Each piece of cached data is identified by a unique key composed of:</p>\n<ol>\n<li><strong>Query ID</strong> - The <code>id</code> you provide when creating a stache</li>\n<li><strong>Hashed Parameters</strong> - A deterministic hash of the params</li>\n</ol>\n<pre><code class=\"language-typescript\">createStache({ id: 'user', fetch: fetchUser });\n\n// These use different cache keys:\ngetUser(() => ({ params: 'user-1' }));  // key: user:hash(\"user-1\")\ngetUser(() => ({ params: 'user-2' }));  // key: user:hash(\"user-2\")\n</code></pre>\n<h3>Parameter Hashing</h3>\n<p>Parameters are hashed with sorted keys, so object property order doesn't matter:</p>\n<pre><code class=\"language-typescript\">// These produce the SAME cache key:\ngetUser(() => ({ params: { id: 1, type: 'admin' } }));\ngetUser(() => ({ params: { type: 'admin', id: 1 } }));\n</code></pre>\n<h2>Cache Sharing</h2>\n<p>When multiple components request the same data, they share a single stache instance:</p>\n<pre><code class=\"language-svelte\">&#x3C;!-- ComponentA.svelte -->\n&#x3C;script>\n  const user = getUser(() => ({ params: 'user-1' }));\n&#x3C;/script>\n\n&#x3C;!-- ComponentB.svelte -->\n&#x3C;script>\n  // Same cache entry - no duplicate fetch!\n  const user = getUser(() => ({ params: 'user-1' }));\n&#x3C;/script>\n</code></pre>\n<p>Both components receive the same reactive stache object. When one component triggers a refetch, both see the updated data.</p>\n<h2>Cache Status</h2>\n<p>Data in the cache has two possible statuses:</p>\n<h3>Fresh</h3>\n<p>Data is <strong>fresh</strong> when it was fetched within the <code>staleTime</code> period. Fresh data is returned immediately without any network request.</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: fetchUser,\n  staleTime: 1000 * 60 * 5, // 5 minutes\n});\n\n// If fetched less than 5 minutes ago, returns instantly\n</code></pre>\n<h3>Stale</h3>\n<p>Data becomes <strong>stale</strong> after <code>staleTime</code> has passed. Stale data is still returned immediately, but may trigger a background refetch depending on configuration.</p>\n<h2>Stale Time Configuration</h2>\n<p>Control how long data stays fresh:</p>\n<pre><code class=\"language-typescript\">// Short stale time - data refreshes frequently\ncreateStache({\n  id: 'notifications',\n  fetch: fetchNotifications,\n  staleTime: 1000 * 30, // 30 seconds\n});\n\n// Long stale time - data cached longer\ncreateStache({\n  id: 'user-profile',\n  fetch: fetchProfile,\n  staleTime: 1000 * 60 * 30, // 30 minutes\n});\n\n// Zero stale time - always refetch\ncreateStache({\n  id: 'live-data',\n  fetch: fetchLiveData,\n  staleTime: 0, // Always considered stale\n});\n</code></pre>\n<h2>Automatic Refetching</h2>\n<h3>On Window Focus</h3>\n<p>By default, stale data is refetched when the window regains focus:</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: fetchUser,\n  refetchOnWindowFocus: true, // default\n});\n</code></pre>\n<p>This keeps data fresh when users return to your app after being away.</p>\n<h3>On Stale</h3>\n<p>Optionally refetch automatically when data becomes stale:</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'dashboard',\n  fetch: fetchDashboard,\n  refetchOnStale: true, // Proactively keep fresh\n});\n</code></pre>\n<h2>Reference Counting</h2>\n<p>Staches track how many components are using them:</p>\n<pre><code>Component mounts    → referenceCount++\nComponent unmounts  → referenceCount--\n</code></pre>\n<p>When <code>referenceCount</code> reaches 0, the stache schedules cleanup.</p>\n<h2>Cleanup</h2>\n<p>Unused cache entries are automatically removed after <code>cleanupTime</code>:</p>\n<pre><code class=\"language-typescript\">createStache({\n  id: 'user',\n  fetch: fetchUser,\n  cleanupTime: 1000 * 60 * 5, // Remove after 5 minutes of no use\n});\n</code></pre>\n<h3>Cleanup Timeline</h3>\n<pre><code>1. Last component unmounts\n2. referenceCount becomes 0\n3. Cleanup timer starts (cleanupTime)\n4. If no new references, cache entry removed\n5. If new component mounts before cleanup, timer cancelled\n</code></pre>\n<p>This prevents memory leaks while keeping recently-used data available.</p>\n<h2>Manual Invalidation</h2>\n<p>Force a refetch at any time:</p>\n<pre><code class=\"language-typescript\">// Instance method\nuser.invalidate();\n\n// Factory function\ninvalidateUser('user-1');\n</code></pre>\n<p>Invalidation:</p>\n<ol>\n<li>Marks the data as stale</li>\n<li>Triggers an immediate refetch</li>\n<li>Updates all components using this stache</li>\n</ol>\n<h2>Best Practices</h2>\n<h3>Choose Appropriate Stale Times</h3>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<table><thead><tr><th>Data Type</th><th>Suggested Stale Time</th></tr></thead><tbody><tr><td>User profile</td><td>5-30 minutes</td></tr><tr><td>Lists/feeds</td><td>1-5 minutes</td></tr><tr><td>Notifications</td><td>30 seconds - 1 minute</td></tr><tr><td>Real-time data</td><td>0 (always stale)</td></tr><tr><td>Static content</td><td>1+ hours</td></tr></tbody></table>\n<h3>Invalidate After Mutations</h3>\n<p>Always invalidate related queries after mutations:</p>\n<pre><code class=\"language-typescript\">const useCreatePost = createMutation({\n  mutationFn: createPost,\n  onSuccess: () => {\n    invalidatePosts(); // Refresh the posts list\n  },\n});\n</code></pre>\n<h3>Use Cleanup Time Wisely</h3>\n<ul>\n<li><strong>Short cleanup</strong> (1-2 min): Memory-conscious, frequent data changes</li>\n<li><strong>Long cleanup</strong> (10-30 min): Better UX for data users return to</li>\n<li><strong>No cleanup</strong> (Infinity): Persist for session duration</li>\n</ul>\n<pre><code class=\"language-typescript\">// Keep navigation data cached for the whole session\ncreateStache({\n  id: 'navigation',\n  fetch: fetchNavigation,\n  cleanupTime: Infinity,\n});\n</code></pre>",
+    "raw": "# Caching\n\nSvelte Stache uses a smart caching system to minimize network requests and provide instant data when possible. This guide explains how it works.\n\n## How Caching Works\n\n### Cache Keys\n\nEach piece of cached data is identified by a unique key composed of:\n\n1. **Query ID** - The `id` you provide when creating a stache\n2. **Hashed Parameters** - A deterministic hash of the params\n\n```typescript\ncreateStache({ id: 'user', fetch: fetchUser });\n\n// These use different cache keys:\ngetUser(() => ({ params: 'user-1' }));  // key: user:hash(\"user-1\")\ngetUser(() => ({ params: 'user-2' }));  // key: user:hash(\"user-2\")\n```\n\n### Parameter Hashing\n\nParameters are hashed with sorted keys, so object property order doesn't matter:\n\n```typescript\n// These produce the SAME cache key:\ngetUser(() => ({ params: { id: 1, type: 'admin' } }));\ngetUser(() => ({ params: { type: 'admin', id: 1 } }));\n```\n\n## Cache Sharing\n\nWhen multiple components request the same data, they share a single stache instance:\n\n```svelte\n<!-- ComponentA.svelte -->\n<script>\n  const user = getUser(() => ({ params: 'user-1' }));\n</script>\n\n<!-- ComponentB.svelte -->\n<script>\n  // Same cache entry - no duplicate fetch!\n  const user = getUser(() => ({ params: 'user-1' }));\n</script>\n```\n\nBoth components receive the same reactive stache object. When one component triggers a refetch, both see the updated data.\n\n## Cache Status\n\nData in the cache has two possible statuses:\n\n### Fresh\n\nData is **fresh** when it was fetched within the `staleTime` period. Fresh data is returned immediately without any network request.\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: fetchUser,\n  staleTime: 1000 * 60 * 5, // 5 minutes\n});\n\n// If fetched less than 5 minutes ago, returns instantly\n```\n\n### Stale\n\nData becomes **stale** after `staleTime` has passed. Stale data is still returned immediately, but may trigger a background refetch depending on configuration.\n\n## Stale Time Configuration\n\nControl how long data stays fresh:\n\n```typescript\n// Short stale time - data refreshes frequently\ncreateStache({\n  id: 'notifications',\n  fetch: fetchNotifications,\n  staleTime: 1000 * 30, // 30 seconds\n});\n\n// Long stale time - data cached longer\ncreateStache({\n  id: 'user-profile',\n  fetch: fetchProfile,\n  staleTime: 1000 * 60 * 30, // 30 minutes\n});\n\n// Zero stale time - always refetch\ncreateStache({\n  id: 'live-data',\n  fetch: fetchLiveData,\n  staleTime: 0, // Always considered stale\n});\n```\n\n## Automatic Refetching\n\n### On Window Focus\n\nBy default, stale data is refetched when the window regains focus:\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: fetchUser,\n  refetchOnWindowFocus: true, // default\n});\n```\n\nThis keeps data fresh when users return to your app after being away.\n\n### On Stale\n\nOptionally refetch automatically when data becomes stale:\n\n```typescript\ncreateStache({\n  id: 'dashboard',\n  fetch: fetchDashboard,\n  refetchOnStale: true, // Proactively keep fresh\n});\n```\n\n## Reference Counting\n\nStaches track how many components are using them:\n\n```\nComponent mounts    → referenceCount++\nComponent unmounts  → referenceCount--\n```\n\nWhen `referenceCount` reaches 0, the stache schedules cleanup.\n\n## Cleanup\n\nUnused cache entries are automatically removed after `cleanupTime`:\n\n```typescript\ncreateStache({\n  id: 'user',\n  fetch: fetchUser,\n  cleanupTime: 1000 * 60 * 5, // Remove after 5 minutes of no use\n});\n```\n\n### Cleanup Timeline\n\n```\n1. Last component unmounts\n2. referenceCount becomes 0\n3. Cleanup timer starts (cleanupTime)\n4. If no new references, cache entry removed\n5. If new component mounts before cleanup, timer cancelled\n```\n\nThis prevents memory leaks while keeping recently-used data available.\n\n## Manual Invalidation\n\nForce a refetch at any time:\n\n```typescript\n// Instance method\nuser.invalidate();\n\n// Factory function\ninvalidateUser('user-1');\n```\n\nInvalidation:\n1. Marks the data as stale\n2. Triggers an immediate refetch\n3. Updates all components using this stache\n\n## Best Practices\n\n### Choose Appropriate Stale Times\n\n| Data Type | Suggested Stale Time |\n|-----------|---------------------|\n| User profile | 5-30 minutes |\n| Lists/feeds | 1-5 minutes |\n| Notifications | 30 seconds - 1 minute |\n| Real-time data | 0 (always stale) |\n| Static content | 1+ hours |\n\n### Invalidate After Mutations\n\nAlways invalidate related queries after mutations:\n\n```typescript\nconst useCreatePost = createMutation({\n  mutationFn: createPost,\n  onSuccess: () => {\n    invalidatePosts(); // Refresh the posts list\n  },\n});\n```\n\n### Use Cleanup Time Wisely\n\n- **Short cleanup** (1-2 min): Memory-conscious, frequent data changes\n- **Long cleanup** (10-30 min): Better UX for data users return to\n- **No cleanup** (Infinity): Persist for session duration\n\n```typescript\n// Keep navigation data cached for the whole session\ncreateStache({\n  id: 'navigation',\n  fetch: fetchNavigation,\n  cleanupTime: Infinity,\n});\n```",
+    "toc": [
+      {
+        "title": "Caching",
+        "url": "#caching",
+        "items": [
+          {
+            "title": "How Caching Works",
+            "url": "#how-caching-works",
+            "items": [
+              {
+                "title": "Cache Keys",
+                "url": "#cache-keys",
+                "items": []
+              },
+              {
+                "title": "Parameter Hashing",
+                "url": "#parameter-hashing",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Cache Sharing",
+            "url": "#cache-sharing",
+            "items": []
+          },
+          {
+            "title": "Cache Status",
+            "url": "#cache-status",
+            "items": [
+              {
+                "title": "Fresh",
+                "url": "#fresh",
+                "items": []
+              },
+              {
+                "title": "Stale",
+                "url": "#stale",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Stale Time Configuration",
+            "url": "#stale-time-configuration",
+            "items": []
+          },
+          {
+            "title": "Automatic Refetching",
+            "url": "#automatic-refetching",
+            "items": [
+              {
+                "title": "On Window Focus",
+                "url": "#on-window-focus",
+                "items": []
+              },
+              {
+                "title": "On Stale",
+                "url": "#on-stale",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Reference Counting",
+            "url": "#reference-counting",
+            "items": []
+          },
+          {
+            "title": "Cleanup",
+            "url": "#cleanup",
+            "items": [
+              {
+                "title": "Cleanup Timeline",
+                "url": "#cleanup-timeline",
+                "items": []
+              }
+            ]
+          },
+          {
+            "title": "Manual Invalidation",
+            "url": "#manual-invalidation",
+            "items": []
+          },
+          {
+            "title": "Best Practices",
+            "url": "#best-practices",
+            "items": [
+              {
+                "title": "Choose Appropriate Stale Times",
+                "url": "#choose-appropriate-stale-times",
+                "items": []
+              },
+              {
+                "title": "Invalidate After Mutations",
+                "url": "#invalidate-after-mutations",
+                "items": []
+              },
+              {
+                "title": "Use Cleanup Time Wisely",
+                "url": "#use-cleanup-time-wisely",
+                "items": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "section": "Guides",
+    "slug": "guides/caching",
+    "slugFull": "/guides/caching"
+  }
+]

@@ -1360,9 +1360,9 @@ describe('createPagedStache cache implementation', () => {
 		);
 	});
 
-	describe('disableIfParamsMissing for paged staches', () => {
+	describe('null params for paged staches', () => {
 		it(
-			'should disable all pages when params falsy and disableIfParamsMissing=true',
+			'should disable all pages when params are null',
 			withEffectRoot(async () => {
 				const fetchFn = vi
 					.fn()
@@ -1384,14 +1384,12 @@ describe('createPagedStache cache implementation', () => {
 				// Create both staches in same effect context
 				const stache1 = useStache(() => ({
 					params: params1,
-					pageParams: { pageOffset: 0, pageCount: 2 },
-					disableIfParamsMissing: true
+					pageParams: { pageOffset: 0, pageCount: 2 }
 				}));
 
 				const stache2 = useStache(() => ({
 					params: params2,
-					pageParams: { pageOffset: 0, pageCount: 2 },
-					disableIfParamsMissing: true
+					pageParams: { pageOffset: 0, pageCount: 2 }
 				}));
 
 				flushSync();

@@ -3,8 +3,7 @@ import {
 	Stache,
 	type BaseStacheParams,
 	type FetchFn,
-	type StacheOptions,
-	type StacheOptionsWithFalsy
+	type StacheOptions
 } from './stache.class.svelte';
 import { stacheCache, type GlobalStacheCache } from './global/cache.svelte';
 import { hashKey } from './utils';
@@ -87,11 +86,7 @@ type CreateStacheFn = <StacheParams extends BaseStacheParams, Result = unknown>(
 };
 
 type UseStacheFn<StacheParams extends BaseStacheParams, Result = unknown> = {
-	(
-		optionsFn?: () =>
-			| StacheOptions<StacheParams, Result>
-			| StacheOptionsWithFalsy<StacheParams, Result>
-	): PublicStache<StacheParams, Result>;
+	(optionsFn?: () => StacheOptions<StacheParams, Result>): PublicStache<StacheParams, Result>;
 };
 
 /**
@@ -131,11 +126,7 @@ const createStache = <
 		globalCache.set(createOptions.id, cache);
 	}
 
-	const useStache = (
-		useOptionsFn?: () =>
-			| StacheOptions<StacheParams, Result>
-			| StacheOptionsWithFalsy<StacheParams, Result>
-	) => {
+	const useStache = (useOptionsFn?: () => StacheOptions<StacheParams, Result>) => {
 		const useOptions = useOptionsFn?.() ?? ({} as StacheOptions<StacheParams, Result>);
 		const allOpts = { ...createOptions, ...useOptions };
 		const stacheKey = allOpts.params ? hashKey(allOpts.params) : 'no-params';

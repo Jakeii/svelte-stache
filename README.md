@@ -5,7 +5,7 @@ A state management library for Svelte 5 inspired by [TanStack Query](https://tan
 ## Features
 
 - **Automatic Caching** - Same parameters reuse cached data
-- **Smart Cleanup** - Reference counting removes unused cache entries
+- **Smart Cleanup** - Unused data auto-removed after configurable delay when no longer referenced
 - **Stale Management** - Configurable stale times with auto-refetch
 - **Pagination Support** - Built-in multi-page fetching and aggregation
 - **Mutations** - Handle data modifications with lifecycle hooks
@@ -28,25 +28,25 @@ Requires Svelte 5.0.0 or higher.
 
 ```svelte
 <script lang="ts">
-  import { createStache } from 'svelte-stache';
+	import { createStache } from 'svelte-stache';
 
-  const { useStache } = createStache({
-    id: 'user',
-    fetch: async (userId: string) => {
-      const res = await fetch(`/api/users/${userId}`);
-      return res.json();
-    }
-  });
+	const { useStache: getUsers, invalidate: invalidateUsers } = createStache({
+		id: 'user',
+		fetch: async (userId: string) => {
+			const res = await fetch(`/api/users/${userId}`);
+			return res.json();
+		}
+	});
 
-  const user = useStache(() => ({ params: 'user-123' }));
+	const user = getUsers(() => ({ params: 'user-123' }));
 </script>
 
 {#if user.isLoading}
-  <p>Loading...</p>
+	<p>Loading...</p>
 {:else if user.isError}
-  <p>Error: {user.error}</p>
+	<p>Error: {user.error}</p>
 {:else if user.data}
-  <p>Hello, {user.data.name}!</p>
+	<p>Hello, {user.data.name}!</p>
 {/if}
 ```
 
@@ -54,32 +54,32 @@ Requires Svelte 5.0.0 or higher.
 
 ```svelte
 <script lang="ts">
-  import { createPagedStache } from 'svelte-stache';
+	import { createPagedStache } from 'svelte-stache';
 
-  const { useStache } = createPagedStache({
-    id: 'posts',
-    fetch: async (params, { pageIndex, pageSize }) => {
-      const res = await fetch(`/api/posts?page=${pageIndex}&size=${pageSize}`);
-      return res.json();
-    },
-    pageSize: 10,
-    getData: (res) => res.items,
-    getTotalCount: (res) => res.total
-  });
+	const { useStache: getPosts } = createPagedStache({
+		id: 'posts',
+		fetch: async (params, { pageIndex, pageSize }) => {
+			const res = await fetch(`/api/posts?page=${pageIndex}&size=${pageSize}`);
+			return res.json();
+		},
+		pageSize: 10,
+		getData: (res) => res.items,
+		getTotalCount: (res) => res.total
+	});
 
-  let page = $state(0);
-  const posts = useStache(() => ({
-    params: null,
-    pageParams: { pageOffset: page, pageCount: 1 }
-  }));
+	let pageCount = $state(0);
+	const posts = getPosts(() => ({
+		params: null,
+		pageParams: { pageOffset: 0, pageCount }
+	}));
 </script>
 
 {#each posts.data ?? [] as post}
-  <article>{post.title}</article>
+	<article>{post.title}</article>
 {/each}
 
 {#if posts.hasMore}
-  <button onclick={() => page++}>Load more</button>
+	<button onclick={() => pageCount++}>Load more</button>
 {/if}
 ```
 
@@ -87,30 +87,27 @@ Requires Svelte 5.0.0 or higher.
 
 ```svelte
 <script lang="ts">
-  import { createMutation } from 'svelte-stache';
+	import { createMutation } from 'svelte-stache';
 
-  const createPost = createMutation({
-    mutationFn: async (data: { title: string }) => {
-      const res = await fetch('/api/posts', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      // Invalidate related queries
-      postsQuery.invalidate();
-    }
-  });
+	const createPost = createMutation({
+		mutationFn: async (data: { title: string }) => {
+			const res = await fetch('/api/posts', {
+				method: 'POST',
+				body: JSON.stringify(data)
+			});
+			return res.json();
+		},
+		onSuccess: () => {
+			// Invalidate related queries
+			postsQuery.invalidate();
+		}
+	});
 
-  const mutation = createPost();
+	const mutation = createPost();
 </script>
 
-<button
-  onclick={() => mutation.mutate({ title: 'New Post' })}
-  disabled={mutation.isLoading}
->
-  {mutation.isLoading ? 'Creating...' : 'Create Post'}
+<button onclick={() => mutation.mutate({ title: 'New Post' })} disabled={mutation.isLoading}>
+	{mutation.isLoading ? 'Creating...' : 'Create Post'}
 </button>
 ```
 
@@ -138,7 +135,6 @@ const query = useStache(() => ({
   params: T,                       // Parameters for fetch function
   enabled?: boolean,               // Enable/disable fetching (default: true)
   initialData?: Data,              // Initial data before fetch
-  disableIfParamsMissing?: boolean // Disable if params falsy (default: false)
 }));
 ```
 
@@ -178,11 +174,11 @@ const { useStache, invalidate } = createPagedStache({
 
 ```typescript
 const query = useStache(() => ({
-  params: T,
-  pageParams: {
-    pageOffset: number,   // Starting page index
-    pageCount: number,    // Number of pages to fetch
-  }
+	params: T,
+	pageParams: {
+		pageOffset: number, // Starting page index
+		pageCount: number // Number of pages to fetch
+	}
 }));
 ```
 
@@ -239,7 +235,7 @@ Data is considered "fresh" for the duration of `staleTime`. After that, it becom
 
 ```typescript
 createStache({
-  staleTime: 1000 * 60 * 5, // 5 minutes (default)
+	staleTime: 1000 * 60 * 5 // 5 minutes (default)
 });
 ```
 
@@ -249,7 +245,7 @@ When no components are using a cached query (reference count reaches 0), it will
 
 ```typescript
 createStache({
-  cleanupTime: 1000 * 60 * 5, // 5 minutes (default)
+	cleanupTime: 1000 * 60 * 5 // 5 minutes (default)
 });
 ```
 
@@ -259,7 +255,7 @@ Automatically refetch stale data when the browser window regains focus.
 
 ```typescript
 createStache({
-  refetchOnWindowFocus: true, // default
+	refetchOnWindowFocus: true // default
 });
 ```
 

@@ -1791,9 +1791,9 @@ describe('createStache cache implementation', () => {
 		);
 	});
 
-	describe('disableIfParamsMissing behavior', () => {
+	describe('null params behavior', () => {
 		it(
-			'should disable stache when params is falsy and disableIfParamsMissing is true',
+			'should disable stache when params is null',
 			withEffectRoot(async () => {
 				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
@@ -1802,7 +1802,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				let params: number | null = $state(null);
-				const stache = useStache(() => ({ params, disableIfParamsMissing: true }));
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1822,7 +1822,7 @@ describe('createStache cache implementation', () => {
 		);
 
 		it(
-			'should handle transitions between falsy and truthy params with disableIfParamsMissing',
+			'should handle transitions between null and valid params correctly',
 			withEffectRoot(async () => {
 				const fetchFn = vi
 					.fn()
@@ -1833,7 +1833,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				let params: number | null | undefined = $state(1);
-				const stache = useStache(() => ({ params, disableIfParamsMissing: true }));
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1875,39 +1875,7 @@ describe('createStache cache implementation', () => {
 		);
 
 		it(
-			'should respect explicit enabled=false even with truthy params and disableIfParamsMissing',
-			withEffectRoot(async () => {
-				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
-				const { useStache } = createStache({
-					id: 'explicit-disabled-test',
-					fetch: fetchFn
-				});
-
-				const params = $state(123);
-				let enabled = $state(false);
-				const stache = useStache(() => ({ params, enabled, disableIfParamsMissing: true }));
-
-				flushSync();
-
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
-
-				// Should not fetch when explicitly disabled
-				expect(fetchFn).not.toHaveBeenCalled();
-
-				// Enable it
-				enabled = true;
-				flushSync();
-
-				await vi.waitUntil(() => stache.data !== null);
-				expect(fetchFn).toHaveBeenCalledTimes(1);
-			})
-		);
-
-		it(
-			'should allow falsy values without disableIfParamsMissing and fetch normally',
+			'should allow undefined and fetch normally',
 			withEffectRoot(async () => {
 				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
@@ -1915,8 +1883,7 @@ describe('createStache cache implementation', () => {
 					fetch: fetchFn
 				});
 
-				const params = $state(0);
-				// disableIfParamsMissing not set, should fetch with 0
+				const params = $state(undefined);
 				const stache = useStache(() => ({ params }));
 
 				flushSync();

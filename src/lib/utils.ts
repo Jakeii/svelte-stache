@@ -11,10 +11,13 @@ function hashKey(queryKey?: unknown[] | unknown): string {
 		isPlainObject(val)
 			? Object.keys(val)
 					.sort()
-					.reduce((result, key) => {
-						result[key] = val[key];
-						return result;
-					}, {} as any)
+					.reduce(
+						(result, key) => {
+							result[key] = val[key];
+							return result;
+						},
+						{} as Record<string, unknown>
+					)
 			: val
 	);
 }

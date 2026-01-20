@@ -1,6 +1,7 @@
 import { untrack } from 'svelte';
 import { hashKey } from './utils';
 import type { GlobalPagedStacheCache, GlobalStacheCache, StacheCache } from './global/cache.svelte';
+import { SvelteDate } from 'svelte/reactivity';
 
 type BaseStacheParams = unknown;
 
@@ -86,7 +87,7 @@ type UseStacheOptions<Params extends BaseStacheParams, Result = unknown> = {
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
 	 */
-	params?: Params;
+	params?: Params | null;
 	/**
 	 * Initial data to populate the stache with before fetching.
 	 * Useful for server-side rendering or optimistic UI.
@@ -98,13 +99,6 @@ type UseStacheOptions<Params extends BaseStacheParams, Result = unknown> = {
 	 * Default is true.
 	 */
 	enabled?: boolean;
-	/**
-	 * If true, the stache will be automatically disabled when params is falsy
-	 * (null, undefined, 0, false, empty string).
-	 * This allows passing potentially falsy values without TypeScript errors.
-	 * Default is false.
-	 */
-	disableIfParamsMissing?: boolean;
 };
 
 type UsePagedStacheOptions<Params extends BaseStacheParams, Result> = {
@@ -112,7 +106,7 @@ type UsePagedStacheOptions<Params extends BaseStacheParams, Result> = {
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
 	 */
-	params?: Params;
+	params?: Params | null;
 	pageParams?: PageParams;
 	/**
 	 * Initial data to populate the stache with before fetching.
@@ -125,62 +119,6 @@ type UsePagedStacheOptions<Params extends BaseStacheParams, Result> = {
 	 * Default is true.
 	 */
 	enabled?: boolean;
-	/**
-	 * If true, the stache will be automatically disabled when params is falsy
-	 * (null, undefined, 0, false, empty string).
-	 * This allows passing potentially falsy values without TypeScript errors.
-	 * Default is false.
-	 */
-	disableIfParamsMissing?: boolean;
-};
-
-type UseStacheOptionsWithFalsy<Params extends BaseStacheParams, Result = unknown> = {
-	/**
-	 * Parameters used to fetch the stache data.
-	 * Can be falsy when disableIfParamsMissing is true.
-	 */
-	params: Params | null | undefined;
-	/**
-	 * Initial data to populate the stache with before fetching.
-	 * Useful for server-side rendering or optimistic UI.
-	 * Will only be used if there is no cached data for the given parameters.
-	 */
-	initialData?: Result;
-	/**
-	 * Whether the stache is enabled. Disabling will stop automatic fetching.
-	 * Default is true.
-	 */
-	enabled?: boolean;
-	/**
-	 * If true, the stache will be automatically disabled when params is falsy
-	 * (null, undefined, 0, false, empty string).
-	 * This allows passing potentially falsy values without TypeScript errors.
-	 */
-	disableIfParamsMissing: true;
-};
-type UsePagedStacheOptionsWithFalsy<Params extends BaseStacheParams, Result = unknown> = {
-	/**
-	 * Parameters used to fetch the stache data.
-	 * Can be falsy when disableIfParamsMissing is true.
-	 */
-	params: Params | null | undefined;
-	/**
-	 * Initial data to populate the stache with before fetching.
-	 * Useful for server-side rendering or optimistic UI.
-	 * Will only be used if there is no cached data for the given parameters.
-	 */
-	initialData?: Result;
-	/**
-	 * Whether the stache is enabled. Disabling will stop automatic fetching.
-	 * Default is true.
-	 */
-	enabled?: boolean;
-	/**
-	 * If true, the stache will be automatically disabled when params is falsy
-	 * (null, undefined, 0, false, empty string).
-	 * This allows passing potentially falsy values without TypeScript errors.
-	 */
-	disableIfParamsMissing: true;
 };
 
 /**
@@ -264,7 +202,7 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 	isError = $derived(this.fetchStatus === 'error');
 	isLoading = $derived(this.fetchStatus === 'loading');
 	isSuccess = $derived(this.fetchStatus === 'success');
-	lastFetched: Date | null = $state(null);
+	lastFetched: SvelteDate | null = $state(null);
 	readonly staleTime = 5 * 60 * 1000;
 
 	/**
@@ -285,11 +223,6 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 	 */
 	referenceCount = $state(1);
 
-	/**
-	 * If true, the stache will be automatically disabled when params is falsy.
-	 */
-	readonly disableIfParamsMissing: boolean = false;
-
 	constructor(
 		{
 			id,
@@ -301,10 +234,9 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 			staleTime,
 			cleanupTime,
 			refetchOnStale,
-			refetchOnWindowFocus,
-			disableIfParamsMissing
+			refetchOnWindowFocus
 		}: StacheConstructorOptions<FetchParams, Result, FetchReturnData> &
-			(UseStacheOptions<FetchParams, Result> | UseStacheOptionsWithFalsy<FetchParams, Result>),
+			UseStacheOptions<FetchParams, Result>,
 		stacheCache: StacheCache,
 		fetchPageParams?: FetchPageParams
 	) {
@@ -313,9 +245,6 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 		this.fetch = fetchFn;
 		if (retries !== undefined) {
 			this.retries = retries;
-		}
-		if (disableIfParamsMissing !== undefined) {
-			this.disableIfParamsMissing = disableIfParamsMissing;
 		}
 		this.params = params as FetchParams;
 		this.fetchPageParams = fetchPageParams;
@@ -341,11 +270,10 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 		}
 
 		// Determine if stache should be enabled
-		const isParamsFalsy = this.disableIfParamsMissing && !params;
 		if (enabled !== undefined) {
-			this.enabled = enabled && !isParamsFalsy;
+			this.enabled = enabled && this.params !== null;
 		} else {
-			this.enabled = !isParamsFalsy;
+			this.enabled = this.params !== null;
 		}
 
 		this.run(this.params!, this.fetchPageParams);
@@ -386,21 +314,11 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 	 *
 	 * Updates the stache instance with the provided options and triggers a refetch if necessary.
 	 */
-	setOptions({
-		initialData,
-		enabled
-	}: Partial<
-		UseStacheOptions<FetchParams, Result> | UseStacheOptionsWithFalsy<FetchParams, Result>
-	>) {
+	setOptions({ initialData, enabled }: Partial<UseStacheOptions<FetchParams, Result>>) {
 		if (initialData !== undefined) this.initialData = initialData;
 
-		// Determine if stache should be enabled based on params and disableIfParamsMissing
-		const isParamsFalsy = this.disableIfParamsMissing && !this.params;
 		if (enabled !== undefined) {
-			this.enabled = enabled && !isParamsFalsy;
-		} else if (this.disableIfParamsMissing) {
-			// If disableIfParamsMissing is set, recalculate enabled based on params
-			this.enabled = !isParamsFalsy;
+			this.enabled = enabled && this.params !== null;
 		}
 
 		this.run(this.params!, this.fetchPageParams);
@@ -425,7 +343,7 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 			this.fetchStatus = 'success';
 			this.cacheStatus = 'fresh';
 			this.data = data;
-			this.lastFetched = new Date();
+			this.lastFetched = new SvelteDate();
 		} catch (err) {
 			if (err instanceof DOMException && err.name === 'AbortError') {
 				// Aborted request, do nothing
@@ -476,9 +394,7 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 export { Stache };
 export type {
 	UseStacheOptions as StacheOptions,
-	UseStacheOptionsWithFalsy as StacheOptionsWithFalsy,
 	UsePagedStacheOptions,
-	UsePagedStacheOptionsWithFalsy,
 	StacheConstructorOptions,
 	FetchFn,
 	PagedFetchFn,
