@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createPagedStache } from "$lib/index.js";
+	import { createPagedStache } from '$lib/index.js';
 
 	interface Post {
 		id: string;
@@ -25,17 +25,17 @@
 		category: string | null;
 	}
 
-	const { useStache: getPosts } = createPagedStache<PostFilters, Post[], PostsResponse>({
-		id: "demo-posts",
+	const { useStache: getPosts } = createPagedStache({
+		id: 'demo-posts',
 		pageSize: 5,
 		fetch: async (filters: PostFilters, { pageIndex, pageSize }): Promise<PostsResponse> => {
 			const params = new URLSearchParams({
 				page: String(pageIndex),
-				limit: String(pageSize),
+				limit: String(pageSize)
 			});
 
 			if (filters.category) {
-				params.set("category", filters.category);
+				params.set('category', filters.category);
 			}
 
 			const response = await fetch(`/api/posts?${params}`);
@@ -43,10 +43,10 @@
 		},
 		getData: (response) => response.data,
 		getTotalCount: (response) => response.meta.total,
-		staleTime: 1000 * 60 * 2,
+		staleTime: 1000 * 60 * 2
 	});
 
-	let category = $state<string>("all");
+	let category = $state<string>('all');
 	let pageCount = $state(1);
 
 	// Reset page count when category changes
@@ -56,11 +56,11 @@
 	});
 
 	const posts = getPosts(() => ({
-		params: { category: category === "all" ? null : category },
+		params: { category: category === 'all' ? null : category },
 		pageParams: {
 			pageOffset: 0,
-			pageCount,
-		},
+			pageCount
+		}
 	}));
 
 	const loadMore = () => {
@@ -119,7 +119,7 @@
 
 	{#if posts.isError}
 		<div class="error">
-			Error loading posts: {posts.error instanceof Error ? posts.error.message : "Unknown error"}
+			Error loading posts: {posts.error instanceof Error ? posts.error.message : 'Unknown error'}
 		</div>
 	{/if}
 </div>

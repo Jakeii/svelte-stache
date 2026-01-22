@@ -87,7 +87,7 @@ type UseStacheOptions<Params extends BaseStacheParams, Result = unknown> = {
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
 	 */
-	params?: Params | null;
+	params?: Params;
 	/**
 	 * Initial data to populate the stache with before fetching.
 	 * Useful for server-side rendering or optimistic UI.
@@ -106,7 +106,7 @@ type UsePagedStacheOptions<Params extends BaseStacheParams, Result> = {
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
 	 */
-	params?: Params | null;
+	params?: Params;
 	pageParams?: PageParams;
 	/**
 	 * Initial data to populate the stache with before fetching.
@@ -190,7 +190,7 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 	cacheStatus: 'fresh' | 'stale' = $state('fresh');
 	data: FetchReturnData | null = $state(null);
 
-	extractData: (data: any) => Result = (data: any) => data;
+	extractData: (data: unknown) => unknown = (data: unknown) => data;
 
 	/**
 	 * Initial data to populate the stache with before fetching.
@@ -266,11 +266,13 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 			this.refetchOnWindowFocus = refetchOnWindowFocus;
 		}
 
+		const canRun = (params === undefined && this.fetch.length === 0) || params !== undefined;
+
 		// Determine if stache should be enabled
 		if (enabled !== undefined) {
-			this.enabled = enabled && this.params !== null;
+			this.enabled = enabled && canRun;
 		} else {
-			this.enabled = this.params !== null;
+			this.enabled = canRun;
 		}
 
 		this.run(this.params!, this.fetchPageParams);
@@ -294,7 +296,7 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 
 		if (globalThis?.window && this.refetchOnWindowFocus) {
 			window.addEventListener('focus', () => {
-				if (this.cacheStatus === 'stale') {
+				if (this.cacheStatus === 'stale' && this.referenceCount > 0) {
 					this.run(this.params!, this.fetchPageParams);
 				}
 			});
@@ -315,7 +317,9 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 		if (initialData !== undefined) this.initialData = initialData;
 
 		if (enabled !== undefined) {
-			this.enabled = enabled && this.params !== null;
+			const canRun =
+				(this.params === undefined && this.fetch.length === 0) || this.params !== undefined;
+			this.enabled = enabled && canRun;
 		}
 
 		this.run(this.params!, this.fetchPageParams);

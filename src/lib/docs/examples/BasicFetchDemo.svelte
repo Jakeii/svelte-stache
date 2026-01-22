@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createStache } from "$lib/index.js";
+	import { createStache } from '$lib/index.js';
 
 	interface User {
 		id: string;
@@ -12,23 +12,23 @@
 		location?: string;
 	}
 
-	const { useStache: getUser } = createStache<string, User, User>({
-		id: "demo-user",
+	const { useStache: getUser } = createStache({
+		id: 'demo-user',
 		fetch: async (userId: string): Promise<User> => {
 			const response = await fetch(`/api/users/${userId}`);
 			if (!response.ok) {
-				throw new Error("Failed to fetch user");
+				throw new Error('Failed to fetch user');
 			}
 			return response.json();
 		},
 		staleTime: 1000 * 60 * 5,
-		refetchOnWindowFocus: true,
+		refetchOnWindowFocus: true
 	});
 
-	let userId = $state("user-1");
+	let userId = $state('user-1');
 
 	const user = getUser(() => ({
-		params: userId,
+		params: userId
 	}));
 </script>
 
@@ -51,7 +51,7 @@
 		</div>
 	{:else if user.isError}
 		<div class="error">
-			Error: {user.error instanceof Error ? user.error.message : "Unknown error"}
+			Error: {user.error instanceof Error ? user.error.message : 'Unknown error'}
 		</div>
 	{:else if user.data}
 		<div class="profile-card">
@@ -70,7 +70,11 @@
 		</div>
 
 		<div class="meta">
-			<span class="status" class:fresh={user.cacheStatus === "fresh"} class:stale={user.cacheStatus === "stale"}>
+			<span
+				class="status"
+				class:fresh={user.cacheStatus === 'fresh'}
+				class:stale={user.cacheStatus === 'stale'}
+			>
 				Cache: {user.cacheStatus}
 			</span>
 			<span class="fetch-status">Status: {user.fetchStatus}</span>

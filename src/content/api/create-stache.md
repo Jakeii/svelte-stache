@@ -18,11 +18,11 @@ import { createStache } from 'svelte-stache';
 
 ```typescript
 function createStache<Params, Result, FetchReturn = Result>(
-  options: CreateStacheOptions<Params, Result, FetchReturn>
+	options: CreateStacheOptions<Params, Result, FetchReturn>
 ): {
-  useStache: UseStacheFn<Params, Result>;
-  invalidate: (params: Params) => void;
-}
+	useStache: UseStacheFn<Params, Result>;
+	invalidate: (params: Params) => void;
+};
 ```
 
 ## Options
@@ -37,8 +37,8 @@ A unique identifier for this query type. Used as part of the cache key.
 
 ```typescript
 createStache({
-  id: 'user', // Unique identifier
-  fetch: fetchUser
+	id: 'user', // Unique identifier
+	fetch: fetchUser
 });
 ```
 
@@ -50,11 +50,11 @@ An async function that fetches the data. Receives the params and should return t
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: async (userId: string) => {
-    const res = await fetch(`/api/users/${userId}`);
-    return res.json();
-  }
+	id: 'user',
+	fetch: async (userId: string) => {
+		const res = await fetch(`/api/users/${userId}`);
+		return res.json();
+	}
 });
 ```
 
@@ -69,9 +69,9 @@ Time in milliseconds until data is considered stale. During this time, cached da
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: fetchUser,
-  staleTime: 1000 * 60 * 10, // 10 minutes
+	id: 'user',
+	fetch: fetchUser,
+	staleTime: 1000 * 60 * 10 // 10 minutes
 });
 ```
 
@@ -84,9 +84,9 @@ Time in milliseconds to wait before removing unused data from the cache. The cou
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: fetchUser,
-  cleanupTime: 1000 * 60 * 30, // Keep in cache for 30 minutes after last use
+	id: 'user',
+	fetch: fetchUser,
+	cleanupTime: 1000 * 60 * 30 // Keep in cache for 30 minutes after last use
 });
 ```
 
@@ -99,9 +99,9 @@ When `true`, automatically triggers a refetch when data becomes stale, even if n
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: fetchUser,
-  refetchOnStale: true, // Keep data fresh automatically
+	id: 'user',
+	fetch: fetchUser,
+	refetchOnStale: true // Keep data fresh automatically
 });
 ```
 
@@ -114,9 +114,9 @@ When `true`, refetches stale data when the browser window regains focus. Useful 
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: fetchUser,
-  refetchOnWindowFocus: false, // Disable window focus refetch
+	id: 'user',
+	fetch: fetchUser,
+	refetchOnWindowFocus: false // Disable window focus refetch
 });
 ```
 
@@ -129,9 +129,9 @@ Number of times to retry a failed fetch before giving up.
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: fetchUser,
-  retries: 3, // Retry up to 3 times on failure
+	id: 'user',
+	fetch: fetchUser,
+	retries: 3 // Retry up to 3 times on failure
 });
 ```
 
@@ -139,7 +139,7 @@ createStache({
 
 ### `useStache`
 
-A function to use the query in a component. Returns a reactive stache object.
+A function to use the query with params. Returns a reactive stache object.
 
 ```typescript
 const { useStache: getUser } = createStache({ ... });
@@ -161,13 +161,15 @@ invalidateUser('user-123');
 
 ## useStache Options
 
-When calling `useStache`, you can pass an options function:
+When calling `useStache`, you must provide an options object with at the very least the `params` property. You can also provide optional properties to control fetching behaviour.
+
+It must be provided as a function that returns the options object. This allows Svelte's reactivity system to track changes to the options.
 
 ```typescript
 const user = getUser(() => ({
-  params: userId,
-  enabled: true,
-  initialData: cachedUser,
+	params: userId,
+	enabled: true,
+	initialData: cachedUser
 }));
 ```
 
@@ -175,7 +177,13 @@ const user = getUser(() => ({
 
 **Type:** `Params`
 
-The parameters to pass to the fetch function.
+The parameters to pass to the fetch function, the type of which is inferred from the `fetch` function provided to `createStache`.
+
+Is used as part of the cache key along with the stache `id` to uniquely identify this query instance.
+
+`Params` needs to be truthy unless `allowFalsyParams` is set to `true` in the stache options.
+
+````typescript
 
 ### `enabled`
 
@@ -186,10 +194,10 @@ When `false`, the query won't execute. Useful for dependent queries.
 
 ```typescript
 const user = getUser(() => ({
-  params: userId,
-  enabled: !!userId, // Only fetch when userId is truthy
+	params: userId,
+	enabled: !!userId // Only fetch when userId is truthy
 }));
-```
+````
 
 ### `initialData`
 
@@ -199,8 +207,8 @@ Initial data to use before the first fetch completes. Useful for SSR hydration.
 
 ```typescript
 const user = getUser(() => ({
-  params: userId,
-  initialData: ssrUser, // Use server-rendered data initially
+	params: userId,
+	initialData: ssrUser // Use server-rendered data initially
 }));
 ```
 
@@ -210,34 +218,34 @@ The object returned by `useStache` with reactive properties:
 
 ### Data Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `data` | `Result \| undefined` | The fetched data |
-| `error` | `unknown` | Error if the fetch failed |
-| `params` | `Params` | Current parameters |
+| Property | Type                  | Description               |
+| -------- | --------------------- | ------------------------- |
+| `data`   | `Result \| undefined` | The fetched data          |
+| `error`  | `unknown`             | Error if the fetch failed |
+| `params` | `Params`              | Current parameters        |
 
 ### Status Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'` | Current fetch status |
-| `cacheStatus` | `'fresh' \| 'stale'` | Whether data is fresh or stale |
-| `isLoading` | `boolean` | True during initial load |
-| `isFetching` | `boolean` | True during any fetch |
-| `isError` | `boolean` | True if fetch failed |
-| `isSuccess` | `boolean` | True if fetch succeeded |
+| Property      | Type                                          | Description                    |
+| ------------- | --------------------------------------------- | ------------------------------ |
+| `fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'` | Current fetch status           |
+| `cacheStatus` | `'fresh' \| 'stale'`                          | Whether data is fresh or stale |
+| `isLoading`   | `boolean`                                     | True during initial load       |
+| `isFetching`  | `boolean`                                     | True during any fetch          |
+| `isError`     | `boolean`                                     | True if fetch failed           |
+| `isSuccess`   | `boolean`                                     | True if fetch succeeded        |
 
 ### Metadata Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `lastFetched` | `Date \| undefined` | Time of last successful fetch |
-| `referenceCount` | `number` | Number of components using this stache |
+| Property         | Type                | Description                            |
+| ---------------- | ------------------- | -------------------------------------- |
+| `lastFetched`    | `Date \| undefined` | Time of last successful fetch          |
+| `referenceCount` | `number`            | Number of components using this stache |
 
 ### Methods
 
-| Method | Description |
-|--------|-------------|
+| Method         | Description     |
+| -------------- | --------------- |
 | `invalidate()` | Force a refetch |
 
 ## Examples
@@ -246,11 +254,11 @@ The object returned by `useStache` with reactive properties:
 
 ```typescript
 const { useStache: getUser } = createStache({
-  id: 'user',
-  fetch: async (id: string) => {
-    const res = await fetch(`/api/users/${id}`);
-    return res.json();
-  }
+	id: 'user',
+	fetch: async (id: string) => {
+		const res = await fetch(`/api/users/${id}`);
+		return res.json();
+	}
 });
 ```
 
@@ -258,17 +266,17 @@ const { useStache: getUser } = createStache({
 
 ```typescript
 const { useStache: getUser, invalidate: invalidateUser } = createStache({
-  id: 'user',
-  fetch: async (id: string) => {
-    const res = await fetch(`/api/users/${id}`);
-    if (!res.ok) throw new Error('Failed to fetch');
-    return res.json();
-  },
-  staleTime: 1000 * 60 * 10,      // 10 minutes
-  cleanupTime: 1000 * 60 * 30,    // 30 minutes
-  refetchOnStale: true,
-  refetchOnWindowFocus: true,
-  retries: 2,
+	id: 'user',
+	fetch: async (id: string) => {
+		const res = await fetch(`/api/users/${id}`);
+		if (!res.ok) throw new Error('Failed to fetch');
+		return res.json();
+	},
+	staleTime: 1000 * 60 * 10, // 10 minutes
+	cleanupTime: 1000 * 60 * 30, // 30 minutes
+	refetchOnStale: true,
+	refetchOnWindowFocus: true,
+	retries: 2
 });
 ```
 
@@ -276,12 +284,12 @@ const { useStache: getUser, invalidate: invalidateUser } = createStache({
 
 ```svelte
 <script lang="ts">
-  let selectedUserId = $state<string | null>(null);
+	let selectedUserId = $state<string | null>(null);
 
-  const user = getUser(() => ({
-    params: selectedUserId!,
-    enabled: selectedUserId !== null,
-  }));
+	const user = getUser(() => ({
+		params: selectedUserId!,
+		enabled: selectedUserId !== null
+	}));
 </script>
 ```
 
@@ -289,11 +297,11 @@ const { useStache: getUser, invalidate: invalidateUser } = createStache({
 
 ```svelte
 <script lang="ts">
-  let { data } = $props(); // From +page.server.ts
+	let { data } = $props(); // From +page.server.ts
 
-  const user = getUser(() => ({
-    params: data.userId,
-    initialData: data.user, // Server-side loaded user
-  }));
+	const user = getUser(() => ({
+		params: data.userId,
+		initialData: data.user // Server-side loaded user
+	}));
 </script>
 ```

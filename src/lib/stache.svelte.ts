@@ -2,57 +2,25 @@ import {
 	Stache,
 	type BaseStacheParams,
 	type FetchFn,
+	type StacheConstructorOptions,
 	type StacheOptions
 } from './stache.class.svelte';
 import { getStache, getStacheCache, type GlobalStacheCache } from './global/cache.svelte';
 import { hashKey } from './utils';
 import { untrack } from 'svelte';
+import type { Merge } from 'type-fest';
 
-type CreateStacheOptions<StacheFnParams extends BaseStacheParams, FetchReturnData = unknown> = {
-	/**
-	 * Unique identifier for the stache type.
-	 * Used in conjunction with `params` to uniquely identify a stache instance.
-	 *
-	 * Staches with the same `id` but different `params` are treated as distinct instances.
-	 */
-	id: string;
-	/**
-	 * Function to fetch the stache data.
-	 */
-	fetch: FetchFn<StacheFnParams, FetchReturnData>;
-	/**
-	 * Number of times to retry fetching the stache on failure.
-	 * Default is 0 (no retries).
-	 */
-	retries?: number;
-	/**
-	 * Optional global cache to use for storing stache instances.
-	 * If not provided, the default global stache cache is used.
-	 *
-	 * You could provide a custom cache and automatically persist it to localStorage or IndexedDB, for example.
-	 */
-	globalCache?: GlobalStacheCache;
-	/**
-	 * Stache will be considered stale after this time (in milliseconds) has passed since it was last fetched.
-	 * Default is 5 minutes (300000 ms).
-	 */
-	staleTime?: number;
-	/**
-	 * Time in milliseconds to wait before cleaning up the stache from the cache after it has no active references.
-	 * Default is 5 minutes (300000 ms).
-	 */
-	cleanupTime?: number;
-	/**
-	 * Refetch the stache automatically when it becomes stale.
-	 * Default is false.
-	 */
-	refetchOnStale?: boolean;
-	/**
-	 * Whether to refetch the stache automatically when the window regains focus if the stache is stale.
-	 * Default is true.
-	 */
-	refetchOnWindowFocus?: boolean;
-};
+type CreateStacheOptions<
+	StacheFnParams extends BaseStacheParams,
+	FetchReturnData = unknown
+> = Merge<
+	StacheConstructorOptions<StacheFnParams, FetchReturnData, FetchReturnData>,
+	{
+		fetch: FetchFn<StacheFnParams, FetchReturnData>;
+		globalCache?: GlobalStacheCache;
+	}
+>;
+
 type PublicStache<
 	Params extends BaseStacheParams,
 	Result = unknown,
@@ -110,11 +78,7 @@ type UseStacheFn<StacheParams extends BaseStacheParams, Result = unknown> = {
  * @param createOptions The options to define the stache.
  * @returns An object containing the `useStache` function and an `invalidate` method.
  */
-const createStache = <
-	StacheParams extends BaseStacheParams,
-	Result = unknown,
-	FetchReturnData = unknown
->(
+const createStache = <StacheParams extends BaseStacheParams, Result, FetchReturnData>(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
 	const cache = getStacheCache(createOptions.id, createOptions.globalCache);
@@ -139,6 +103,11 @@ const createStache = <
 			const useOptions = useOptionsFn?.() ?? ({} as StacheOptions<StacheParams, Result>);
 			untrack(() => {
 				if (stache) {
+					if (useOptions.params === undefined && createOptions.fetch.length > 0) {
+						// if params are undefined and fetch requires params, disable stache
+						stache.setOptions({ ...useOptions, enabled: false });
+						return;
+					}
 					const newStacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
 					if (newStacheKey === stacheKey) {
 						// if params didn't change, just update options
@@ -155,6 +124,9 @@ const createStache = <
 						stache = matchExisting;
 						// stache.setOptions(allOpts); // no need to set options, already set
 						stache.referenceCount++;
+						if (stache.cacheStatus === 'stale') {
+							stache.setOptions(useOptions);
+						}
 					} else if (!matchExisting) {
 						// if params changed but no existing stache, create new one with existing data
 						stache = new Stache<StacheParams, Result, FetchReturnData>(
@@ -177,7 +149,7 @@ const createStache = <
 		return {
 			// Access the stache instance reactively because it is a $state
 			get data() {
-				return stache!.data ?? stache!.initialData;
+				return stache!.data ?? (stache!.initialData as FetchReturnData);
 			},
 			get isFetching() {
 				return stache!.isFetching;

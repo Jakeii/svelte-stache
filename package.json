@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "lint": "prettier --check . && eslint .",
     "test": "vitest run",
+    "test:watch": "vitest",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "docs:build": "velite && node ./scripts/update-velite-output.js && pnpm build:search && vite build",
     "docs:build:search": "node ./scripts/build-search-data.js",
@@ -76,5 +77,8 @@
   },
   "keywords": [
     "svelte"
-  ]
+  ],
+  "dependencies": {
+    "runed": "^0.37.1"
+  }
 }

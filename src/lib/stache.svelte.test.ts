@@ -1790,91 +1790,9 @@ describe('createStache cache implementation', () => {
 		);
 	});
 
-	describe('null params behavior', () => {
+	describe('undefined params behavior', () => {
 		it(
-			'should disable stache when params is null',
-			withEffectRoot(async () => {
-				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
-				const { useStache } = createStache({
-					id: 'disable-if-falsy-test',
-					fetch: fetchFn
-				});
-
-				let params: number | null = $state(null);
-				const stache = useStache(() => ({ params }));
-
-				flushSync();
-
-				// Should not fetch when params are falsy
-				expect(fetchFn).not.toHaveBeenCalled();
-				expect(stache.data).toBe(null);
-
-				// Set to valid value
-				params = 123;
-				flushSync();
-
-				// Should now fetch
-				await vi.waitUntil(() => stache.data !== null);
-				expect(fetchFn).toHaveBeenCalledTimes(1);
-				expect(fetchFn).toHaveBeenCalledWith(123);
-			})
-		);
-
-		it(
-			'should handle transitions between null and valid params correctly',
-			withEffectRoot(async () => {
-				const fetchFn = vi
-					.fn()
-					.mockImplementation((params) => Promise.resolve({ data: `result-${params}` }));
-				const { useStache } = createStache({
-					id: 'falsy-transition-test',
-					fetch: fetchFn
-				});
-
-				let params: number | null | undefined = $state(1);
-				const stache = useStache(() => ({ params }));
-
-				flushSync();
-
-				// Should fetch with initial value
-				await vi.waitUntil(() => stache.data !== null);
-				expect(stache.data).toEqual({ data: 'result-1' });
-
-				// Set to null
-				params = null;
-				flushSync();
-
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
-
-				// Should not fetch again
-				expect(fetchFn).toHaveBeenCalledTimes(1);
-
-				// Set to 0 (falsy)
-				params = 0;
-				flushSync();
-
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
-
-				// Should not fetch for 0
-				expect(fetchFn).toHaveBeenCalledTimes(1);
-
-				// Set to valid value again
-				params = 2;
-				flushSync();
-
-				await vi.waitUntil(() => stache.data?.data === 'result-2');
-				expect(fetchFn).toHaveBeenCalledTimes(2);
-			})
-		);
-
-		it(
-			'should allow undefined and fetch normally',
+			'should allow undefined and fetch normally if the fetch function has no params',
 			withEffectRoot(async () => {
 				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
@@ -1890,6 +1808,102 @@ describe('createStache cache implementation', () => {
 				await vi.waitUntil(() => stache.data !== null);
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 				expect(fetchFn).toHaveBeenCalledWith(undefined);
+			})
+		);
+
+		it(
+			'should not fetch when params undefined if the fetch function requires params',
+			withEffectRoot(async () => {
+				const track = vi.fn();
+				const fetchFn = (params: number) => {
+					track(params);
+					return Promise.resolve({ data: `result-${params}` });
+				};
+
+				console.log(fetchFn.length); // Should be 1
+				const { useStache } = createStache({
+					id: 'undefined-params-disable-test',
+					fetch: fetchFn
+				});
+
+				const stache = useStache();
+
+				flushSync();
+
+				// Should not fetch since params is undefined
+				expect(track).not.toHaveBeenCalled();
+				expect(stache.data).toBe(null);
+			})
+		);
+
+		it(
+			'should fetch when params change from null to valid',
+			withEffectRoot(async () => {
+				const track = vi.fn();
+				const fetchFn = (params: number) => {
+					track(params);
+					return Promise.resolve({ data: `result-${params}` });
+				};
+				const { useStache } = createStache({
+					id: 'null-to-valid-params-test',
+					fetch: fetchFn
+				});
+
+				let params: number | undefined = $state(undefined);
+				const stache = useStache(() => ({ params }));
+
+				flushSync();
+
+				// Should not fetch initially
+				expect(track).not.toHaveBeenCalled();
+				expect(stache.data).toBe(null);
+
+				// Change to valid value
+				params = 5;
+				flushSync();
+
+				// Should fetch now
+				await vi.waitUntil(() => stache.data !== null);
+				expect(track).toHaveBeenCalledWith(5);
+				expect(stache.data).toEqual({ data: 'result-5' });
+			})
+		);
+
+		it(
+			'should not fetch when params change from valid to undefined',
+			withEffectRoot(async () => {
+				const track = vi.fn();
+				const fetchFn = (params: number) => {
+					track(params);
+					return Promise.resolve({ data: `result-${params}` });
+				};
+				const { useStache } = createStache({
+					id: 'valid-to-null-params-test',
+					fetch: fetchFn
+				});
+
+				let params: number | undefined = $state(10);
+				const stache = useStache(() => ({ params }));
+
+				flushSync();
+
+				// Wait for initial fetch
+				await vi.waitUntil(() => stache.data !== null);
+				expect(track).toHaveBeenCalledWith(10);
+				expect(stache.data).toEqual({ data: 'result-10' });
+
+				// Change to undefined
+				params = undefined;
+				flushSync();
+
+				vi.useFakeTimers();
+				vi.advanceTimersByTime(100);
+				await vi.runAllTimersAsync();
+				vi.useRealTimers();
+
+				// Should not fetch again
+				expect(track).toHaveBeenCalledTimes(1);
+				expect(stache.data).toEqual({ data: 'result-10' }); // Data remains unchanged
 			})
 		);
 	});

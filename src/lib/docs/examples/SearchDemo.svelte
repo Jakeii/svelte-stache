@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { createStache } from "$lib/index.js";
+	import { createStache } from '$lib/index.js';
+	import { Debounced } from 'runed';
 
 	interface User {
 		id: string;
@@ -9,8 +10,8 @@
 		avatar: string;
 	}
 
-	const { useStache: searchUsers } = createStache<string, User[], User[]>({
-		id: "demo-user-search",
+	const { useStache: searchUsers } = createStache({
+		id: 'demo-user-search',
 		fetch: async (query: string): Promise<User[]> => {
 			if (!query.trim()) {
 				return [];
@@ -19,29 +20,20 @@
 			const response = await fetch(`/api/users?search=${encodeURIComponent(query)}`);
 			return response.json();
 		},
-		staleTime: 1000 * 60,
-		refetchOnWindowFocus: false,
+		staleTime: 1000 * 5
+		// refetchOnWindowFocus: false
 	});
 
-	let inputValue = $state("");
-	let debouncedQuery = $state("");
-	let debounceTimer: ReturnType<typeof setTimeout>;
+	let inputValue = $state('');
 
-	$effect(() => {
-		clearTimeout(debounceTimer);
-		debounceTimer = setTimeout(() => {
-			debouncedQuery = inputValue;
-		}, 300);
-
-		return () => clearTimeout(debounceTimer);
-	});
+	let debouncedQuery = new Debounced(() => inputValue, 300);
 
 	const results = searchUsers(() => ({
-		params: debouncedQuery,
-		enabled: debouncedQuery.length > 0,
+		params: debouncedQuery.current,
+		enabled: debouncedQuery.current !== ''
 	}));
 
-	const isTyping = $derived(inputValue !== debouncedQuery && inputValue.length > 0);
+	const isTyping = $derived(debouncedQuery.pending);
 </script>
 
 <div class="demo-container">
@@ -53,7 +45,11 @@
 				clip-rule="evenodd"
 			/>
 		</svg>
-		<input type="search" bind:value={inputValue} placeholder="Search users by name, email, or role..." />
+		<input
+			type="search"
+			bind:value={inputValue}
+			placeholder="Search users by name, email, or role..."
+		/>
 		{#if isTyping}
 			<span class="typing-indicator">
 				<span class="dot"></span>
@@ -97,17 +93,23 @@
 		<div class="placeholder">
 			<p>Try searching for:</p>
 			<div class="suggestions">
-				<button onclick={() => (inputValue = "Alice")}>Alice</button>
-				<button onclick={() => (inputValue = "Developer")}>Developer</button>
-				<button onclick={() => (inputValue = "example.com")}>example.com</button>
+				<button onclick={() => (inputValue = 'Alice')}>Alice</button>
+				<button onclick={() => (inputValue = 'Developer')}>Developer</button>
+				<button onclick={() => (inputValue = 'example.com')}>example.com</button>
 			</div>
 		</div>
 	{/if}
 
 	{#if debouncedQuery && results.data}
 		<div class="status-bar">
-			<span class="result-count">{results.data.length} result{results.data.length !== 1 ? "s" : ""}</span>
-			<span class="cache-status" class:fresh={results.cacheStatus === "fresh"} class:stale={results.cacheStatus === "stale"}>
+			<span class="result-count"
+				>{results.data.length} result{results.data.length !== 1 ? 's' : ''}</span
+			>
+			<span
+				class="cache-status"
+				class:fresh={results.cacheStatus === 'fresh'}
+				class:stale={results.cacheStatus === 'stale'}
+			>
 				{results.cacheStatus}
 			</span>
 		</div>
