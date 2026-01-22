@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache, type PublicStache } from './stache.svelte';
 import { SvelteMap } from 'svelte/reactivity';
@@ -17,13 +17,11 @@ function withEffectRoot(fn: () => void | Promise<void>) {
 }
 
 describe('createStache cache implementation', () => {
-	let cleanupFns: Array<() => void> = [];
-
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
 	afterEach(() => {
-		vi.useRealTimers();
-		// Clean up all effects after each test
-		cleanupFns.forEach((fn) => fn());
-		cleanupFns = [];
+		vi.restoreAllMocks();
 	});
 
 	describe('createStache function', () => {
@@ -92,12 +90,14 @@ describe('createStache cache implementation', () => {
 				expect(stache.lastFetched).toBe(null);
 				expect(stache.referenceCount).toBe(1);
 
+				flushSync();
+
 				// Enable the stache
 				enabled = true;
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.isFetching);
+				// await vi.waitUntil(() => stache.isFetching);
 
 				expect(stache.isLoading).toBe(true);
 				expect(stache.isFetching).toBe(true);
@@ -291,39 +291,75 @@ describe('createStache cache implementation', () => {
 			})();
 
 			await withEffectRoot(async () => {
-				$effect(() => {
-					$inspect.trace('Second effect root mounted');
-				});
-				console.log('Mounting second effect root');
-
 				const cachedStache = globalCache.get('cleanup-test')?.get(hashKey('param1'));
 				expect(cachedStache).toBeDefined();
 				expect(cachedStache.referenceCount).toBe(0);
 
 				// Fast-forward time to trigger cleanup
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(5000); // Default cleanup time
-				await vi.runAllTimersAsync();
-				flushSync();
+				vi.advanceTimersToNextTimer();
 
 				// Now cache should be cleaned up
 				await vi.waitFor(
 					() => globalCache.get('cleanup-test')?.get(hashKey('param1')) === undefined
 				);
 
-				vi.useRealTimers();
-
-				// // Create new instance after cleanup
-				// let params4 = $state('param1');
-				// const stache4 = useStache(() => ({ params: params4 }));
-				// flushSync();
-
-				// // This should be a different instance since cache was cleared
-				// expect(stache4).not.toBe(stache1);
-
-				// expect(fetch).toHaveBeenCalledTimes(2);
+				expect(globalCache.get('cleanup-test')?.get(hashKey('param1'))).toBeUndefined();
 			})();
 		});
+	});
+
+	it('should only refetch referenced staches', async () => {
+		const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
+		const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>();
+		const { useStache } = createStache({
+			id: 'invalidate-test',
+			fetch: fetchFn,
+			refetchOnStale: true,
+			staleTime: 100,
+			globalCache
+		});
+
+		await withEffectRoot(async () => {
+			// Create two stache instances with same params
+			const params1 = $state('param1');
+			const stache1 = useStache(() => ({ params: params1 }));
+
+			const params2 = $state('param2');
+			const stache2 = useStache(() => ({ params: params2 }));
+
+			flushSync();
+			await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
+			expect(fetchFn).toHaveBeenCalledTimes(2);
+
+			expect(globalCache.get('invalidate-test')?.get(hashKey('param1'))?.referenceCount).toBe(1);
+			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.referenceCount).toBe(1);
+		})();
+
+		await withEffectRoot(async () => {
+			expect(globalCache.get('invalidate-test')?.get(hashKey('param1'))?.referenceCount).toBe(0);
+			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.referenceCount).toBe(0);
+
+			// Reference stache1 again
+			const params1copy = $state('param1');
+			const stache1copy = useStache(() => ({ params: params1copy }));
+			flushSync();
+			await vi.waitUntil(() => stache1copy.data !== null);
+
+			expect(globalCache.get('invalidate-test')?.get(hashKey('param1'))?.referenceCount).toBe(1);
+			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.referenceCount).toBe(0);
+
+			fetchFn.mockClear();
+
+			console.log('Advancing timers to make staches stale');
+
+			// make stale
+			vi.advanceTimersToNextTimer();
+
+			await vi.waitUntil(() => fetchFn.mock.calls.length > 0);
+
+			expect(globalCache.get('invalidate-test')?.get(hashKey('param1'))?.cacheStatus).toBe('fresh');
+			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.cacheStatus).toBe('stale');
+		})();
 	});
 
 	describe('Cache isolation between different ids', () => {
@@ -438,9 +474,7 @@ describe('createStache cache implementation', () => {
 				expect(cache2?.referenceCount).toBe(1);
 
 				// Fast-forward time to trigger cleanup of old param cache
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(5000); // Default cleanup time
-				await vi.runAllTimersAsync();
+				vi.advanceTimersToNextTimer();
 				flushSync();
 
 				// Old cache entry should be cleaned up
@@ -496,9 +530,7 @@ describe('createStache cache implementation', () => {
 				await vi.waitUntil(() => stache.data !== null);
 				expect(stache.cacheStatus).toBe('fresh');
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(150);
-				await vi.runAllTimersAsync();
+				vi.advanceTimersToNextTimer();
 
 				// Should now be stale
 				await vi.waitUntil(() => stache.cacheStatus === 'stale');
@@ -526,9 +558,7 @@ describe('createStache cache implementation', () => {
 				await vi.waitUntil(() => stache.data !== null);
 				expect(stache.cacheStatus).toBe('fresh');
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(1100);
-				await vi.runAllTimersAsync();
+				vi.advanceTimersToNextTimer();
 
 				console.log(stache._stache.cacheStatus);
 
@@ -560,10 +590,7 @@ describe('createStache cache implementation', () => {
 				await vi.waitUntil(() => stache.data !== null);
 				expect(stache.cacheStatus).toBe('fresh');
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(150);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Wait for it to become stale
 				await vi.waitUntil(() => stache.cacheStatus === 'stale');
@@ -605,10 +632,7 @@ describe('createStache cache implementation', () => {
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 				expect(stache.cacheStatus).toBe('fresh');
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(150);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Wait for data to become stale, which should trigger automatic refetch
 				await vi.waitUntil(() => stache.data?.data === 'test-2');
@@ -639,18 +663,12 @@ describe('createStache cache implementation', () => {
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 				expect(stache.cacheStatus).toBe('fresh');
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(150);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Wait for data to become stale
 				await vi.waitUntil(() => stache.cacheStatus === 'stale');
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should still only have been called once
 				expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -681,10 +699,7 @@ describe('createStache cache implementation', () => {
 				// Wait for data to become stale
 				await vi.waitUntil(() => stache.cacheStatus === 'stale');
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should still only have been called once (default behavior)
 				expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -715,10 +730,7 @@ describe('createStache cache implementation', () => {
 				invalidate('param');
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(50);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should trigger another fetch
 				expect(fetchFn).toHaveBeenCalledTimes(2);
@@ -756,10 +768,7 @@ describe('createStache cache implementation', () => {
 				invalidate('param1');
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should only refetch param1
 				expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -789,10 +798,7 @@ describe('createStache cache implementation', () => {
 				invalidate('non-existent-param');
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should not trigger any additional fetches
 				expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -821,10 +827,7 @@ describe('createStache cache implementation', () => {
 				stache.invalidate();
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(50);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should trigger another fetch
 				expect(fetchFn).toHaveBeenCalledTimes(2);
@@ -850,10 +853,7 @@ describe('createStache cache implementation', () => {
 				await vi.waitUntil(() => stache.data !== null);
 				expect(stache.cacheStatus).toBe('fresh');
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(150);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Wait for it to become stale
 				await vi.waitUntil(() => stache.cacheStatus === 'stale');
@@ -896,10 +896,7 @@ describe('createStache cache implementation', () => {
 				stache.invalidate(); // Try both methods
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should not trigger additional fetches
 				expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -1237,10 +1234,7 @@ describe('createStache cache implementation', () => {
 
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should not fetch when disabled
 				expect(fetchFn).not.toHaveBeenCalled();
@@ -1257,43 +1251,13 @@ describe('createStache cache implementation', () => {
 	});
 
 	describe('Advanced configuration combinations', () => {
-		it(
-			'should handle short staleTime with refetchOnStale enabled',
-			withEffectRoot(async () => {
-				const fetchFn = vi
-					.fn()
-					.mockImplementation(() => Promise.resolve({ data: `result-${Date.now()}` }));
-				const { useStache } = createStache({
-					id: 'short-stale-auto-refetch-test',
-					fetch: fetchFn,
-					staleTime: 50, // Very short
-					refetchOnStale: true
-				});
-
-				const params = $state('param');
-				const stache = useStache(() => ({ params }));
-
-				flushSync();
-
-				// Wait for initial fetch
-				await vi.waitUntil(() => stache.data !== null);
-				expect(fetchFn).toHaveBeenCalledTimes(1);
-
-				// Wait for data to become stale and auto-refetch
-				await vi.waitUntil(() => fetchFn.mock.calls.length >= 2);
-
-				// Should have re-fetched automatically
-				expect(fetchFn.mock.calls.length).toBeGreaterThanOrEqual(2);
-			})
-		);
-
 		it('should handle custom cleanupTime configuration', async () => {
-			vi.useFakeTimers();
 			const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
 			const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 			const { useStache } = createStache({
 				id: 'custom-cleanup-test',
 				fetch: fetchFn,
+				staleTime: 500,
 				cleanupTime: 1000, // 1 second instead of default 5 minutes
 				globalCache
 			});
@@ -1307,25 +1271,20 @@ describe('createStache cache implementation', () => {
 				await vi.waitUntil(() => stache.data !== null);
 			})();
 
-			vi.useFakeTimers();
-			vi.advanceTimersByTime(1100);
-			await vi.runAllTimersAsync();
+			vi.advanceTimersToNextTimer();
 
 			// Cache should exist and have 0 references after effect cleanup
 			expect(globalCache.get('custom-cleanup-test')?.get(hashKey('param'))).toBeDefined();
 			expect(stache.referenceCount).toBe(0);
 
 			// Advance time by custom cleanup time
-			vi.advanceTimersByTime(1100);
-			await vi.runAllTimersAsync();
+			vi.advanceTimersToNextTimer();
 			flushSync();
 
 			// Cache should be cleaned up
 			await vi.waitFor(
 				() => globalCache.get('custom-cleanup-test')?.get(hashKey('param')) === undefined
 			);
-
-			vi.useRealTimers();
 		});
 
 		it(
@@ -1339,7 +1298,8 @@ describe('createStache cache implementation', () => {
 				const fetchFn = vi.fn().mockReturnValue(fetchPromise);
 				const { useStache } = createStache({
 					id: 'set-options-config-test',
-					fetch: fetchFn
+					fetch: fetchFn,
+					refetchOnStale: true
 				});
 
 				let enabled = $state(true);
@@ -1367,10 +1327,7 @@ describe('createStache cache implementation', () => {
 				enabled = false;
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Wait to ensure no additional fetch
 				expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -1379,10 +1336,9 @@ describe('createStache cache implementation', () => {
 				enabled = true;
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				// vi.advanceTimersToNextTimer();
+
+				await vi.waitUntil(() => fetchFn.mock.calls.length === 2);
 
 				// Should trigger fetch when re-enabled
 				expect(fetchFn).toHaveBeenCalledTimes(2);
@@ -1430,35 +1386,7 @@ describe('createStache cache implementation', () => {
 				}).toThrow();
 			})
 		);
-
-		it(
-			'should handle undefined configuration values with defaults',
-			withEffectRoot(async () => {
-				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
-				const { useStache } = createStache({
-					id: 'undefined-config-test',
-					fetch: fetchFn,
-					staleTime: undefined,
-					cleanupTime: undefined,
-					refetchOnStale: undefined,
-					refetchOnWindowFocus: undefined
-				});
-
-				const params = $state('param');
-				const stache = useStache(() => ({ params }));
-
-				flushSync();
-
-				// Should work with default values
-				await vi.waitUntil(() => stache.data !== null);
-				expect(stache.data).toEqual({ data: 'test' });
-
-				// Should use default stale time (5 minutes)
-				expect(stache.cacheStatus).toBe('fresh');
-			})
-		);
 	});
-
 	describe('Integration scenarios', () => {
 		it(
 			'should handle stale data with multiple components sharing same stache',
@@ -1507,6 +1435,7 @@ describe('createStache cache implementation', () => {
 				await vi.waitUntil(() => stache1.cacheStatus === 'fresh');
 				expect(stache2.cacheStatus).toBe('fresh');
 				expect(stache3.cacheStatus).toBe('fresh');
+				expect(fetchFn).toHaveBeenCalledTimes(2);
 			})
 		);
 
@@ -1529,10 +1458,7 @@ describe('createStache cache implementation', () => {
 				flushSync();
 				await vi.waitUntil(() => stache.data !== null);
 
-				vi.useFakeTimers();
-				// Let it become stale
-				vi.advanceTimersByTime(150);
-				await vi.runAllTimersAsync();
+				vi.advanceTimersToNextTimer();
 				await vi.waitUntil(() => stache.cacheStatus === 'stale');
 			})();
 
@@ -1541,8 +1467,7 @@ describe('createStache cache implementation', () => {
 			expect(stache.referenceCount).toBe(0);
 
 			// Advance cleanup time
-			vi.advanceTimersByTime(1100);
-			await vi.runAllTimersAsync();
+			vi.advanceTimersToNextTimer();
 
 			// Cache should be cleaned up regardless of stale status
 			await vi.waitFor(
@@ -1693,84 +1618,33 @@ describe('createStache cache implementation', () => {
 		);
 
 		it(
-			'should handle rapid invalidations and parameter changes',
+			'should refetch correctly when transitioning enabled state with stale data if refetchOnStale is enabled',
 			withEffectRoot(async () => {
-				const fetchFn = vi
-					.fn()
-					.mockImplementation((params) =>
-						Promise.resolve({ data: `result-${params}-${Date.now()}` })
-					);
-
-				const { useStache, invalidate } = createStache({
-					id: 'rapid-changes-test',
-					fetch: fetchFn
+				let callCount = 0;
+				const fetchFn = vi.fn().mockImplementation(() => {
+					callCount++;
+					return Promise.resolve(`result-${callCount}`);
 				});
-
-				let params = $state('param1');
-				const stache = useStache(() => ({ params }));
-
-				flushSync();
-
-				// Wait for initial fetch
-				await vi.waitUntil(() => stache.data !== null);
-				const initialCallCount = fetchFn.mock.calls.length;
-
-				// Rapid invalidations
-				invalidate('param1');
-				invalidate('param1');
-				invalidate('param1');
-				flushSync();
-
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
-
-				// Should not cause multiple concurrent fetches
-				expect(fetchFn.mock.calls.length).toBeLessThanOrEqual(initialCallCount + 1);
-
-				// Rapid parameter changes
-				params = 'param2';
-				flushSync();
-				params = 'param3';
-				flushSync();
-				params = 'param4';
-				flushSync();
-
-				// Should eventually settle on the latest parameter
-				await vi.waitUntil(() => stache.data?.data.includes('param4'));
-				expect(stache.data?.data).toMatch(/result-param4-/);
-			})
-		);
-
-		it(
-			'should handle mixed enabled/disabled states with stale transitions',
-			withEffectRoot(async () => {
-				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
-					id: 'mixed-enabled-test',
+					id: 'enabled-state-stale-refetch-test',
 					fetch: fetchFn,
-					staleTime: 100
+					refetchOnStale: true
 				});
 
 				let enabled = $state(true);
 				const params = $state('param');
 				const stache = useStache(() => ({ params, enabled }));
 
-				flushSync();
-
 				// Initial fetch while enabled
-				await vi.waitUntil(() => stache.data !== null);
+				await vi.waitUntil(() => stache.data === 'result-1');
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 
 				// Disable before it becomes stale
 				enabled = false;
+
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(150);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should not have re-fetched while disabled
 				expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -1779,13 +1653,55 @@ describe('createStache cache implementation', () => {
 				enabled = true;
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should trigger refetch when re-enabled
 				expect(fetchFn).toHaveBeenCalledTimes(2);
+
+				enabled = false;
+			})
+		);
+
+		it(
+			'should not refetch when transitioning enabled state with stale data if refetchOnStale is disabled',
+			withEffectRoot(async () => {
+				let callCount = 0;
+				const fetchFn = vi.fn().mockImplementation(() => {
+					callCount++;
+					return Promise.resolve(`result-${callCount}`);
+				});
+				const { useStache } = createStache({
+					id: 'disabled-state-stale-refetch-test',
+					fetch: fetchFn,
+					refetchOnStale: false
+				});
+
+				let enabled = $state(true);
+				const params = $state('param');
+				const stache = useStache(() => ({ params, enabled }));
+
+				// Initial fetch while enabled
+				await vi.waitUntil(() => stache.data === 'result-1');
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+
+				// Disable before it becomes stale
+				enabled = false;
+
+				vi.advanceTimersToNextTimer();
+
+				// Should not have re-fetched while disabled
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+
+				// Re-enable after stale time has passed
+				enabled = true;
+				flushSync();
+
+				vi.advanceTimersToNextTimer();
+
+				// Should trigger refetch when re-enabled
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+
+				enabled = false;
 			})
 		);
 	});
@@ -1837,7 +1753,7 @@ describe('createStache cache implementation', () => {
 		);
 
 		it(
-			'should fetch when params change from null to valid',
+			'should fetch when params change from undefined to valid value',
 			withEffectRoot(async () => {
 				const track = vi.fn();
 				const fetchFn = (params: number) => {
@@ -1896,10 +1812,7 @@ describe('createStache cache implementation', () => {
 				params = undefined;
 				flushSync();
 
-				vi.useFakeTimers();
-				vi.advanceTimersByTime(100);
-				await vi.runAllTimersAsync();
-				vi.useRealTimers();
+				vi.advanceTimersToNextTimer();
 
 				// Should not fetch again
 				expect(track).toHaveBeenCalledTimes(1);

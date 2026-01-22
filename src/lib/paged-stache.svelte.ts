@@ -3,7 +3,6 @@ import { untrack } from 'svelte';
 import { getPagedStacheCache, type GlobalPagedStacheCache } from './global/cache.svelte';
 import {
 	Stache,
-	type BaseStacheParams,
 	type StacheConstructorOptions,
 	type PagedFetchFn,
 	type UsePagedStacheOptions,
@@ -13,11 +12,7 @@ import type { UseStacheFn } from './stache.svelte';
 import { hashKey } from './utils';
 import type { Exact, Merge } from 'type-fest';
 
-type CreatePagedStacheOptions<
-	StacheParams extends BaseStacheParams,
-	Result = unknown,
-	FetchReturnData = unknown
-> = Merge<
+type CreatePagedStacheOptions<StacheParams, Result, FetchReturnData> = Merge<
 	StacheConstructorOptions<StacheParams, Result, FetchReturnData>,
 	{
 		fetch: PagedFetchFn<StacheParams, FetchReturnData>;
@@ -28,8 +23,8 @@ type CreatePagedStacheOptions<
 	}
 >;
 
-type CreatePagedStacheFn = <StacheParams extends BaseStacheParams, Result = unknown>(
-	defineOptions: CreatePagedStacheOptions<StacheParams, Result>
+type CreatePagedStacheFn = <StacheParams, Result, FetchReturnData>(
+	defineOptions: CreatePagedStacheOptions<StacheParams, Result, FetchReturnData>
 ) => {
 	useStache: UseStacheFn<StacheParams, Result>;
 	/**
@@ -48,20 +43,17 @@ type CreatePagedStacheFn = <StacheParams extends BaseStacheParams, Result = unkn
  * @param createOptions The options to define the stache.
  * @returns An object containing the `useStache` function and an `invalidate` method.
  */
-const createPagedStache = <StacheParams extends BaseStacheParams, Result, FetchReturnData>(
+const createPagedStache = <StacheParams, Result, FetchReturnData>(
 	createOptions: CreatePagedStacheOptions<StacheParams, Result, FetchReturnData>
 ) => {
 	const cache = getPagedStacheCache(createOptions.id, createOptions.globalCache);
 
-	type UseStacheOptionsBase<StacheParams extends BaseStacheParams, Result> = UsePagedStacheOptions<
-		StacheParams,
-		Result
-	>;
+	type UseStacheOptionsBase<StacheParams, Result> = UsePagedStacheOptions<StacheParams, Result>;
 
 	const useStache = <T extends Exact<UseStacheOptionsBase<StacheParams, Result>, T>>(
 		useOptionsFn?: () => T
 	) => {
-		const useOptions = useOptionsFn?.() ?? ({} as UsePagedStacheOptions<StacheParams, Result>);
+		const useOptions = useOptionsFn?.() ?? ({} as T);
 		const { getData, getTotalCount } = createOptions;
 		const stacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
 

@@ -1,19 +1,20 @@
 import {
 	Stache,
-	type BaseStacheParams,
 	type FetchFn,
 	type StacheConstructorOptions,
-	type StacheOptions
+	type UseStacheOptions
 } from './stache.class.svelte';
-import { getStache, getStacheCache, type GlobalStacheCache } from './global/cache.svelte';
+import {
+	getStache,
+	getStacheCache,
+	type GlobalStacheCache,
+	type StacheCache
+} from './global/cache.svelte';
 import { hashKey } from './utils';
 import { untrack } from 'svelte';
-import type { Merge } from 'type-fest';
+import type { Exact, Merge } from 'type-fest';
 
-type CreateStacheOptions<
-	StacheFnParams extends BaseStacheParams,
-	FetchReturnData = unknown
-> = Merge<
+type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 	StacheConstructorOptions<StacheFnParams, FetchReturnData, FetchReturnData>,
 	{
 		fetch: FetchFn<StacheFnParams, FetchReturnData>;
@@ -21,11 +22,7 @@ type CreateStacheOptions<
 	}
 >;
 
-type PublicStache<
-	Params extends BaseStacheParams,
-	Result = unknown,
-	FetchReturnData = unknown
-> = Pick<
+type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
 	Stache<Params, Result, FetchReturnData>,
 	| 'isFetching'
 	| 'data'
@@ -41,7 +38,7 @@ type PublicStache<
 	| 'params'
 > & { _stache: Stache<Params, Result, FetchReturnData> | null };
 
-type CreateStacheFn = <StacheParams extends BaseStacheParams, Result = unknown>(
+type CreateStacheFn = <StacheParams, Result>(
 	defineOptions: CreateStacheOptions<StacheParams, Result>
 ) => {
 	useStache: UseStacheFn<StacheParams, Result>;
@@ -52,8 +49,33 @@ type CreateStacheFn = <StacheParams extends BaseStacheParams, Result = unknown>(
 	invalidate: (args: StacheParams) => void;
 };
 
-type UseStacheFn<StacheParams extends BaseStacheParams, Result = unknown> = {
-	(optionsFn?: () => StacheOptions<StacheParams, Result>): PublicStache<StacheParams, Result>;
+type UseStacheFn<StacheParams, Result> = {
+	(optionsFn?: () => UseStacheOptions<StacheParams, Result>): PublicStache<StacheParams, Result>;
+};
+
+/**
+ * Retrieves an existing stache from the cache or creates a new one if it doesn't exist.
+ *
+ * @param cache The stache cache to retrieve from or add to.
+ * @param stacheKey The unique key for the stache based on its parameters.
+ * @param createOptions The options to create a new stache if needed.
+ * @param useOptions The options to use when creating a new stache.
+ * @returns The existing or newly created stache instance.
+ */
+const getOrCreateStache = <StacheParams, Result, FetchReturnData>(
+	cache: StacheCache,
+	stacheKey: string,
+	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>,
+	useOptions: UseStacheOptions<StacheParams, Result>
+): Stache<StacheParams, Result, FetchReturnData> => {
+	let stache = getStache<StacheParams, Result, FetchReturnData>(cache, stacheKey);
+	if (!stache) {
+		stache = new Stache<StacheParams, Result, FetchReturnData>(createOptions, useOptions, cache);
+		cache.set(stacheKey, stache);
+	} else {
+		stache.referenceCount++;
+	}
+	return stache;
 };
 
 /**
@@ -78,70 +100,82 @@ type UseStacheFn<StacheParams extends BaseStacheParams, Result = unknown> = {
  * @param createOptions The options to define the stache.
  * @returns An object containing the `useStache` function and an `invalidate` method.
  */
-const createStache = <StacheParams extends BaseStacheParams, Result, FetchReturnData>(
+const createStache = <StacheParams, Result, FetchReturnData>(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
 	const cache = getStacheCache(createOptions.id, createOptions.globalCache);
 
-	const useStache = (useOptionsFn?: () => StacheOptions<StacheParams, Result>) => {
-		const useOptions = useOptionsFn?.() ?? ({} as StacheOptions<StacheParams, Result>);
+	type UseStacheOptionsBase<StacheParams, Result> = UseStacheOptions<StacheParams, Result>;
+	const useStache = <T extends Exact<UseStacheOptionsBase<StacheParams, Result>, T>>(
+		useOptionsFn?: () => T
+	) => {
+		let initalizing = $state(true);
+		const useOptions = (useOptionsFn?.() ?? {}) as UseStacheOptions<StacheParams, Result>;
 
 		const stacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
 
-		let stache = $state(getStache(cache, stacheKey)) as
-			| Stache<StacheParams, Result, FetchReturnData>
-			| undefined;
+		const originalStache = getOrCreateStache<StacheParams, Result, FetchReturnData>(
+			cache,
+			stacheKey,
+			createOptions,
+			useOptions
+		);
+		let stache = $state(originalStache);
 
-		if (!stache) {
-			stache = new Stache<StacheParams, Result, FetchReturnData>(createOptions, useOptions, cache);
-			cache.set(stacheKey, stache);
-		} else {
-			stache.referenceCount++;
-		}
-
-		$effect(() => {
-			const useOptions = useOptionsFn?.() ?? ({} as StacheOptions<StacheParams, Result>);
+		$effect.pre(() => {
+			const useOptions = (useOptionsFn?.() ?? {}) as UseStacheOptions<StacheParams, Result>;
+			const originalKey = stache?.params ? hashKey(stache?.params) : 'no-params';
 			untrack(() => {
-				if (stache) {
-					if (useOptions.params === undefined && createOptions.fetch.length > 0) {
-						// if params are undefined and fetch requires params, disable stache
-						stache.setOptions({ ...useOptions, enabled: false });
-						return;
-					}
-					const newStacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
-					if (newStacheKey === stacheKey) {
-						// if params didn't change, just update options
-						stache.setOptions(useOptions);
-						return;
-					}
-					const matchExisting = getStache<StacheParams, Result, FetchReturnData>(
-						cache,
-						newStacheKey
-					);
-					if (matchExisting) {
-						// if params changed and existing stache found, switch to it
-						stache.referenceCount--;
-						stache = matchExisting;
-						// stache.setOptions(allOpts); // no need to set options, already set
-						stache.referenceCount++;
-						if (stache.cacheStatus === 'stale') {
-							stache.setOptions(useOptions);
-						}
-					} else if (!matchExisting) {
-						// if params changed but no existing stache, create new one with existing data
-						stache = new Stache<StacheParams, Result, FetchReturnData>(
-							createOptions,
-							useOptions,
-							cache
-						);
-						cache?.set(newStacheKey, stache);
-					}
+				if (!stache) {
+					throw new Error('Stache instance is undefined in useStache effect.');
 				}
+				if (initalizing) {
+					console.log('not running first effect for useStache with id:', createOptions.id);
+					initalizing = false;
+					return;
+				}
+
+				const newStacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
+				const matchExisting = getStache<StacheParams, Result, FetchReturnData>(cache, newStacheKey);
+
+				const isMissingParams = useOptions.params === undefined && createOptions.fetch.length > 0;
+				const isKeyChanged = newStacheKey !== originalKey;
+
+				if (isMissingParams) {
+					// if params are undefined and fetch requires params, disable stache
+					stache.referenceCount++;
+					stache.setOptions({ ...useOptions, enabled: false });
+				} else if (!isKeyChanged) {
+					// if params didn't change, just update options
+					stache.referenceCount++;
+					stache.setOptions(useOptions);
+				} else if (matchExisting) {
+					// if params changed and existing stache found, switch to it
+					// stache.referenceCount--;
+					stache = matchExisting;
+					stache.referenceCount++;
+				} else {
+					// if params changed but no existing stache, create new one with existing data
+					stache = new Stache<StacheParams, Result, FetchReturnData>(
+						createOptions,
+						useOptions,
+						cache
+					);
+					cache?.set(newStacheKey, stache);
+				}
+
+				stache.maybeCancelCleanup();
 			});
 
 			return () => {
 				if (stache) {
 					stache.referenceCount--;
+					if (stache.referenceCount === 0) {
+						console.log('Scheduling cleanup for stache:', stache.id, stache.params);
+						stache.scheduleCleanup();
+					}
+				} else {
+					console.warn('Stache instance is undefined during cleanup.');
 				}
 			};
 		});

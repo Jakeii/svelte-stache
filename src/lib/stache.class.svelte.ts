@@ -2,8 +2,9 @@ import { untrack } from 'svelte';
 import { hashKey } from './utils';
 import type { GlobalPagedStacheCache, GlobalStacheCache, StacheCache } from './global/cache.svelte';
 import { SvelteDate } from 'svelte/reactivity';
+import { watch } from 'runed';
 
-type BaseStacheParams = unknown;
+// type BaseStacheParams = unknown;
 
 type PageParams = {
 	/**
@@ -27,16 +28,16 @@ type FetchPageParams = {
 	pageSize: number;
 };
 
-type FetchFn<StacheFnParams extends BaseStacheParams, FetchReturnData> = (
+type FetchFn<StacheFnParams, FetchReturnData> = (
 	args: StacheFnParams
 ) => Promise<FetchReturnData> | FetchReturnData;
 
-type PagedFetchFn<StacheFnParams extends BaseStacheParams, FetchReturnData> = (
+type PagedFetchFn<StacheFnParams, FetchReturnData> = (
 	args: StacheFnParams,
 	pageParams: FetchPageParams
 ) => Promise<FetchReturnData> | FetchReturnData;
 
-type StacheConstructorOptions<StacheFnParams extends BaseStacheParams, Result, FetchReturnData> = {
+type StacheConstructorOptions<StacheFnParams, Result, FetchReturnData> = {
 	/**
 	 * Unique identifier for the stache type.
 	 * Used in conjunction with `params` to uniquely identify a stache instance.
@@ -82,7 +83,7 @@ type StacheConstructorOptions<StacheFnParams extends BaseStacheParams, Result, F
 	refetchOnWindowFocus?: boolean;
 };
 
-type UseStacheOptions<Params extends BaseStacheParams, Result = unknown> = {
+type UseStacheOptions<Params, Result> = {
 	/**
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
@@ -101,7 +102,7 @@ type UseStacheOptions<Params extends BaseStacheParams, Result = unknown> = {
 	enabled?: boolean;
 };
 
-type UsePagedStacheOptions<Params extends BaseStacheParams, Result> = {
+type UsePagedStacheOptions<Params, Result> = {
 	/**
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
@@ -142,7 +143,7 @@ type UsePagedStacheOptions<Params extends BaseStacheParams, Result> = {
  * Queries are automatically cleaned up from the cache after a period of inactivity (no references).
  *
  */
-class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
+class Stache<FetchParams, Result, FetchReturnData> {
 	/**
 	 * The cache this stache belongs to, used for cleanup.
 	 */
@@ -187,7 +188,7 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 
 	enabled = $state(true);
 	fetchStatus: 'idle' | 'loading' | 'error' | 'success' = $state('idle');
-	cacheStatus: 'fresh' | 'stale' = $state('fresh');
+	cacheStatus: 'fresh' | 'stale' | 'empty' = $state('empty');
 	data: FetchReturnData | null = $state(null);
 
 	extractData: (data: unknown) => unknown = (data: unknown) => data;
@@ -277,28 +278,23 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 
 		this.run(this.params!, this.fetchPageParams);
 
-		$effect(() => {
-			if (this.referenceCount === 0 && !this.cleanupTimeout) {
-				this.scheduleCleanup();
-			} else if (this.referenceCount > 0 && this.cleanupTimeout) {
-				clearTimeout(this.cleanupTimeout);
-				this.cleanupTimeout = null;
-			}
-		});
-
-		$effect(() => {
-			if (this.lastFetched && this.cacheStatus === 'fresh') {
-				untrack(() => {
-					this.scheduleCacheStatusUpdate();
-				});
-			}
+		$inspect({
+			id: this.id,
+			params: this.params,
+			fetchStatus: this.fetchStatus,
+			cacheStatus: this.cacheStatus,
+			enabled: this.enabled,
+			referenceCount: this.referenceCount,
+			isFetching: this.isFetching
 		});
 
 		if (globalThis?.window && this.refetchOnWindowFocus) {
 			window.addEventListener('focus', () => {
-				if (this.cacheStatus === 'stale' && this.referenceCount > 0) {
-					this.run(this.params!, this.fetchPageParams);
-				}
+				this.maybeRun(true);
+				// if (this.cacheStatus === 'stale' && this.referenceCount > 0) {
+				// 	console.log('Refetching stache due to window focus:', this.id, this.params);
+				// 	this.run(this.params!, this.fetchPageParams);
+				// }
 			});
 		}
 	}
@@ -322,7 +318,11 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 			this.enabled = enabled && canRun;
 		}
 
-		this.run(this.params!, this.fetchPageParams);
+		this.maybeRun();
+		this.maybeCancelCleanup();
+		// if (this.cacheStatus === 'stale' && this.enabled && this.refetchOnStale) {
+		// 	this.run(this.params!, this.fetchPageParams);
+		// }
 	}
 
 	/**
@@ -338,11 +338,13 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 		this.fetchStatus = 'loading';
 		this.error = null;
 		try {
+			// console.log('Fetching stache:', this.id, params, fetchPageParams);
 			const data = fetchPageParams
 				? await (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(params, fetchPageParams)
 				: await (this.fetch as FetchFn<FetchParams, FetchReturnData>)(params);
 			this.fetchStatus = 'success';
 			this.cacheStatus = 'fresh';
+			this.scheduleCacheStatusUpdate();
 			this.data = data;
 			this.lastFetched = new SvelteDate();
 		} catch (err) {
@@ -357,30 +359,71 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 		}
 	}
 
+	private maybeRun(triggeredByWindowFocus = false) {
+		if (
+			(((this.cacheStatus === 'stale' && this.refetchOnStale) || triggeredByWindowFocus) &&
+				this.enabled &&
+				this.referenceCount > 0) ||
+			(this.cacheStatus === 'empty' && this.enabled && this.referenceCount > 0)
+		) {
+			// console.log('Refetching stache due to stale/empty status:', {
+			// 	id: this.id,
+			// 	params: this.params,
+			// 	cacheStatus: this.cacheStatus,
+			// 	enabled: this.enabled,
+			// 	referenceCount: this.referenceCount
+			// });
+			this.run(this.params!, this.fetchPageParams);
+		} else {
+			// console.log('Not refetching stache on maybeRun:', {
+			// 	id: this.id,
+			// 	params: this.params,
+			// 	cacheStatus: this.cacheStatus,
+			// 	enabled: this.enabled,
+			// 	referenceCount: this.referenceCount,
+			// 	refetchOnStale: this.refetchOnStale
+			// });
+		}
+	}
+
 	/**
 	 * Schedules cleanup of the stache from the cache after a period of inactivity.
 	 * If the stache gains a reference before the timeout, the cleanup is canceled (see constructor).
 	 */
-	private scheduleCleanup() {
+	scheduleCleanup() {
+		this.maybeCancelCleanup();
 		this.cleanupTimeout = setTimeout(() => {
 			if (this.referenceCount <= 0) {
+				// console.log('Cleaning up stache from cache:', this.id, this.params);
 				this.stacheCache.delete(hashKey(this.params));
+			} else {
+				// console.log(
+				// 	'Not cleaning up stache, references exist:',
+				// 	this.id,
+				// 	this.params,
+				// 	this.referenceCount
+				// );
 			}
 			this.cleanupTimeout = null;
 		}, this.cleanupTime);
+	}
+
+	maybeCancelCleanup(force = false) {
+		if (this.cleanupTimeout && (force || this.referenceCount > 0)) {
+			clearTimeout(this.cleanupTimeout);
+			this.cleanupTimeout = null;
+		}
 	}
 
 	private scheduleCacheStatusUpdate() {
 		if (this.scheduleCacheStatusCheckTimeout) {
 			clearTimeout(this.scheduleCacheStatusCheckTimeout);
 		}
+		// console.log('Scheduling cache status update for stache:', this.id, this.params);
 		this.scheduleCacheStatusCheckTimeout = setTimeout(() => {
-			// if (this.lastFetched && Date.now() - this.lastFetched.getTime() > this.staleTime) {
 			this.cacheStatus = 'stale';
-			if (this.refetchOnStale) {
-				this.run(this.params!);
-			}
-			// }
+			this.maybeRun();
+			this.scheduleCacheStatusCheckTimeout = null;
 		}, this.staleTime);
 	}
 
@@ -394,11 +437,10 @@ class Stache<FetchParams extends BaseStacheParams, Result, FetchReturnData> {
 
 export { Stache };
 export type {
-	UseStacheOptions as StacheOptions,
+	UseStacheOptions as UseStacheOptions,
 	UsePagedStacheOptions,
 	StacheConstructorOptions,
 	FetchFn,
 	PagedFetchFn,
-	BaseStacheParams,
 	FetchPageParams
 };
