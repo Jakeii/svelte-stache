@@ -57,7 +57,7 @@
 		<div class="profile-card">
 			<img src={user.data.avatar} alt={user.data.name} class="avatar" />
 			<div class="info">
-				<h3>{user.data.name}</h3>
+				<h3>{user.data.name} {user.data.id}</h3>
 				<p class="role">{user.data.role}</p>
 				<p class="email">{user.data.email}</p>
 				{#if user.data.bio}
@@ -88,7 +88,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		padding: 1.5rem;
-		background: var(--color-background-alt, #f9fafb);
+		background: var(--color-background-secondary, #f9fafb);
 	}
 
 	.user-selector {

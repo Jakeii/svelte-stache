@@ -78,7 +78,7 @@
 		</div>
 	{:else if results.data && results.data.length > 0}
 		<ul class="results">
-			{#each results.data as user}
+			{#each results.data as user (user.id)}
 				<li class="user-result">
 					<img src={user.avatar} alt={user.name} class="user-avatar" />
 					<div class="user-info">
@@ -89,7 +89,7 @@
 				</li>
 			{/each}
 		</ul>
-	{:else if !debouncedQuery}
+	{:else if !debouncedQuery.current}
 		<div class="placeholder">
 			<p>Try searching for:</p>
 			<div class="suggestions">
@@ -100,7 +100,7 @@
 		</div>
 	{/if}
 
-	{#if debouncedQuery && results.data}
+	{#if debouncedQuery.current && results.data}
 		<div class="status-bar">
 			<span class="result-count"
 				>{results.data.length} result{results.data.length !== 1 ? 's' : ''}</span
@@ -121,7 +121,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		padding: 1.5rem;
-		background: var(--color-background-alt, #f9fafb);
+		background: var(--color-background-secondary, #f9fafb);
 	}
 
 	.search-box {
@@ -321,7 +321,7 @@
 
 	.role {
 		padding: 0.25rem 0.5rem;
-		background: var(--color-background-alt, #f3f4f6);
+		background: var(--color-background-secondary, #f3f4f6);
 		border-radius: 4px;
 		font-size: 0.7rem;
 		font-weight: 500;

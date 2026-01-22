@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createMutation } from "$lib/index.js";
+	import { createMutation } from '$lib/index.js';
 
 	interface CreatePostInput {
 		title: string;
@@ -19,36 +19,36 @@
 
 	const useCreatePost = createMutation<CreatePostInput, Post>({
 		mutationFn: async (data: CreatePostInput): Promise<Post> => {
-			const response = await fetch("/api/posts", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(data),
+			const response = await fetch('/api/posts', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
 			});
 
 			if (!response.ok) {
-				throw new Error("Failed to create post");
+				throw new Error('Failed to create post');
 			}
 
 			return response.json();
-		},
+		}
 	});
 
 	const mutation = useCreatePost({
 		onSuccess: ({ result }) => {
-			title = "";
-			content = "";
-			category = "Technology";
+			title = '';
+			content = '';
+			category = 'Technology';
 			successMessage = `Post "${result.title}" created successfully!`;
 			createdPosts = [result, ...createdPosts].slice(0, 3);
 
-			setTimeout(() => (successMessage = ""), 3000);
-		},
+			setTimeout(() => (successMessage = ''), 3000);
+		}
 	});
 
-	let title = $state("");
-	let content = $state("");
-	let category = $state("Technology");
-	let successMessage = $state("");
+	let title = $state('');
+	let content = $state('');
+	let category = $state('Technology');
+	let successMessage = $state('');
 	let createdPosts = $state<Post[]>([]);
 
 	const handleSubmit = async (e: Event) => {
@@ -59,7 +59,7 @@
 		await mutation.mutate({
 			title: title.trim(),
 			content: content.trim(),
-			category,
+			category
 		});
 	};
 
@@ -103,7 +103,7 @@
 
 		{#if mutation.isError}
 			<div class="error">
-				{mutation.error instanceof Error ? mutation.error.message : "An error occurred"}
+				{mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}
 			</div>
 		{/if}
 
@@ -123,7 +123,13 @@
 
 	<div class="status-bar">
 		<span class="status-label">Mutation Status:</span>
-		<span class="status-value" class:idle={mutation.status === "idle"} class:loading={mutation.status === "loading"} class:success={mutation.status === "success"} class:error={mutation.status === "error"}>
+		<span
+			class="status-value"
+			class:idle={mutation.status === 'idle'}
+			class:loading={mutation.status === 'loading'}
+			class:success={mutation.status === 'success'}
+			class:error={mutation.status === 'error'}
+		>
 			{mutation.status}
 		</span>
 	</div>
@@ -146,7 +152,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		padding: 1.5rem;
-		background: var(--color-background-alt, #f9fafb);
+		background: var(--color-background-secondary, #f9fafb);
 	}
 
 	form {
@@ -214,7 +220,7 @@
 		font-size: 0.875rem;
 	}
 
-	button[type="submit"] {
+	button[type='submit'] {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -230,11 +236,11 @@
 		transition: opacity 0.15s;
 	}
 
-	button[type="submit"]:hover:not(:disabled) {
+	button[type='submit']:hover:not(:disabled) {
 		opacity: 0.9;
 	}
 
-	button[type="submit"]:disabled {
+	button[type='submit']:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}

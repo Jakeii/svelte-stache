@@ -121,7 +121,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		padding: 1.5rem;
-		background: var(--color-background-alt, #f9fafb);
+		background: var(--color-background-secondary, #f9fafb);
 	}
 
 	.user-selector {

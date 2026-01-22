@@ -58,5 +58,38 @@ const getPagedStache = <FetchParams, Result, FetchReturnData>(
 	return pageCache?.get(stacheKey) as Stache<FetchParams, Result, FetchReturnData> | undefined;
 };
 
-export { getStacheCache, getPagedStacheCache, getStache, getPagedStache };
+const getGlobalStacheCache = (): GlobalStacheCache => globalStacheCache;
+
+const getGlobalPagedStacheCache = (): GlobalPagedStacheCache => pagedGlobalStacheCache;
+
+const invalidateStacheById = (id: string): void => {
+	const cache = globalStacheCache.get(id);
+	if (cache) {
+		for (const stache of cache.values()) {
+			stache.invalidate();
+		}
+	}
+};
+
+const invalidatePagedStacheById = (id: string): void => {
+	const cache = pagedGlobalStacheCache.get(id);
+	if (cache) {
+		for (const pageCache of cache.values()) {
+			for (const stache of pageCache.values()) {
+				stache.invalidate();
+			}
+		}
+	}
+};
+
+export {
+	getStacheCache,
+	getPagedStacheCache,
+	getStache,
+	getPagedStache,
+	getGlobalStacheCache,
+	getGlobalPagedStacheCache,
+	invalidateStacheById,
+	invalidatePagedStacheById
+};
 export type { GlobalStacheCache, StacheCache, GlobalPagedStacheCache, PagedStacheCache };
