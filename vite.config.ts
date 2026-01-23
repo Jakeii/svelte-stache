@@ -13,6 +13,10 @@ export default defineConfig({
 		}
 	},
 
+	resolve: {
+		conditions: ['browser']
+	},
+
 	test: {
 		expect: { requireAssertions: true },
 

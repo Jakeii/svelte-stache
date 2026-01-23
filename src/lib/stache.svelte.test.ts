@@ -46,14 +46,6 @@ describe('createStache cache implementation', () => {
 
 				flushSync();
 
-				console.log('Stache:', {
-					data: stache.data,
-					isError: stache.isError,
-					isLoading: stache.isLoading,
-					isSuccess: stache.isSuccess,
-					referenceCount: stache.referenceCount
-				});
-
 				expect(fetchFn).toHaveBeenCalledWith(1);
 				expect(stache.data).toEqual({ data: 'test' });
 				expect(stache.isError).toBe(false);
@@ -261,21 +253,28 @@ describe('createStache cache implementation', () => {
 			let stache1: PublicStache<any, any, any>;
 
 			await withEffectRoot(async () => {
-				console.log('Mounting first effect root');
-
 				expect(globalCache.has('cleanup-test')).toBe(true);
 
 				// Create three stache instances with same params
 				const params1 = $state('param1');
 				stache1 = useStache(() => ({ params: params1 }));
 
+				flushSync();
+
+				expect(stache1.referenceCount).toBe(1);
+
 				const params2 = $state('param1');
 				const stache2 = useStache(() => ({ params: params2 }));
+
+				flushSync();
+				expect(stache1.referenceCount).toBe(2);
 
 				const params3 = $state('param1');
 				const stache3 = useStache(() => ({ params: params3 }));
 
 				flushSync();
+
+				expect(stache1.referenceCount).toBe(3);
 
 				expect(globalCache.get('cleanup-test')?.get(hashKey('param1'))).toBeDefined();
 
@@ -349,8 +348,6 @@ describe('createStache cache implementation', () => {
 			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.referenceCount).toBe(0);
 
 			fetchFn.mockClear();
-
-			console.log('Advancing timers to make staches stale');
 
 			// make stale
 			vi.advanceTimersToNextTimer();
@@ -470,6 +467,8 @@ describe('createStache cache implementation', () => {
 				expect(cache1).toBeDefined();
 				expect(cache2).toBeDefined();
 
+				flushSync();
+
 				expect(cache1?.referenceCount).toBe(0);
 				expect(cache2?.referenceCount).toBe(1);
 
@@ -560,12 +559,8 @@ describe('createStache cache implementation', () => {
 
 				vi.advanceTimersToNextTimer();
 
-				console.log(stache._stache.cacheStatus);
-
 				// Should become stale quickly
 				await vi.waitUntil(() => stache.cacheStatus === 'stale');
-
-				console.log(stache._stache.cacheStatus);
 
 				expect(stache.cacheStatus).toBe('stale');
 			})
@@ -1336,7 +1331,7 @@ describe('createStache cache implementation', () => {
 				enabled = true;
 				flushSync();
 
-				// vi.advanceTimersToNextTimer();
+				vi.advanceTimersToNextTimer();
 
 				await vi.waitUntil(() => fetchFn.mock.calls.length === 2);
 
@@ -1736,7 +1731,6 @@ describe('createStache cache implementation', () => {
 					return Promise.resolve({ data: `result-${params}` });
 				};
 
-				console.log(fetchFn.length); // Should be 1
 				const { useStache } = createStache({
 					id: 'undefined-params-disable-test',
 					fetch: fetchFn

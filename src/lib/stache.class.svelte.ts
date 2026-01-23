@@ -181,6 +181,8 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 */
 	readonly params: FetchParams;
 
+	readonly cacheKey: string;
+
 	/**
 	 * Pagination parameters for the stache, if applicable.
 	 */
@@ -245,6 +247,7 @@ class Stache<FetchParams, Result, FetchReturnData> {
 			this.retries = retries;
 		}
 		this.params = params as FetchParams;
+		this.cacheKey = hashKey(this.params);
 		this.fetchPageParams = fetchPageParams;
 		this.initialData = initialData ?? null;
 		this.data = null;
@@ -278,15 +281,15 @@ class Stache<FetchParams, Result, FetchReturnData> {
 
 		this.run(this.params!, this.fetchPageParams);
 
-		$inspect({
-			id: this.id,
-			params: this.params,
-			fetchStatus: this.fetchStatus,
-			cacheStatus: this.cacheStatus,
-			enabled: this.enabled,
-			referenceCount: this.referenceCount,
-			isFetching: this.isFetching
-		});
+		// $inspect({
+		// 	id: this.id,
+		// 	params: this.params,
+		// 	fetchStatus: this.fetchStatus,
+		// 	cacheStatus: this.cacheStatus,
+		// 	enabled: this.enabled,
+		// 	referenceCount: this.referenceCount,
+		// 	isFetching: this.isFetching
+		// });
 
 		if (globalThis?.window && this.refetchOnWindowFocus) {
 			window.addEventListener('focus', () => {
@@ -297,6 +300,8 @@ class Stache<FetchParams, Result, FetchReturnData> {
 				// }
 			});
 		}
+
+		this.stacheCache.set(this.cacheKey, this);
 	}
 
 	/**

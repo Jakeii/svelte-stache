@@ -71,7 +71,6 @@ const getOrCreateStache = <StacheParams, Result, FetchReturnData>(
 	let stache = getStache<StacheParams, Result, FetchReturnData>(cache, stacheKey);
 	if (!stache) {
 		stache = new Stache<StacheParams, Result, FetchReturnData>(createOptions, useOptions, cache);
-		cache.set(stacheKey, stache);
 	} else {
 		stache.referenceCount++;
 	}
@@ -105,73 +104,71 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 ) => {
 	const cache = getStacheCache(createOptions.id, createOptions.globalCache);
 
-	type UseStacheOptionsBase<StacheParams, Result> = UseStacheOptions<StacheParams, Result>;
-	const useStache = <T extends Exact<UseStacheOptionsBase<StacheParams, Result>, T>>(
-		useOptionsFn?: () => T
+	const useStache = <T extends Exact<UseStacheOptions<StacheParams, Result>, T>>(
+		useOptionsFn: () => T = () => ({}) as T
 	) => {
-		let initalizing = $state(true);
-		const useOptions = (useOptionsFn?.() ?? {}) as UseStacheOptions<StacheParams, Result>;
+		const useOptions = useOptionsFn() as UseStacheOptions<StacheParams, Result>;
+		const stacheKey = hashKey(useOptions?.params);
 
-		const stacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
-
-		const originalStache = getOrCreateStache<StacheParams, Result, FetchReturnData>(
-			cache,
-			stacheKey,
-			createOptions,
-			useOptions
+		let effectHasRun = $state(false);
+		let stache: Stache<StacheParams, Result, FetchReturnData> = $state(
+			getOrCreateStache<StacheParams, Result, FetchReturnData>(
+				cache,
+				stacheKey,
+				createOptions,
+				useOptions
+			)
 		);
-		let stache = $state(originalStache);
 
+		// Reactive effect to handle parameter changes and stache lifecycle
+		// $effect is used over $derived for deeper reactivity and cleanup control
 		$effect.pre(() => {
-			const useOptions = (useOptionsFn?.() ?? {}) as UseStacheOptions<StacheParams, Result>;
-			const originalKey = stache?.params ? hashKey(stache?.params) : 'no-params';
+			const useOptions = useOptionsFn() as UseStacheOptions<StacheParams, Result>;
+			const stacheKey = hashKey(useOptions?.params);
+
 			untrack(() => {
-				if (!stache) {
-					throw new Error('Stache instance is undefined in useStache effect.');
-				}
-				if (initalizing) {
-					console.log('not running first effect for useStache with id:', createOptions.id);
-					initalizing = false;
-					return;
-				}
+				stache = (() => {
+					// If this is the first run, we don't need to do anything
+					// The stache was already created or retrieved outside the effect
+					if (
+						!effectHasRun ||
+						(useOptions.params === undefined && createOptions.fetch.length > 0)
+					) {
+						effectHasRun = true;
+						return stache;
+					}
 
-				const newStacheKey = useOptions.params ? hashKey(useOptions.params) : 'no-params';
-				const matchExisting = getStache<StacheParams, Result, FetchReturnData>(cache, newStacheKey);
+					// Check if an existing stache is in the cache, used to determine if we need to update options later
+					const hasExistingStache = cache.has(stacheKey);
 
-				const isMissingParams = useOptions.params === undefined && createOptions.fetch.length > 0;
-				const isKeyChanged = newStacheKey !== originalKey;
-
-				if (isMissingParams) {
-					// if params are undefined and fetch requires params, disable stache
-					stache.referenceCount++;
-					stache.setOptions({ ...useOptions, enabled: false });
-				} else if (!isKeyChanged) {
-					// if params didn't change, just update options
-					stache.referenceCount++;
-					stache.setOptions(useOptions);
-				} else if (matchExisting) {
-					// if params changed and existing stache found, switch to it
-					// stache.referenceCount--;
-					stache = matchExisting;
-					stache.referenceCount++;
-				} else {
-					// if params changed but no existing stache, create new one with existing data
-					stache = new Stache<StacheParams, Result, FetchReturnData>(
+					// Get or create the stache instance based on the updated parameters
+					const nextStache = getOrCreateStache<StacheParams, Result, FetchReturnData>(
+						cache,
+						stacheKey,
 						createOptions,
-						useOptions,
-						cache
+						useOptions
 					);
-					cache?.set(newStacheKey, stache);
-				}
 
-				stache.maybeCancelCleanup();
+					if (hasExistingStache) {
+						// Update the options of the existing stache if it was found in the cache
+						nextStache.setOptions(useOptions);
+
+						// Cancel any scheduled cleanup on the new stache since it's being used again
+						nextStache.maybeCancelCleanup();
+					}
+
+					return nextStache;
+				})();
 			});
 
 			return () => {
 				if (stache) {
-					stache.referenceCount--;
+					// Decrement the reference count on cleanup
+					if (stache.referenceCount > 0) {
+						stache.referenceCount--;
+					}
+					// If reference count reaches zero, schedule cleanup
 					if (stache.referenceCount === 0) {
-						console.log('Scheduling cleanup for stache:', stache.id, stache.params);
 						stache.scheduleCleanup();
 					}
 				} else {
@@ -183,41 +180,44 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 		return {
 			// Access the stache instance reactively because it is a $state
 			get data() {
-				return stache!.data ?? (stache!.initialData as FetchReturnData);
+				return stache.data ?? (stache.initialData as FetchReturnData);
+			},
+			get enabled() {
+				return stache.enabled;
 			},
 			get isFetching() {
-				return stache!.isFetching;
+				return stache.isFetching;
 			},
 			get error() {
-				return stache!.error;
+				return stache.error;
 			},
 			get fetchStatus() {
-				return stache!.fetchStatus;
+				return stache.fetchStatus;
 			},
 			get isError() {
-				return stache!.isError;
+				return stache.isError;
 			},
 			get isLoading() {
-				return stache!.isLoading;
+				return stache.isLoading;
 			},
 			get isSuccess() {
-				return stache!.isSuccess;
+				return stache.isSuccess;
 			},
 			get lastFetched() {
-				return stache!.lastFetched;
+				return stache.lastFetched;
 			},
 			get cacheStatus() {
-				return stache!.cacheStatus;
+				return stache.cacheStatus;
 			},
 			get referenceCount() {
-				return stache!.referenceCount;
+				return stache.referenceCount;
 			},
 			get params() {
-				return stache!.params;
+				return stache.params;
 			},
-			invalidate: () => stache!.invalidate(),
+			invalidate: () => stache.invalidate(),
 			get _stache() {
-				return stache!;
+				return stache;
 			}
 		};
 	};
