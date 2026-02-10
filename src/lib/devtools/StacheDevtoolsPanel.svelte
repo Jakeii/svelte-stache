@@ -1,9 +1,6 @@
 <script lang="ts">
-	import {
-		getGlobalStacheCache,
-		getGlobalPagedStacheCache,
-		invalidateStacheById
-	} from '../global/cache.svelte';
+	import { getGlobalStacheCache, invalidateStacheById } from '../cache/stache.svelte';
+	import { getGlobalPagedStacheCache } from '../cache/paged-stache.svelte';
 	import StacheItem from './StacheItem.svelte';
 	import PagedStacheItem from './PagedStacheItem.svelte';
 
@@ -64,9 +61,7 @@
 
 	// Filtered stache IDs
 	const filteredStacheIds = $derived(
-		[...globalCache.keys()].filter((id) =>
-			id.toLowerCase().includes(searchFilter.toLowerCase())
-		)
+		[...globalCache.keys()].filter((id) => id.toLowerCase().includes(searchFilter.toLowerCase()))
 	);
 
 	const filteredPagedStacheIds = $derived(
@@ -104,7 +99,9 @@
 		<div class="header-left">
 			<div class="logo">
 				<svg width="20" height="20" viewBox="0 0 100 60" fill="currentColor">
-					<path d="M10 30 C 10 10, 30 10, 35 25 C 40 35, 45 35, 50 30 C 55 35, 60 35, 65 25 C 70 10, 90 10, 90 30 C 90 45, 75 50, 65 45 C 60 42, 55 42, 50 45 C 45 42, 40 42, 35 45 C 25 50, 10 45, 10 30" />
+					<path
+						d="M10 30 C 10 10, 30 10, 35 25 C 40 35, 45 35, 50 30 C 55 35, 60 35, 65 25 C 70 10, 90 10, 90 30 C 90 45, 75 50, 65 45 C 60 42, 55 42, 50 45 C 45 42, 40 42, 35 45 C 25 50, 10 45, 10 30"
+					/>
 				</svg>
 				<span class="title">Stache Devtools</span>
 			</div>
@@ -120,19 +117,45 @@
 			</div>
 		</div>
 		<div class="header-actions">
-			<button class="theme-btn" onclick={cycleTheme} aria-label="Toggle theme" title="Theme: {theme}">
+			<button
+				class="theme-btn"
+				onclick={cycleTheme}
+				aria-label="Toggle theme"
+				title="Theme: {theme}"
+			>
 				{#if theme === 'system'}
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
 						<line x1="8" y1="21" x2="16" y2="21"></line>
 						<line x1="12" y1="17" x2="12" y2="21"></line>
 					</svg>
 				{:else if theme === 'dark'}
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
 					</svg>
 				{:else}
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<circle cx="12" cy="12" r="5"></circle>
 						<line x1="12" y1="1" x2="12" y2="3"></line>
 						<line x1="12" y1="21" x2="12" y2="23"></line>
@@ -146,7 +169,14 @@
 				{/if}
 			</button>
 			<button class="close-btn" onclick={onclose} aria-label="Close devtools">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<line x1="18" y1="6" x2="6" y2="18"></line>
 					<line x1="6" y1="6" x2="18" y2="18"></line>
 				</svg>
@@ -156,7 +186,15 @@
 
 	<div class="panel-toolbar">
 		<div class="search-container">
-			<svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<svg
+				class="search-icon"
+				width="14"
+				height="14"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+			>
 				<circle cx="11" cy="11" r="8"></circle>
 				<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
 			</svg>
@@ -168,7 +206,14 @@
 			/>
 			{#if searchFilter}
 				<button class="clear-search" onclick={() => (searchFilter = '')} aria-label="Clear search">
-					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						width="12"
+						height="12"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<line x1="18" y1="6" x2="6" y2="18"></line>
 						<line x1="6" y1="6" x2="18" y2="18"></line>
 					</svg>
@@ -222,7 +267,12 @@
 									tabindex="0"
 									aria-expanded={expandedIds.has(id)}
 									onclick={() => toggleId(id)}
-									onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleId(id); } }}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											toggleId(id);
+										}
+									}}
 								>
 									<span class="expand-icon" class:rotated={expandedIds.has(id)}>
 										<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
@@ -239,7 +289,14 @@
 										}}
 										title="Invalidate all"
 									>
-										<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<svg
+											width="12"
+											height="12"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
 											<polyline points="23 4 23 10 17 10"></polyline>
 											<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
 										</svg>
@@ -258,26 +315,24 @@
 					{/each}
 				</div>
 			{/if}
+		{:else if filteredPagedStacheIds.length === 0}
+			<div class="empty-state">
+				{#if searchFilter}
+					<p>No paged queries match "{searchFilter}"</p>
+				{:else}
+					<p>No paged queries in cache</p>
+					<span class="empty-hint">Paged queries will appear here when created</span>
+				{/if}
+			</div>
 		{:else}
-			{#if filteredPagedStacheIds.length === 0}
-				<div class="empty-state">
-					{#if searchFilter}
-						<p>No paged queries match "{searchFilter}"</p>
-					{:else}
-						<p>No paged queries in cache</p>
-						<span class="empty-hint">Paged queries will appear here when created</span>
+			<div class="stache-list">
+				{#each filteredPagedStacheIds as id}
+					{@const pagedCache = pagedGlobalCache.get(id)}
+					{#if pagedCache && pagedCache.size > 0}
+						<PagedStacheItem {id} {pagedCache} />
 					{/if}
-				</div>
-			{:else}
-				<div class="stache-list">
-					{#each filteredPagedStacheIds as id}
-						{@const pagedCache = pagedGlobalCache.get(id)}
-						{#if pagedCache && pagedCache.size > 0}
-							<PagedStacheItem {id} {pagedCache} />
-						{/if}
-					{/each}
-				</div>
-			{/if}
+				{/each}
+			</div>
 		{/if}
 	</div>
 </div>
@@ -321,6 +376,7 @@
 		--stache-status-error: #ef4444;
 		--stache-status-fresh: #10b981;
 		--stache-status-stale: #f59e0b;
+		--stache-status-empty: #6b7280;
 	}
 
 	.panel-header {
@@ -355,7 +411,9 @@
 		border-radius: 4px;
 		color: var(--stache-devtools-text-muted);
 		cursor: pointer;
-		transition: color 0.15s, background-color 0.15s;
+		transition:
+			color 0.15s,
+			background-color 0.15s;
 	}
 
 	.theme-btn:hover {
@@ -407,7 +465,9 @@
 		border-radius: 4px;
 		color: var(--stache-devtools-text-muted);
 		cursor: pointer;
-		transition: color 0.15s, background-color 0.15s;
+		transition:
+			color 0.15s,
+			background-color 0.15s;
 	}
 
 	.close-btn:hover {
@@ -470,7 +530,9 @@
 		border-radius: 3px;
 		color: var(--stache-devtools-text-muted);
 		cursor: pointer;
-		transition: color 0.15s, background-color 0.15s;
+		transition:
+			color 0.15s,
+			background-color 0.15s;
 	}
 
 	.clear-search:hover {
@@ -495,7 +557,9 @@
 		font-size: 0.8125rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: color 0.15s, background-color 0.15s;
+		transition:
+			color 0.15s,
+			background-color 0.15s;
 	}
 
 	.tab:hover {
@@ -616,7 +680,9 @@
 		border-radius: 4px;
 		color: var(--stache-devtools-text-muted);
 		cursor: pointer;
-		transition: color 0.15s, background-color 0.15s;
+		transition:
+			color 0.15s,
+			background-color 0.15s;
 	}
 
 	.invalidate-group-btn:hover {

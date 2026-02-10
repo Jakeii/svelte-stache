@@ -21,14 +21,17 @@
 			}
 			return response.json();
 		},
-		staleTime: 1000 * 60 * 5,
-		refetchOnWindowFocus: true
+		staleTime: 1000 * 5,
+		cleanupTime: 1000 * 10
 	});
 
 	let userId = $state('user-1');
 
+	let enabled = $state(true);
+
 	const user = getUser(() => ({
-		params: userId
+		params: userId,
+		enabled: enabled
 	}));
 </script>
 
@@ -68,19 +71,24 @@
 				{/if}
 			</div>
 		</div>
-
-		<div class="meta">
-			<span
-				class="status"
-				class:fresh={user.cacheStatus === 'fresh'}
-				class:stale={user.cacheStatus === 'stale'}
-			>
-				Cache: {user.cacheStatus}
-			</span>
-			<span class="fetch-status">Status: {user.fetchStatus}</span>
-			<button onclick={() => user.invalidate()}>Refresh</button>
-		</div>
 	{/if}
+
+	<div class="meta">
+		<span
+			class="status"
+			class:fresh={user.cacheStatus === 'fresh'}
+			class:stale={user.cacheStatus === 'stale'}
+		>
+			Cache: {user.cacheStatus}
+		</span>
+		<button
+			onclick={() => {
+				enabled = !enabled;
+			}}>Enabled: {enabled ? 'Yes' : 'No'}</button
+		>
+		<span class="fetch-status">Status: {user.fetchStatus}</span>
+		<button onclick={() => user.invalidate()}>Refresh</button>
+	</div>
 </div>
 
 <style>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	type FetchStatus = 'idle' | 'loading' | 'error' | 'success';
-	type CacheStatus = 'fresh' | 'stale';
+	type CacheStatus = 'fresh' | 'stale' | 'empty';
 
 	interface Props {
 		fetchStatus: FetchStatus;
@@ -19,7 +19,8 @@
 
 	const cacheStatusConfig = {
 		fresh: { color: 'var(--stache-status-fresh)', label: 'Fresh' },
-		stale: { color: 'var(--stache-status-stale)', label: 'Stale' }
+		stale: { color: 'var(--stache-status-stale)', label: 'Stale' },
+		empty: { color: 'var(--stache-status-empty)', label: 'Empty' }
 	};
 
 	const config = $derived(fetchStatusConfig[fetchStatus]);

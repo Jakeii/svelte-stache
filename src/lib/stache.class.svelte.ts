@@ -1,8 +1,7 @@
-import { untrack } from 'svelte';
 import { hashKey } from './utils';
-import type { GlobalPagedStacheCache, GlobalStacheCache, StacheCache } from './global/cache.svelte';
+import type { GlobalStacheCache, StacheCache } from './cache/stache.svelte';
+import type { GlobalPagedStacheCache } from './cache/paged-stache.svelte';
 import { SvelteDate } from 'svelte/reactivity';
-import { watch } from 'runed';
 
 // type BaseStacheParams = unknown;
 
@@ -188,6 +187,8 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 */
 	readonly fetchPageParams: FetchPageParams | undefined;
 
+	readonly pageCacheKey: string | null = null;
+
 	enabled = $state(true);
 	fetchStatus: 'idle' | 'loading' | 'error' | 'success' = $state('idle');
 	cacheStatus: 'fresh' | 'stale' | 'empty' = $state('empty');
@@ -249,6 +250,7 @@ class Stache<FetchParams, Result, FetchReturnData> {
 		this.params = params as FetchParams;
 		this.cacheKey = hashKey(this.params);
 		this.fetchPageParams = fetchPageParams;
+		this.pageCacheKey = fetchPageParams ? hashKey(fetchPageParams) : null;
 		this.initialData = initialData ?? null;
 		this.data = null;
 		if (staleTime !== undefined) {
@@ -301,7 +303,7 @@ class Stache<FetchParams, Result, FetchReturnData> {
 			});
 		}
 
-		this.stacheCache.set(this.cacheKey, this);
+		this.stacheCache.set(this.pageCacheKey ? this.pageCacheKey : this.cacheKey, this);
 	}
 
 	/**
@@ -343,7 +345,6 @@ class Stache<FetchParams, Result, FetchReturnData> {
 		this.fetchStatus = 'loading';
 		this.error = null;
 		try {
-			// console.log('Fetching stache:', this.id, params, fetchPageParams);
 			const data = fetchPageParams
 				? await (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(params, fetchPageParams)
 				: await (this.fetch as FetchFn<FetchParams, FetchReturnData>)(params);
@@ -371,23 +372,23 @@ class Stache<FetchParams, Result, FetchReturnData> {
 				this.referenceCount > 0) ||
 			(this.cacheStatus === 'empty' && this.enabled && this.referenceCount > 0)
 		) {
-			// console.log('Refetching stache due to stale/empty status:', {
-			// 	id: this.id,
-			// 	params: this.params,
-			// 	cacheStatus: this.cacheStatus,
-			// 	enabled: this.enabled,
-			// 	referenceCount: this.referenceCount
-			// });
+			console.log('Refetching stache due to stale/empty status:', {
+				id: this.id,
+				params: this.params,
+				cacheStatus: this.cacheStatus,
+				enabled: this.enabled,
+				referenceCount: this.referenceCount
+			});
 			this.run(this.params!, this.fetchPageParams);
 		} else {
-			// console.log('Not refetching stache on maybeRun:', {
-			// 	id: this.id,
-			// 	params: this.params,
-			// 	cacheStatus: this.cacheStatus,
-			// 	enabled: this.enabled,
-			// 	referenceCount: this.referenceCount,
-			// 	refetchOnStale: this.refetchOnStale
-			// });
+			console.log('Not refetching stache on maybeRun:', {
+				id: this.id,
+				params: this.params,
+				cacheStatus: this.cacheStatus,
+				enabled: this.enabled,
+				referenceCount: this.referenceCount,
+				refetchOnStale: this.refetchOnStale
+			});
 		}
 	}
 
@@ -442,10 +443,11 @@ class Stache<FetchParams, Result, FetchReturnData> {
 
 export { Stache };
 export type {
-	UseStacheOptions as UseStacheOptions,
+	UseStacheOptions,
 	UsePagedStacheOptions,
 	StacheConstructorOptions,
 	FetchFn,
 	PagedFetchFn,
-	FetchPageParams
+	FetchPageParams,
+	PageParams
 };

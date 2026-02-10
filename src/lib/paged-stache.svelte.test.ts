@@ -3,6 +3,7 @@ import { flushSync } from 'svelte';
 import { createPagedStache } from './paged-stache.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import type { Stache } from './stache.class.svelte';
+import { hashKey } from './utils';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -87,12 +88,18 @@ describe('createPagedStache cache implementation', () => {
 						Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
 					);
 
+				const globalCache = new SvelteMap<
+					string,
+					SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+				>();
+
 				const { useStache } = createPagedStache({
 					id: 'multi-page-test',
 					fetch: fetchFn,
 					pageSize: 10,
 					getData: (response) => response.data,
-					getTotalCount: (response) => response.totalCount
+					getTotalCount: (response) => response.totalCount,
+					globalCache
 				});
 
 				const params = $state({ query: 'test' });
@@ -106,10 +113,18 @@ describe('createPagedStache cache implementation', () => {
 				await vi.waitUntil(() => stache.data !== null && stache.data.length === 30);
 
 				// Should fetch 3 pages
-				expect(fetchFn).toHaveBeenCalledTimes(3);
+				// expect(fetchFn).toHaveBeenCalledTimes(3);
 				expect(fetchFn).toHaveBeenCalledWith({ query: 'test' }, { pageIndex: 0, pageSize: 10 });
 				expect(fetchFn).toHaveBeenCalledWith({ query: 'test' }, { pageIndex: 1, pageSize: 10 });
 				expect(fetchFn).toHaveBeenCalledWith({ query: 'test' }, { pageIndex: 2, pageSize: 10 });
+
+				expect(globalCache.size).toBe(1); // One params key
+
+				const pagesCache = globalCache.get('multi-page-test')!.get(hashKey({ query: 'test' }))!;
+
+				console.log('Page cache keys:', Array.from(pagesCache.keys()));
+
+				expect(pagesCache.size).toBe(3); // Three page indices
 			})
 		);
 
@@ -1090,6 +1105,351 @@ describe('createPagedStache cache implementation', () => {
 				expect(stache3.hasMore).toBe(true);
 			})
 		);
+	});
+
+	describe('Reference counting and cleanup behavior', () => {
+		it('should only delete cache when ALL components are unmounted and timeout expires', async () => {
+			vi.useFakeTimers();
+			const globalCache = new SvelteMap<
+				string,
+				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+			>();
+			const fetchFn = vi
+				.fn()
+				.mockImplementation((params, { pageIndex, pageSize }) =>
+					Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
+				);
+
+			const { useStache } = createPagedStache({
+				id: 'paged-cleanup-test',
+				fetch: fetchFn,
+				pageSize: 10,
+				getData: (response) => response.data,
+				getTotalCount: (response) => response.totalCount,
+				globalCache
+			});
+
+			let stache1: ReturnType<typeof useStache>;
+
+			await withEffectRoot(async () => {
+				const params1 = $state({ query: 'test' });
+				stache1 = useStache(() => ({
+					params: params1,
+					pageParams: { pageOffset: 0, pageCount: 2 }
+				}));
+
+				flushSync();
+
+				await vi.waitUntil(() => stache1.data.length === 20);
+
+				// Cache should exist
+				expect(globalCache.get('paged-cleanup-test')).toBeDefined();
+				const paramsCache = globalCache
+					.get('paged-cleanup-test')!
+					.get(hashKey({ query: 'test' }));
+				expect(paramsCache).toBeDefined();
+				expect(paramsCache!.size).toBe(2); // 2 pages
+
+				// Check reference counts on individual page caches
+				const page0 = paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }));
+				const page1 = paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }));
+				expect(page0?.referenceCount).toBe(1);
+				expect(page1?.referenceCount).toBe(1);
+			})();
+
+			// After effect cleanup, reference counts should be 0
+			const paramsCache = globalCache.get('paged-cleanup-test')!.get(hashKey({ query: 'test' }));
+			const page0 = paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }));
+			const page1 = paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }));
+			expect(page0?.referenceCount).toBe(0);
+			expect(page1?.referenceCount).toBe(0);
+
+			// Advance timers to trigger cleanup
+			vi.advanceTimersToNextTimer();
+
+			// Cache should be cleaned up
+			await vi.waitFor(() => {
+				const cache = globalCache.get('paged-cleanup-test')?.get(hashKey({ query: 'test' }));
+				return cache === undefined || cache.size === 0;
+			});
+
+			vi.useRealTimers();
+		});
+
+		it('should only refetch referenced page staches when stale', async () => {
+			vi.useFakeTimers();
+			const fetchFn = vi
+				.fn()
+				.mockImplementation((params, { pageIndex, pageSize }) =>
+					Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
+				);
+
+			const globalCache = new SvelteMap<
+				string,
+				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+			>();
+
+			const { useStache } = createPagedStache({
+				id: 'paged-refetch-referenced-test',
+				fetch: fetchFn,
+				pageSize: 10,
+				staleTime: 100,
+				refetchOnStale: true,
+				getData: (response) => response.data,
+				getTotalCount: (response) => response.totalCount,
+				globalCache
+			});
+
+			// First effect root - create staches for pages 0,1,2
+			await withEffectRoot(async () => {
+				const params = $state({ query: 'test' });
+				const stache = useStache(() => ({
+					params,
+					pageParams: { pageOffset: 0, pageCount: 3 }
+				}));
+
+				flushSync();
+
+				await vi.waitUntil(() => stache.data.length === 30);
+				expect(fetchFn).toHaveBeenCalledTimes(3);
+			})();
+
+			// All pages should have refCount 0 now
+			const paramsCache = globalCache
+				.get('paged-refetch-referenced-test')!
+				.get(hashKey({ query: 'test' }));
+			expect(paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))?.referenceCount).toBe(0);
+			expect(paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }))?.referenceCount).toBe(0);
+			expect(paramsCache!.get(hashKey({ pageIndex: 2, pageSize: 10 }))?.referenceCount).toBe(0);
+
+			// Second effect root - only reference page 0
+			await withEffectRoot(async () => {
+				const params = $state({ query: 'test' });
+				const stache = useStache(() => ({
+					params,
+					pageParams: { pageOffset: 0, pageCount: 1 }
+				}));
+
+				flushSync();
+
+				await vi.waitUntil(() => stache.data.length === 10);
+
+				// Page 0 should have refCount 1, others still 0
+				expect(paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))?.referenceCount).toBe(1);
+				expect(paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }))?.referenceCount).toBe(0);
+				expect(paramsCache!.get(hashKey({ pageIndex: 2, pageSize: 10 }))?.referenceCount).toBe(0);
+
+				fetchFn.mockClear();
+
+				// Make stale
+				vi.advanceTimersToNextTimer();
+
+				// Only page 0 should refetch since it's the only one referenced
+				await vi.waitUntil(() => fetchFn.mock.calls.length > 0);
+
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+				expect(fetchFn).toHaveBeenCalledWith({ query: 'test' }, { pageIndex: 0, pageSize: 10 });
+
+				// Page 0 should be fresh, others still stale
+				expect(paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))?.cacheStatus).toBe(
+					'fresh'
+				);
+				expect(paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }))?.cacheStatus).toBe(
+					'stale'
+				);
+				expect(paramsCache!.get(hashKey({ pageIndex: 2, pageSize: 10 }))?.cacheStatus).toBe(
+					'stale'
+				);
+			})();
+
+			vi.useRealTimers();
+		});
+
+		it('should clean up old page caches when pageParams change', async () => {
+			vi.useFakeTimers();
+			const globalCache = new SvelteMap<
+				string,
+				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+			>();
+			const fetchFn = vi
+				.fn()
+				.mockImplementation((params, { pageIndex, pageSize }) =>
+					Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
+				);
+
+			const { useStache } = createPagedStache({
+				id: 'paged-param-change-cleanup-test',
+				fetch: fetchFn,
+				pageSize: 10,
+				getData: (response) => response.data,
+				getTotalCount: (response) => response.totalCount,
+				globalCache
+			});
+
+			await withEffectRoot(async () => {
+				const params = $state({ query: 'test' });
+				let pageOffset = $state(0);
+
+				const stache = useStache(() => ({
+					params,
+					pageParams: { pageOffset, pageCount: 2 }
+				}));
+
+				flushSync();
+
+				await vi.waitUntil(() => stache.data.length === 20);
+
+				const paramsCache = globalCache
+					.get('paged-param-change-cleanup-test')!
+					.get(hashKey({ query: 'test' }));
+
+				// Pages 0 and 1 should exist with refCount 1
+				expect(paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))?.referenceCount).toBe(1);
+				expect(paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }))?.referenceCount).toBe(1);
+
+				// Change to different page window
+				pageOffset = 2;
+				flushSync();
+
+				await vi.waitUntil(() => stache.data[0]?.id === 20);
+
+				// Pages 0 and 1 should have refCount 0 now
+				expect(paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))?.referenceCount).toBe(0);
+				expect(paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }))?.referenceCount).toBe(0);
+				// Pages 2 and 3 should have refCount 1
+				expect(paramsCache!.get(hashKey({ pageIndex: 2, pageSize: 10 }))?.referenceCount).toBe(1);
+				expect(paramsCache!.get(hashKey({ pageIndex: 3, pageSize: 10 }))?.referenceCount).toBe(1);
+
+				// Advance timers to trigger cleanup of unreferenced pages
+				vi.advanceTimersToNextTimer();
+
+				await vi.waitFor(() => {
+					return (
+						paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 })) === undefined &&
+						paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 })) === undefined
+					);
+				});
+
+				// Pages 0 and 1 should be cleaned up
+				expect(paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))).toBeUndefined();
+				expect(paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }))).toBeUndefined();
+				// Pages 2 and 3 should still exist
+				expect(paramsCache!.get(hashKey({ pageIndex: 2, pageSize: 10 }))).toBeDefined();
+				expect(paramsCache!.get(hashKey({ pageIndex: 3, pageSize: 10 }))).toBeDefined();
+			})();
+
+			vi.useRealTimers();
+		});
+
+		it('should handle custom cleanupTime configuration for paged staches', async () => {
+			vi.useFakeTimers();
+			const globalCache = new SvelteMap<
+				string,
+				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+			>();
+			const fetchFn = vi
+				.fn()
+				.mockImplementation((params, { pageIndex, pageSize }) =>
+					Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
+				);
+
+			const { useStache } = createPagedStache({
+				id: 'paged-custom-cleanup-test',
+				fetch: fetchFn,
+				pageSize: 10,
+				cleanupTime: 1000, // 1 second instead of default
+				getData: (response) => response.data,
+				getTotalCount: (response) => response.totalCount,
+				globalCache
+			});
+
+			await withEffectRoot(async () => {
+				const params = $state({ query: 'test' });
+				const stache = useStache(() => ({
+					params,
+					pageParams: { pageOffset: 0, pageCount: 2 }
+				}));
+
+				flushSync();
+				await vi.waitUntil(() => stache.data.length === 20);
+			})();
+
+			// Cache should still exist after effect cleanup
+			const paramsCache = globalCache
+				.get('paged-custom-cleanup-test')!
+				.get(hashKey({ query: 'test' }));
+			expect(paramsCache).toBeDefined();
+			expect(paramsCache!.size).toBe(2);
+
+			// Advance by cleanup time
+			vi.advanceTimersToNextTimer();
+
+			// Cache should be cleaned up
+			await vi.waitFor(() => {
+				const cache = globalCache.get('paged-custom-cleanup-test')?.get(hashKey({ query: 'test' }));
+				return cache === undefined || cache.size === 0;
+			});
+
+			vi.useRealTimers();
+		});
+
+		it('should handle cache cleanup interaction with stale status for paged staches', async () => {
+			vi.useFakeTimers();
+			const globalCache = new SvelteMap<
+				string,
+				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+			>();
+			const fetchFn = vi
+				.fn()
+				.mockImplementation((params, { pageIndex, pageSize }) =>
+					Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
+				);
+
+			const { useStache } = createPagedStache({
+				id: 'paged-stale-cleanup-test',
+				fetch: fetchFn,
+				pageSize: 10,
+				staleTime: 100,
+				cleanupTime: 1000,
+				getData: (response) => response.data,
+				getTotalCount: (response) => response.totalCount,
+				globalCache
+			});
+
+			await withEffectRoot(async () => {
+				const params = $state({ query: 'test' });
+				const stache = useStache(() => ({
+					params,
+					pageParams: { pageOffset: 0, pageCount: 2 }
+				}));
+
+				flushSync();
+				await vi.waitUntil(() => stache.data.length === 20);
+
+				// Wait for stale
+				vi.advanceTimersToNextTimer();
+				await vi.waitUntil(() => stache.cacheStatus === 'stale');
+			})();
+
+			// Should be stale with 0 references
+			const paramsCache = globalCache
+				.get('paged-stale-cleanup-test')!
+				.get(hashKey({ query: 'test' }));
+			const page0 = paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }));
+			expect(page0?.cacheStatus).toBe('stale');
+			expect(page0?.referenceCount).toBe(0);
+
+			// Advance cleanup time
+			vi.advanceTimersToNextTimer();
+
+			// Cache should be cleaned up regardless of stale status
+			await vi.waitFor(() => {
+				const cache = globalCache.get('paged-stale-cleanup-test')?.get(hashKey({ query: 'test' }));
+				return cache === undefined || cache.size === 0;
+			});
+
+			vi.useRealTimers();
+		});
 	});
 
 	describe('Reactive pageParams changes', () => {

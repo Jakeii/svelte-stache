@@ -29,6 +29,10 @@
 		id: 'demo-posts',
 		pageSize: 5,
 		fetch: async (filters: PostFilters, { pageIndex, pageSize }): Promise<PostsResponse> => {
+			console.log(
+				`Fetching posts for pageIndex ${pageIndex}, pageSize ${pageSize}, filters:`,
+				filters
+			);
 			const params = new URLSearchParams({
 				page: String(pageIndex),
 				limit: String(pageSize)
@@ -49,11 +53,11 @@
 	let category = $state<string>('all');
 	let pageCount = $state(1);
 
-	// Reset page count when category changes
-	$effect(() => {
-		category;
-		pageCount = 1;
-	});
+	// // Reset page count when category changes
+	// $effect(() => {
+	// 	category;
+	// 	pageCount = 1;
+	// });
 
 	const posts = getPosts(() => ({
 		params: { category: category === 'all' ? null : category },
@@ -62,6 +66,8 @@
 			pageCount
 		}
 	}));
+
+	$inspect(posts.data);
 
 	const loadMore = () => {
 		if (posts.hasMore && !posts.isFetching) {
@@ -74,7 +80,16 @@
 	<div class="controls">
 		<div class="filter">
 			<label for="category">Category:</label>
-			<select id="category" bind:value={category}>
+			<select
+				id="category"
+				bind:value={
+					() => category,
+					(v) => {
+						pageCount = 1; // Reset to first page on filter change
+						category = v;
+					}
+				}
+			>
 				<option value="all">All Categories</option>
 				<option value="Technology">Technology</option>
 				<option value="Design">Design</option>
@@ -89,7 +104,7 @@
 	</div>
 
 	<div class="posts-list">
-		{#each posts.data ?? [] as post}
+		{#each posts.data ?? [] as post (post.id)}
 			<article class="post-card">
 				<span class="category">{post.category}</span>
 				<h4>{post.title}</h4>

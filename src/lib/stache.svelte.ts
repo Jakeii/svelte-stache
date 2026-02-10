@@ -9,7 +9,7 @@ import {
 	getStacheCache,
 	type GlobalStacheCache,
 	type StacheCache
-} from './global/cache.svelte';
+} from './cache/stache.svelte';
 import { hashKey } from './utils';
 import { untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';
