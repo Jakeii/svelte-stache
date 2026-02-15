@@ -77,7 +77,7 @@ describe('createStache cache implementation', () => {
 				expect(stache.error).toBe(null);
 				expect(stache.isError).toBe(false);
 				expect(stache.isLoading).toBe(false);
-				expect(stache.isFetching).toBe(false);
+				expect(stache.isLoading).toBe(false);
 				expect(stache.isSuccess).toBe(false);
 				expect(stache.lastFetched).toBe(null);
 				expect(stache.referenceCount).toBe(1);
@@ -89,10 +89,10 @@ describe('createStache cache implementation', () => {
 
 				flushSync();
 
-				// await vi.waitUntil(() => stache.isFetching);
+				// await vi.waitUntil(() => stache.isLoading);
 
 				expect(stache.isLoading).toBe(true);
-				expect(stache.isFetching).toBe(true);
+				expect(stache.isLoading).toBe(true);
 				expect(stache.referenceCount).toBe(1);
 
 				// Resolve the stache
@@ -219,10 +219,10 @@ describe('createStache cache implementation', () => {
 				// Stache should trigger automatically
 				flushSync();
 
-				// All should be fetching
-				expect(stache1.isFetching).toBe(true);
-				expect(stache2.isFetching).toBe(true);
-				expect(stache3.isFetching).toBe(true);
+				// All should be loading
+				expect(stache1.isLoading).toBe(true);
+				expect(stache2.isLoading).toBe(true);
+				expect(stache3.isLoading).toBe(true);
 
 				// Resolve the stache
 				resolveStache!({ result: 'success' });
@@ -233,7 +233,7 @@ describe('createStache cache implementation', () => {
 
 				// All instances should have the updated data
 				await vi.waitUntil(() => stache1.data !== null);
-				expect(stache1.isFetching).toBe(false);
+				expect(stache1.isLoading).toBe(false);
 				expect(stache1.data).toEqual({ result: 'success' });
 				expect(stache2.data).toEqual({ result: 'success' });
 				expect(stache3.data).toEqual({ result: 'success' });
@@ -909,7 +909,7 @@ describe('createStache cache implementation', () => {
 		);
 
 		it(
-			'should not trigger refetch if stache is already fetching',
+			'should not trigger refetch if stache is already loading',
 			withEffectRoot(async () => {
 				let resolvePromise: (value: any) => void;
 				const fetchPromise = new Promise((resolve) => {
@@ -918,7 +918,7 @@ describe('createStache cache implementation', () => {
 
 				const fetchFn = vi.fn().mockReturnValue(fetchPromise);
 				const { useStache, invalidate } = createStache({
-					id: 'already-fetching-test',
+					id: 'already-loading-test',
 					fetch: fetchFn
 				});
 
@@ -928,10 +928,10 @@ describe('createStache cache implementation', () => {
 				flushSync();
 
 				// Wait for fetch to start
-				await vi.waitUntil(() => stache.isFetching);
+				await vi.waitUntil(() => stache.isLoading);
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 
-				// Try to invalidate while already fetching
+				// Try to invalidate while already loading
 				invalidate('param');
 				stache.invalidate(); // Try both methods
 				flushSync();
@@ -951,7 +951,7 @@ describe('createStache cache implementation', () => {
 
 	// describe('Initial data handling', () => {
 	// 	it(
-	// 		'should populate stache with initial data before fetching',
+	// 		'should populate stache with initial data before loading',
 	// 		withEffectRoot(async () => {
 	// 			const fetchFn = vi.fn().mockResolvedValue({ data: 'fetched-data' });
 	// 			const { useStache } = createStache({
@@ -1164,7 +1164,7 @@ describe('createStache cache implementation', () => {
 
 				// Error should be cleared when new fetch starts
 				expect(stache.error).toBe(null);
-				expect(stache.isFetching).toBe(true);
+				expect(stache.isLoading).toBe(true);
 
 				// Wait for success
 				await vi.waitUntil(() => stache.isSuccess);

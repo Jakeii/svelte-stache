@@ -1,5 +1,5 @@
-import { SvelteDate, SvelteMap } from 'svelte/reactivity';
-import { untrack } from 'svelte';
+import { SvelteDate } from 'svelte/reactivity';
+import { tick, untrack } from 'svelte';
 import {
 	getPageCache,
 	getPagedStache,
@@ -12,8 +12,7 @@ import {
 	type StacheConstructorOptions,
 	type PagedFetchFn,
 	type UsePagedStacheOptions,
-	type FetchPageParams,
-	type PageParams
+	type FetchPageParams
 } from './stache.class.svelte';
 import type { UseStacheFn } from './stache.svelte';
 import { hashKey } from './utils';
@@ -74,6 +73,8 @@ const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
 				pageSize
 			};
 
+			console.log('cleanupTime:', createOptions.cleanupTime);
+
 			const stacheConstructorOptions: StacheConstructorOptions<
 				StacheParams,
 				Result,
@@ -97,9 +98,10 @@ const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
 			stache = new Stache<StacheParams, Result, FetchReturnData>(
 				stacheConstructorOptions,
 				usePagedOptions,
-				pageCache,
 				fetchPageParams
 			);
+
+			pageCache.set(pageStacheKey, stache);
 
 			console.log(`Created new page stache for pageIndex ${pageIndex} with key ${pageStacheKey}`);
 		} else {
@@ -132,6 +134,7 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 		const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, Result>;
 		const { getData, getTotalCount } = createOptions;
 
+		let effectHasRun = $state(false);
 		let pages = $state(
 			getOrCreatePageStaches<StacheParams, Result, FetchReturnData>(
 				cache,
@@ -148,11 +151,10 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 
 			// Use untrack to avoid infinite loops when updating pages
 			untrack(() => {
-				// Decrement reference count for old pages
-				pages.forEach((stache) => {
-					stache.referenceCount--;
-				});
-
+				if (!effectHasRun) {
+					effectHasRun = true;
+					return;
+				}
 				// Get new pages based on updated pageParams
 				pages = getOrCreatePageStaches<StacheParams, Result, FetchReturnData>(
 					cache,
@@ -160,6 +162,47 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 					useOptions
 				);
 			});
+
+			return () => {
+				const stacheKey = hashKey(useOptions?.params);
+
+				const pageCache = getPageCache<StacheParams, Result, FetchReturnData>(cache, stacheKey);
+				// Cleanup: Decrement reference count of page staches when effect re-runs or component unmounts
+				pages.forEach((stache, pageIndex) => {
+					const pageStacheKey = hashKey({
+						pageIndex,
+						pageSize
+					});
+					if (stache.referenceCount > 0) {
+						stache.referenceCount--;
+					}
+					if (stache.referenceCount === 0) {
+						// Schedule cleanup of stache if no longer referenced
+						void tick().then(() => {
+							if (stache.referenceCount <= 0) {
+								console.log(
+									`Scheduling cleanup for page stache with key ${hashKey(stache.params)}`
+								);
+								stache.cleanupTimeout = setTimeout(() => {
+									if (stache.referenceCount <= 0) {
+										console.log(`Cleaning up page stache with key ${hashKey(stache.params)}`);
+										pageCache.delete(pageStacheKey);
+
+										if (pageCache.size === 0) {
+											cache.delete(stacheKey);
+										}
+									} else {
+										console.log(
+											`Skipped cleanup for page stache with key ${hashKey(stache.params)} because reference count is ${stache.referenceCount}`
+										);
+									}
+									stache.cleanupTimeout = null;
+								}, stache.cleanupTime);
+							}
+						});
+					}
+				});
+			};
 		});
 
 		return {
@@ -187,30 +230,26 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 				}
 				return pages.length * pageSize; // Fallback if no getTotalCount provided
 			},
-
-			get isFetching() {
-				return pages.some((stache) => stache.isFetching);
-			},
 			get error() {
 				return pages.find((stache) => stache.error)?.error || null;
 			},
 			get fetchStatus() {
-				return pages.some((stache) => stache.isFetching)
-					? 'fetching'
-					: pages.every((stache) => stache.isSuccess)
+				return pages.some((stache) => stache.fetchStatus === 'loading')
+					? 'loading'
+					: pages.every((stache) => stache.fetchStatus === 'success')
 						? 'success'
-						: pages.every((stache) => stache.isError)
+						: pages.every((stache) => stache.fetchStatus === 'idle')
 							? 'error'
 							: 'idle';
 			},
 			get isError() {
-				return pages.some((stache) => stache.isError);
+				return pages.some((stache) => stache.fetchStatus === 'error');
 			},
 			get isLoading() {
-				return pages.some((stache) => stache.isLoading);
+				return pages.some((stache) => stache.fetchStatus === 'loading');
 			},
 			get isSuccess() {
-				return pages.every((stache) => stache.isSuccess);
+				return pages.every((stache) => stache.fetchStatus === 'success');
 			},
 			get lastFetched() {
 				const dates = pages

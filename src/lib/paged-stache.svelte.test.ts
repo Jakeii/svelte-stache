@@ -259,7 +259,7 @@ describe('createPagedStache cache implementation', () => {
 				expect(stache.pages).toHaveLength(2);
 				expect(stache.totalCount).toBe(0);
 				expect(stache.isLoading).toBe(true);
-				expect(stache.isFetching).toBe(true);
+				expect(stache.isLoading).toBe(true);
 				expect(stache.isSuccess).toBe(false);
 				expect(stache.isError).toBe(false);
 
@@ -435,7 +435,7 @@ describe('createPagedStache cache implementation', () => {
 
 	describe('Aggregated status properties across pages', () => {
 		it(
-			'should set isFetching to true if ANY page is fetching',
+			'should set isLoading to true if ANY page is fetching',
 			withEffectRoot(async () => {
 				let resolvePage0: (value: any) => void;
 				let resolvePage1: (value: any) => void;
@@ -467,24 +467,24 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.isFetching);
+				await vi.waitUntil(() => stache.isLoading);
 
-				expect(stache.isFetching).toBe(true);
+				expect(stache.isLoading).toBe(true);
 
 				// Resolve first page
 				resolvePage0!(createMockPagedResponse(0, 10, 100));
-				await vi.waitFor(() => !stache.isFetching || fetchFn.mock.calls.length === 2);
+				await vi.waitFor(() => !stache.isLoading || fetchFn.mock.calls.length === 2);
 
 				// Should still be fetching because page 1 is not resolved
 				if (fetchFn.mock.calls.length === 2) {
-					expect(stache.isFetching).toBe(true);
+					expect(stache.isLoading).toBe(true);
 				}
 
 				// Resolve second page
 				resolvePage1!(createMockPagedResponse(1, 10, 100));
-				await vi.waitUntil(() => !stache.isFetching);
+				await vi.waitUntil(() => !stache.isLoading);
 
-				expect(stache.isFetching).toBe(false);
+				expect(stache.isLoading).toBe(false);
 			})
 		);
 
@@ -1144,9 +1144,7 @@ describe('createPagedStache cache implementation', () => {
 
 				// Cache should exist
 				expect(globalCache.get('paged-cleanup-test')).toBeDefined();
-				const paramsCache = globalCache
-					.get('paged-cleanup-test')!
-					.get(hashKey({ query: 'test' }));
+				const paramsCache = globalCache.get('paged-cleanup-test')!.get(hashKey({ query: 'test' }));
 				expect(paramsCache).toBeDefined();
 				expect(paramsCache!.size).toBe(2); // 2 pages
 
@@ -1320,10 +1318,18 @@ describe('createPagedStache cache implementation', () => {
 				expect(paramsCache!.get(hashKey({ pageIndex: 2, pageSize: 10 }))?.referenceCount).toBe(1);
 				expect(paramsCache!.get(hashKey({ pageIndex: 3, pageSize: 10 }))?.referenceCount).toBe(1);
 
+				expect(
+					paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))?.cleanupTimeout
+				).not.toBeNull();
+				expect(
+					paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }))?.cleanupTimeout
+				).not.toBeNull();
+
+				console.log('advancing timers');
 				// Advance timers to trigger cleanup of unreferenced pages
 				vi.advanceTimersToNextTimer();
 
-				await vi.waitFor(() => {
+				await vi.waitUntil(() => {
 					return (
 						paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 })) === undefined &&
 						paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 })) === undefined

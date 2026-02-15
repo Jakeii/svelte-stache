@@ -186,9 +186,6 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 			get enabled() {
 				return stache.enabled;
 			},
-			get isFetching() {
-				return stache.fetchStatus === 'loading';
-			},
 			get error() {
 				return stache.error;
 			},
