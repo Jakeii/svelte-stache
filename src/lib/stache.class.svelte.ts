@@ -178,9 +178,6 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	#fetchStatus: 'idle' | 'loading' | 'error' | 'success' = $state('idle');
 	#cacheStatus: 'fresh' | 'stale' | 'empty' = $state('empty');
 	#data: FetchReturnData | null = $state(null);
-
-	#extractData: (data: unknown) => unknown = (data: unknown) => data;
-
 	#error: unknown = $state(null);
 
 	#lastFetched: SvelteDate | null = $state(null);
@@ -324,7 +321,6 @@ class Stache<FetchParams, Result, FetchReturnData> {
 		if (this.#scheduleCacheStatusCheckTimeout) {
 			clearTimeout(this.#scheduleCacheStatusCheckTimeout);
 		}
-		// console.log('Scheduling cache status update for stache:', this.id, this.params);
 		this.#scheduleCacheStatusCheckTimeout = setTimeout(() => {
 			this.#cacheStatus = 'stale';
 			if (this.refetchOnStale) {

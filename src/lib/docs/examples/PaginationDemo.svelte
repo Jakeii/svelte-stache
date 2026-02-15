@@ -29,10 +29,6 @@
 		id: 'demo-posts',
 		pageSize: 5,
 		fetch: async (filters: PostFilters, { pageIndex, pageSize }): Promise<PostsResponse> => {
-			console.log(
-				`Fetching posts for pageIndex ${pageIndex}, pageSize ${pageSize}, filters:`,
-				filters
-			);
 			const params = new URLSearchParams({
 				page: String(pageIndex),
 				limit: String(pageSize)
@@ -53,12 +49,6 @@
 	let category = $state<string>('all');
 	let pageCount = $state(1);
 
-	// // Reset page count when category changes
-	// $effect(() => {
-	// 	category;
-	// 	pageCount = 1;
-	// });
-
 	const posts = getPosts(() => ({
 		params: { category: category === 'all' ? null : category },
 		pageParams: {
@@ -67,10 +57,8 @@
 		}
 	}));
 
-	$inspect(posts.data);
-
 	const loadMore = () => {
-		if (posts.hasMore && !posts.isFetching) {
+		if (posts.hasMore && !posts.isLoading) {
 			pageCount++;
 		}
 	};
@@ -117,14 +105,14 @@
 		{/each}
 	</div>
 
-	{#if posts.isFetching}
+	{#if posts.isLoading}
 		<div class="loading">
 			<span class="spinner"></span>
 			Loading posts...
 		</div>
 	{/if}
 
-	{#if posts.hasMore && !posts.isFetching}
+	{#if posts.hasMore && !posts.isLoading}
 		<button class="load-more" onclick={loadMore}>Load More Posts</button>
 	{/if}
 

@@ -122,8 +122,6 @@ describe('createPagedStache cache implementation', () => {
 
 				const pagesCache = globalCache.get('multi-page-test')!.get(hashKey({ query: 'test' }))!;
 
-				console.log('Page cache keys:', Array.from(pagesCache.keys()));
-
 				expect(pagesCache.size).toBe(3); // Three page indices
 			})
 		);
@@ -1325,7 +1323,6 @@ describe('createPagedStache cache implementation', () => {
 					paramsCache!.get(hashKey({ pageIndex: 1, pageSize: 10 }))?.cleanupTimeout
 				).not.toBeNull();
 
-				console.log('advancing timers');
 				// Advance timers to trigger cleanup of unreferenced pages
 				vi.advanceTimersToNextTimer();
 

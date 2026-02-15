@@ -53,11 +53,6 @@ const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
 
 	const pageCache = getPageCache<StacheParams, Result, FetchReturnData>(cache, stacheKey);
 
-	console.log(
-		`Getting/creating page staches for stacheKey ${stacheKey} with pageOffset ${pageOffset} and pageCount ${pageCount}`
-	);
-	console.log('Current page cache keys:', Array.from(pageCache.keys()));
-
 	return Array.from({ length: pageCount }, (_, i) => i).map((i) => {
 		const pageIndex = pageOffset + i;
 		const pageStacheKey = hashKey({
@@ -72,8 +67,6 @@ const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
 				pageIndex,
 				pageSize
 			};
-
-			console.log('cleanupTime:', createOptions.cleanupTime);
 
 			const stacheConstructorOptions: StacheConstructorOptions<
 				StacheParams,
@@ -102,12 +95,7 @@ const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
 			);
 
 			pageCache.set(pageStacheKey, stache);
-
-			console.log(`Created new page stache for pageIndex ${pageIndex} with key ${pageStacheKey}`);
 		} else {
-			console.log(
-				`Reusing existing page stache for pageIndex ${pageIndex} with key ${pageStacheKey}`
-			);
 			stache.referenceCount++;
 		}
 		return stache;
@@ -180,21 +168,13 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 						// Schedule cleanup of stache if no longer referenced
 						void tick().then(() => {
 							if (stache.referenceCount <= 0) {
-								console.log(
-									`Scheduling cleanup for page stache with key ${hashKey(stache.params)}`
-								);
 								stache.cleanupTimeout = setTimeout(() => {
 									if (stache.referenceCount <= 0) {
-										console.log(`Cleaning up page stache with key ${hashKey(stache.params)}`);
 										pageCache.delete(pageStacheKey);
 
 										if (pageCache.size === 0) {
 											cache.delete(stacheKey);
 										}
-									} else {
-										console.log(
-											`Skipped cleanup for page stache with key ${hashKey(stache.params)} because reference count is ${stache.referenceCount}`
-										);
 									}
 									stache.cleanupTimeout = null;
 								}, stache.cleanupTime);
