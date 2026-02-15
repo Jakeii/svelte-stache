@@ -82,18 +82,12 @@ type StacheConstructorOptions<StacheFnParams, Result, FetchReturnData> = {
 	refetchOnWindowFocus?: boolean;
 };
 
-type UseStacheOptions<Params, Result> = {
+type UseStacheOptions<Params> = {
 	/**
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
 	 */
 	params?: Params;
-	/**
-	 * Initial data to populate the stache with before fetching.
-	 * Useful for server-side rendering or optimistic UI.
-	 * Will only be used if there is no cached data for the given parameters.
-	 */
-	initialData?: Result;
 	/**
 	 * Whether the stache is enabled. Disabling will stop automatic fetching.
 	 * Default is true.
@@ -143,16 +137,7 @@ type UsePagedStacheOptions<Params, Result> = {
  *
  */
 class Stache<FetchParams, Result, FetchReturnData> {
-	/**
-	 * The cache this stache belongs to, used for cleanup.
-	 */
-	private stacheCache: StacheCache;
-	/**
-	 * Instance of the cleanup timeout, if scheduled.
-	 */
-	private cleanupTimeout: ReturnType<typeof setTimeout> | null = null;
-
-	private scheduleCacheStatusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
+	#scheduleCacheStatusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	/**
 	 * Unique identifier for the stache.
@@ -189,24 +174,17 @@ class Stache<FetchParams, Result, FetchReturnData> {
 
 	readonly pageCacheKey: string | null = null;
 
-	enabled = $state(true);
-	fetchStatus: 'idle' | 'loading' | 'error' | 'success' = $state('idle');
-	cacheStatus: 'fresh' | 'stale' | 'empty' = $state('empty');
-	data: FetchReturnData | null = $state(null);
+	#enabled = true;
+	#fetchStatus: 'idle' | 'loading' | 'error' | 'success' = $state('idle');
+	#cacheStatus: 'fresh' | 'stale' | 'empty' = $state('empty');
+	#data: FetchReturnData | null = $state(null);
 
-	extractData: (data: unknown) => unknown = (data: unknown) => data;
+	#extractData: (data: unknown) => unknown = (data: unknown) => data;
 
-	/**
-	 * Initial data to populate the stache with before fetching.
-	 * Useful for server-side rendering or optimistic UI.
-	 */
-	initialData: Result | null = null;
-	error: unknown = $state(null);
-	isFetching = $derived(this.fetchStatus === 'loading');
-	isError = $derived(this.fetchStatus === 'error');
-	isLoading = $derived(this.fetchStatus === 'loading');
-	isSuccess = $derived(this.fetchStatus === 'success');
-	lastFetched: SvelteDate | null = $state(null);
+	#error: unknown = $state(null);
+
+	#lastFetched: SvelteDate | null = $state(null);
+
 	readonly staleTime = 5 * 60 * 1000;
 
 	/**
@@ -227,6 +205,14 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 */
 	referenceCount = $state(1);
 
+	cleanupTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	canRun = (params: FetchParams) =>
+		(this.fetch.length === 0 || params !== undefined) &&
+		this.#enabled &&
+		this.referenceCount > 0 &&
+		this.#cacheStatus !== 'fresh';
+
 	constructor(
 		{
 			id,
@@ -237,11 +223,9 @@ class Stache<FetchParams, Result, FetchReturnData> {
 			refetchOnStale,
 			refetchOnWindowFocus
 		}: StacheConstructorOptions<FetchParams, Result, FetchReturnData>,
-		{ params, initialData, enabled }: UseStacheOptions<FetchParams, Result>,
-		stacheCache: StacheCache,
+		{ params, enabled }: UseStacheOptions<FetchParams>,
 		fetchPageParams?: FetchPageParams
 	) {
-		this.stacheCache = stacheCache;
 		this.id = id;
 		this.fetch = fetchFn;
 		if (retries !== undefined) {
@@ -251,8 +235,7 @@ class Stache<FetchParams, Result, FetchReturnData> {
 		this.cacheKey = hashKey(this.params);
 		this.fetchPageParams = fetchPageParams;
 		this.pageCacheKey = fetchPageParams ? hashKey(fetchPageParams) : null;
-		this.initialData = initialData ?? null;
-		this.data = null;
+		this.#data = null;
 		if (staleTime !== undefined) {
 			if (staleTime < 0) {
 				throw new Error('staleTime must be a non-negative number');
@@ -272,64 +255,31 @@ class Stache<FetchParams, Result, FetchReturnData> {
 			this.refetchOnWindowFocus = refetchOnWindowFocus;
 		}
 
-		const canRun = (params === undefined && this.fetch.length === 0) || params !== undefined;
-
-		// Determine if stache should be enabled
-		if (enabled !== undefined) {
-			this.enabled = enabled && canRun;
-		} else {
-			this.enabled = canRun;
-		}
-
-		this.run(this.params!, this.fetchPageParams);
-
-		// $inspect({
-		// 	id: this.id,
-		// 	params: this.params,
-		// 	fetchStatus: this.fetchStatus,
-		// 	cacheStatus: this.cacheStatus,
-		// 	enabled: this.enabled,
-		// 	referenceCount: this.referenceCount,
-		// 	isFetching: this.isFetching
-		// });
+		this.#enabled = enabled ?? true;
 
 		if (globalThis?.window && this.refetchOnWindowFocus) {
 			window.addEventListener('focus', () => {
-				this.maybeRun(true);
-				// if (this.cacheStatus === 'stale' && this.referenceCount > 0) {
-				// 	console.log('Refetching stache due to window focus:', this.id, this.params);
-				// 	this.run(this.params!, this.fetchPageParams);
-				// }
+				this.run();
 			});
 		}
 
-		this.stacheCache.set(this.pageCacheKey ? this.pageCacheKey : this.cacheKey, this);
+		this.run();
 	}
 
 	/**
 	 *
 	 * @param param0 Options to update on the stache instance.
-	 * - `params`: New parameters for the stache. Changing this will trigger a refetch.
-	 * - `initialData`: New initial data to set. This does not trigger a refetch.
 	 * - `enabled`: Whether the stache is enabled. Disabling will stop automatic fetching.
 	 * @param previousQuery Existing data from a previous fetch to be used when fetching new data.
 	 *
 	 * Updates the stache instance with the provided options and triggers a refetch if necessary.
 	 */
-	setOptions({ initialData, enabled }: Partial<UseStacheOptions<FetchParams, Result>>) {
-		if (initialData !== undefined) this.initialData = initialData;
-
+	setOptions({ enabled }: Partial<UseStacheOptions<FetchParams>>) {
 		if (enabled !== undefined) {
-			const canRun =
-				(this.params === undefined && this.fetch.length === 0) || this.params !== undefined;
-			this.enabled = enabled && canRun;
+			this.#enabled = enabled;
 		}
 
-		this.maybeRun();
-		this.maybeCancelCleanup();
-		// if (this.cacheStatus === 'stale' && this.enabled && this.refetchOnStale) {
-		// 	this.run(this.params!, this.fetchPageParams);
-		// }
+		this.run();
 	}
 
 	/**
@@ -340,96 +290,47 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 * @param params Parameters to pass to the stache function.
 	 * @param previousQuery Existing data from a previous fetch to be used when fetching new data.
 	 */
-	private async run(params: FetchParams, fetchPageParams?: FetchPageParams): Promise<void> {
-		if (!this.enabled || this.isFetching) return;
-		this.fetchStatus = 'loading';
-		this.error = null;
+	private async run(bypassCanRun = false): Promise<void> {
+		if ((!bypassCanRun && !this.canRun(this.params)) || this.#fetchStatus === 'loading') {
+			return;
+		}
+		this.#fetchStatus = 'loading';
+		this.#error = null;
 		try {
-			const data = fetchPageParams
-				? await (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(params, fetchPageParams)
-				: await (this.fetch as FetchFn<FetchParams, FetchReturnData>)(params);
-			this.fetchStatus = 'success';
-			this.cacheStatus = 'fresh';
+			const data = this.fetchPageParams
+				? await (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(
+						this.params,
+						this.fetchPageParams
+					)
+				: await (this.fetch as FetchFn<FetchParams, FetchReturnData>)(this.params);
+			this.#fetchStatus = 'success';
+			this.#cacheStatus = 'fresh';
 			this.scheduleCacheStatusUpdate();
-			this.data = data;
-			this.lastFetched = new SvelteDate();
+			this.#data = data;
+			this.#lastFetched = new SvelteDate();
 		} catch (err) {
 			if (err instanceof DOMException && err.name === 'AbortError') {
 				// Aborted request, do nothing
-				this.fetchStatus = 'idle';
+				this.#fetchStatus = 'idle';
 				return;
 			}
-			this.error = err;
-			this.fetchStatus = 'error';
+			this.#error = err;
+			this.#fetchStatus = 'error';
 			return;
 		}
 	}
 
-	private maybeRun(triggeredByWindowFocus = false) {
-		if (
-			(((this.cacheStatus === 'stale' && this.refetchOnStale) || triggeredByWindowFocus) &&
-				this.enabled &&
-				this.referenceCount > 0) ||
-			(this.cacheStatus === 'empty' && this.enabled && this.referenceCount > 0)
-		) {
-			console.log('Refetching stache due to stale/empty status:', {
-				id: this.id,
-				params: this.params,
-				cacheStatus: this.cacheStatus,
-				enabled: this.enabled,
-				referenceCount: this.referenceCount
-			});
-			this.run(this.params!, this.fetchPageParams);
-		} else {
-			console.log('Not refetching stache on maybeRun:', {
-				id: this.id,
-				params: this.params,
-				cacheStatus: this.cacheStatus,
-				enabled: this.enabled,
-				referenceCount: this.referenceCount,
-				refetchOnStale: this.refetchOnStale
-			});
-		}
-	}
-
-	/**
-	 * Schedules cleanup of the stache from the cache after a period of inactivity.
-	 * If the stache gains a reference before the timeout, the cleanup is canceled (see constructor).
-	 */
-	scheduleCleanup() {
-		this.maybeCancelCleanup();
-		this.cleanupTimeout = setTimeout(() => {
-			if (this.referenceCount <= 0) {
-				// console.log('Cleaning up stache from cache:', this.id, this.params);
-				this.stacheCache.delete(hashKey(this.params));
-			} else {
-				// console.log(
-				// 	'Not cleaning up stache, references exist:',
-				// 	this.id,
-				// 	this.params,
-				// 	this.referenceCount
-				// );
-			}
-			this.cleanupTimeout = null;
-		}, this.cleanupTime);
-	}
-
-	maybeCancelCleanup(force = false) {
-		if (this.cleanupTimeout && (force || this.referenceCount > 0)) {
-			clearTimeout(this.cleanupTimeout);
-			this.cleanupTimeout = null;
-		}
-	}
-
 	private scheduleCacheStatusUpdate() {
-		if (this.scheduleCacheStatusCheckTimeout) {
-			clearTimeout(this.scheduleCacheStatusCheckTimeout);
+		if (this.#scheduleCacheStatusCheckTimeout) {
+			clearTimeout(this.#scheduleCacheStatusCheckTimeout);
 		}
 		// console.log('Scheduling cache status update for stache:', this.id, this.params);
-		this.scheduleCacheStatusCheckTimeout = setTimeout(() => {
-			this.cacheStatus = 'stale';
-			this.maybeRun();
-			this.scheduleCacheStatusCheckTimeout = null;
+		this.#scheduleCacheStatusCheckTimeout = setTimeout(() => {
+			this.#cacheStatus = 'stale';
+			if (this.refetchOnStale) {
+				this.run();
+			}
+			this.#scheduleCacheStatusCheckTimeout = null;
 		}, this.staleTime);
 	}
 
@@ -437,7 +338,31 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 * Invalidates the stache, forcing it to refetch its data.
 	 */
 	async invalidate() {
-		await this.run(this.params!);
+		await this.run(true);
+	}
+
+	get enabled() {
+		return this.#enabled;
+	}
+
+	get fetchStatus() {
+		return this.#fetchStatus;
+	}
+
+	get cacheStatus() {
+		return this.#cacheStatus;
+	}
+
+	get data() {
+		return this.#data;
+	}
+
+	get error() {
+		return this.#error;
+	}
+
+	get lastFetched() {
+		return this.#lastFetched;
 	}
 }
 

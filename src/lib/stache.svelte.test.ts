@@ -307,6 +307,51 @@ describe('createStache cache implementation', () => {
 		});
 	});
 
+	it('should not delete cache if a new reference is added before cleanup timeout expires', async () => {
+		const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
+		const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
+		const { useStache } = createStache({
+			id: 'ref-count-test',
+			fetch: fetchFn,
+			cleanupTime: 1000,
+			globalCache
+		});
+
+		await withEffectRoot(async () => {
+			// Create stache instance
+			const params1 = $state('param1');
+			const stache1 = useStache(() => ({ params: params1 }));
+			flushSync();
+			await vi.waitUntil(() => stache1.data !== null);
+			expect(fetchFn).toHaveBeenCalledTimes(1);
+			expect(stache1.referenceCount).toBe(1);
+		})();
+
+		await withEffectRoot(async () => {
+			const cachedStache = globalCache.get('ref-count-test')?.get(hashKey('param1'));
+			expect(cachedStache).toBeDefined();
+			expect(cachedStache.referenceCount).toBe(0);
+			expect(cachedStache.cleanupTimeout).not.toBeNull();
+
+			vi.advanceTimersByTime(500);
+
+			// Reference stache again before cleanup timeout expires
+			const params1copy = $state('param1');
+			const stache1copy = useStache(() => ({ params: params1copy }));
+			flushSync();
+			expect(stache1copy.data).toEqual({ data: 'test' });
+			expect(cachedStache?.referenceCount).toBe(1);
+
+			vi.advanceTimersByTime(1200);
+
+			expect(cachedStache?.cleanupTimeout).toBeNull();
+
+			// Cache should NOT be deleted since reference was added before timeout
+			expect(globalCache.get('ref-count-test')?.get(hashKey('param1'))).toBeDefined();
+			expect(globalCache.get('ref-count-test')?.get(hashKey('param1'))?.referenceCount).toBe(1);
+		})();
+	});
+
 	it('should only refetch referenced staches', async () => {
 		const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 		const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>();
@@ -904,93 +949,93 @@ describe('createStache cache implementation', () => {
 		);
 	});
 
-	describe('Initial data handling', () => {
-		it(
-			'should populate stache with initial data before fetching',
-			withEffectRoot(async () => {
-				const fetchFn = vi.fn().mockResolvedValue({ data: 'fetched-data' });
-				const { useStache } = createStache({
-					id: 'initial-data-test',
-					fetch: fetchFn
-				});
+	// describe('Initial data handling', () => {
+	// 	it(
+	// 		'should populate stache with initial data before fetching',
+	// 		withEffectRoot(async () => {
+	// 			const fetchFn = vi.fn().mockResolvedValue({ data: 'fetched-data' });
+	// 			const { useStache } = createStache({
+	// 				id: 'initial-data-test',
+	// 				fetch: fetchFn
+	// 			});
 
-				const params = $state('param');
-				const stache = useStache(() => ({
-					params,
-					initialData: { data: 'initial-data' }
-				}));
+	// 			const params = $state('param');
+	// 			const stache = useStache(() => ({
+	// 				params,
+	// 				initialData: { data: 'initial-data' }
+	// 			}));
 
-				// Should immediately have initial data before fetch completes
-				expect(stache.data).toEqual({ data: 'initial-data' });
-				expect(stache.isLoading).toBe(true);
-				expect(stache.isSuccess).toBe(false);
+	// 			// Should immediately have initial data before fetch completes
+	// 			expect(stache.data).toEqual({ data: 'initial-data' });
+	// 			expect(stache.isLoading).toBe(true);
+	// 			expect(stache.isSuccess).toBe(false);
 
-				flushSync();
+	// 			flushSync();
 
-				// Wait for fetch to complete
-				await vi.waitUntil(() => stache.data?.data === 'fetched-data');
+	// 			// Wait for fetch to complete
+	// 			await vi.waitUntil(() => stache.data?.data === 'fetched-data');
 
-				// Should now have fetched data
-				expect(stache.data).toEqual({ data: 'fetched-data' });
-				expect(stache.isLoading).toBe(false);
-				expect(stache.isSuccess).toBe(true);
-			})
-		);
+	// 			// Should now have fetched data
+	// 			expect(stache.data).toEqual({ data: 'fetched-data' });
+	// 			expect(stache.isLoading).toBe(false);
+	// 			expect(stache.isSuccess).toBe(true);
+	// 		})
+	// 	);
 
-		it(
-			'should work without initial data (default null)',
-			withEffectRoot(async () => {
-				const fetchFn = vi.fn().mockResolvedValue({ data: 'fetched-data' });
-				const { useStache } = createStache({
-					id: 'no-initial-data-test',
-					fetch: fetchFn
-				});
+	// 	it(
+	// 		'should work without initial data (default null)',
+	// 		withEffectRoot(async () => {
+	// 			const fetchFn = vi.fn().mockResolvedValue({ data: 'fetched-data' });
+	// 			const { useStache } = createStache({
+	// 				id: 'no-initial-data-test',
+	// 				fetch: fetchFn
+	// 			});
 
-				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+	// 			const params = $state('param');
+	// 			const stache = useStache(() => ({ params }));
 
-				// Should start with null data
-				expect(stache.data).toBe(null);
-				expect(stache.isLoading).toBe(true);
+	// 			// Should start with null data
+	// 			expect(stache.data).toBe(null);
+	// 			expect(stache.isLoading).toBe(true);
 
-				flushSync();
+	// 			flushSync();
 
-				// Wait for fetch to complete
-				await vi.waitUntil(() => stache.data !== null);
+	// 			// Wait for fetch to complete
+	// 			await vi.waitUntil(() => stache.data !== null);
 
-				// Should now have fetched data
-				expect(stache.data).toEqual({ data: 'fetched-data' });
-			})
-		);
+	// 			// Should now have fetched data
+	// 			expect(stache.data).toEqual({ data: 'fetched-data' });
+	// 		})
+	// 	);
 
-		it(
-			'should not trigger unnecessary fetches when initial data is provided',
-			withEffectRoot(async () => {
-				const fetchFn = vi.fn().mockResolvedValue({ data: 'fetched-data' });
-				const { useStache } = createStache({
-					id: 'initial-data-fetch-test',
-					fetch: fetchFn
-				});
+	// 	it(
+	// 		'should not trigger unnecessary fetches when initial data is provided',
+	// 		withEffectRoot(async () => {
+	// 			const fetchFn = vi.fn().mockResolvedValue({ data: 'fetched-data' });
+	// 			const { useStache } = createStache({
+	// 				id: 'initial-data-fetch-test',
+	// 				fetch: fetchFn
+	// 			});
 
-				const params = $state('param');
-				const stache = useStache(() => ({
-					params,
-					initialData: { data: 'initial-data' }
-				}));
+	// 			const params = $state('param');
+	// 			const stache = useStache(() => ({
+	// 				params,
+	// 				initialData: { data: 'initial-data' }
+	// 			}));
 
-				// Should have initial data immediately
-				expect(stache.data).toEqual({ data: 'initial-data' });
+	// 			// Should have initial data immediately
+	// 			expect(stache.data).toEqual({ data: 'initial-data' });
 
-				flushSync();
+	// 			flushSync();
 
-				// Wait for fetch to complete
-				await vi.waitUntil(() => stache.data?.data === 'fetched-data');
+	// 			// Wait for fetch to complete
+	// 			await vi.waitUntil(() => stache.data?.data === 'fetched-data');
 
-				// Fetch should still be called once
-				expect(fetchFn).toHaveBeenCalledTimes(1);
-			})
-		);
-	});
+	// 			// Fetch should still be called once
+	// 			expect(fetchFn).toHaveBeenCalledTimes(1);
+	// 		})
+	// 	);
+	// });
 
 	describe('Enhanced error handling', () => {
 		// it(
@@ -1298,18 +1343,11 @@ describe('createStache cache implementation', () => {
 				});
 
 				let enabled = $state(true);
-				const initialData = $state({ data: 'initial' });
 				const params = $state('param');
 				const stache = useStache(() => ({
 					params,
-					enabled,
-					initialData
+					enabled
 				}));
-
-				// await vi.waitFor(() => stache.data !== null);
-
-				// Should start with initial data
-				expect(stache.data).toEqual({ data: 'initial' });
 
 				resolvePromise!({ data: 'test' });
 				flushSync();
@@ -1681,6 +1719,7 @@ describe('createStache cache implementation', () => {
 
 				// Disable before it becomes stale
 				enabled = false;
+				flushSync();
 
 				vi.advanceTimersToNextTimer();
 
@@ -1694,7 +1733,7 @@ describe('createStache cache implementation', () => {
 				vi.advanceTimersToNextTimer();
 
 				// Should trigger refetch when re-enabled
-				expect(fetchFn).toHaveBeenCalledTimes(1);
+				expect(fetchFn).toHaveBeenCalledTimes(2);
 
 				enabled = false;
 			})

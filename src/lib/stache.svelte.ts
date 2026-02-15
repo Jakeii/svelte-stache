@@ -11,7 +11,7 @@ import {
 	type StacheCache
 } from './cache/stache.svelte';
 import { hashKey } from './utils';
-import { untrack } from 'svelte';
+import { tick, untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';
 
 type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
@@ -24,13 +24,9 @@ type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 
 type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
 	Stache<Params, Result, FetchReturnData>,
-	| 'isFetching'
 	| 'data'
 	| 'error'
 	| 'fetchStatus'
-	| 'isError'
-	| 'isLoading'
-	| 'isSuccess'
 	| 'lastFetched'
 	| 'invalidate'
 	| 'cacheStatus'
@@ -50,7 +46,7 @@ type CreateStacheFn = <StacheParams, Result>(
 };
 
 type UseStacheFn<StacheParams, Result> = {
-	(optionsFn?: () => UseStacheOptions<StacheParams, Result>): PublicStache<StacheParams, Result>;
+	(optionsFn?: () => UseStacheOptions<StacheParams>): PublicStache<StacheParams, Result>;
 };
 
 /**
@@ -66,13 +62,18 @@ const getOrCreateStache = <StacheParams, Result, FetchReturnData>(
 	cache: StacheCache,
 	stacheKey: string,
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>,
-	useOptions: UseStacheOptions<StacheParams, Result>
+	useOptions: UseStacheOptions<StacheParams>
 ): Stache<StacheParams, Result, FetchReturnData> => {
 	let stache = getStache<StacheParams, Result, FetchReturnData>(cache, stacheKey);
 	if (!stache) {
-		stache = new Stache<StacheParams, Result, FetchReturnData>(createOptions, useOptions, cache);
+		stache = new Stache<StacheParams, Result, FetchReturnData>(createOptions, useOptions);
+		cache.set(stacheKey, stache);
 	} else {
 		stache.referenceCount++;
+		if (stache.cleanupTimeout) {
+			clearTimeout(stache.cleanupTimeout);
+		}
+		stache.cleanupTimeout = null;
 	}
 	return stache;
 };
@@ -104,10 +105,10 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 ) => {
 	const cache = getStacheCache(createOptions.id, createOptions.globalCache);
 
-	const useStache = <T extends Exact<UseStacheOptions<StacheParams, Result>, T>>(
+	const useStache = <T extends Exact<UseStacheOptions<StacheParams>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
-		const useOptions = useOptionsFn() as UseStacheOptions<StacheParams, Result>;
+		const useOptions = useOptionsFn() as UseStacheOptions<StacheParams>;
 		const stacheKey = hashKey(useOptions?.params);
 
 		let effectHasRun = $state(false);
@@ -123,42 +124,34 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 		// Reactive effect to handle parameter changes and stache lifecycle
 		// $effect is used over $derived for deeper reactivity and cleanup control
 		$effect.pre(() => {
-			const useOptions = useOptionsFn() as UseStacheOptions<StacheParams, Result>;
+			const useOptions = useOptionsFn() as UseStacheOptions<StacheParams>;
 			const stacheKey = hashKey(useOptions?.params);
 
 			untrack(() => {
-				stache = (() => {
-					// If this is the first run, we don't need to do anything
-					// The stache was already created or retrieved outside the effect
-					if (
-						!effectHasRun ||
-						(useOptions.params === undefined && createOptions.fetch.length > 0)
-					) {
-						effectHasRun = true;
-						return stache;
-					}
+				// If this is the first run, we don't need to do anything
+				// The stache was already created or retrieved outside the effect
+				if (!effectHasRun || (useOptions.params === undefined && createOptions.fetch.length > 0)) {
+					effectHasRun = true;
+					return;
+				}
 
-					// Check if an existing stache is in the cache, used to determine if we need to update options later
-					const hasExistingStache = cache.has(stacheKey);
+				// Check if an existing stache is in the cache, used to determine if we need to update options later
+				const hasExistingStache = cache.has(stacheKey);
 
-					// Get or create the stache instance based on the updated parameters
-					const nextStache = getOrCreateStache<StacheParams, Result, FetchReturnData>(
-						cache,
-						stacheKey,
-						createOptions,
-						useOptions
-					);
+				// Get or create the stache instance based on the updated parameters
+				const nextStache = getOrCreateStache<StacheParams, Result, FetchReturnData>(
+					cache,
+					stacheKey,
+					createOptions,
+					useOptions
+				);
 
-					if (hasExistingStache) {
-						// Update the options of the existing stache if it was found in the cache
-						nextStache.setOptions(useOptions);
+				if (hasExistingStache) {
+					// Update the options of the existing stache if it was found in the cache
+					nextStache.setOptions(useOptions);
+				}
 
-						// Cancel any scheduled cleanup on the new stache since it's being used again
-						nextStache.maybeCancelCleanup();
-					}
-
-					return nextStache;
-				})();
+				stache = nextStache;
 			});
 
 			return () => {
@@ -167,10 +160,18 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 					if (stache.referenceCount > 0) {
 						stache.referenceCount--;
 					}
-					// If reference count reaches zero, schedule cleanup
-					if (stache.referenceCount === 0) {
-						stache.scheduleCleanup();
-					}
+					void tick().then(() => {
+						// If reference count reaches zero, schedule cleanup
+						if (stache.referenceCount === 0) {
+							stache.cleanupTimeout = setTimeout(() => {
+								// Double-check reference count before deleting from cache
+								if (stache.referenceCount <= 0) {
+									cache.delete(hashKey(stache.params));
+								}
+								stache.cleanupTimeout = null;
+							}, stache.cleanupTime);
+						}
+					});
 				} else {
 					console.warn('Stache instance is undefined during cleanup.');
 				}
@@ -180,13 +181,13 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 		return {
 			// Access the stache instance reactively because it is a $state
 			get data() {
-				return stache.data ?? (stache.initialData as FetchReturnData);
+				return stache.data;
 			},
 			get enabled() {
 				return stache.enabled;
 			},
 			get isFetching() {
-				return stache.isFetching;
+				return stache.fetchStatus === 'loading';
 			},
 			get error() {
 				return stache.error;
@@ -195,13 +196,13 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 				return stache.fetchStatus;
 			},
 			get isError() {
-				return stache.isError;
+				return stache.fetchStatus === 'error';
 			},
 			get isLoading() {
-				return stache.isLoading;
+				return stache.fetchStatus === 'loading';
 			},
 			get isSuccess() {
-				return stache.isSuccess;
+				return stache.fetchStatus === 'success';
 			},
 			get lastFetched() {
 				return stache.lastFetched;
