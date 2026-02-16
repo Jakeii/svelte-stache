@@ -13,6 +13,7 @@ import {
 import { hashKey } from './utils';
 import { tick, untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';
+import { browser } from '$app/environment';
 
 type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 	StacheConstructorOptions<StacheFnParams, FetchReturnData, FetchReturnData>,
@@ -22,9 +23,10 @@ type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 	}
 >;
 
-type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
+type PublicStacheBase<Params, Result = unknown, FetchReturnData = unknown> = Pick<
 	Stache<Params, Result, FetchReturnData>,
 	| 'data'
+	| 'enabled'
 	| 'error'
 	| 'fetchStatus'
 	| 'lastFetched'
@@ -32,7 +34,33 @@ type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
 	| 'cacheStatus'
 	| 'referenceCount'
 	| 'params'
-> & { _stache: Stache<Params, Result, FetchReturnData> | null };
+> & {
+	_stache: Stache<Params, Result, FetchReturnData> | null;
+	isError: boolean;
+	isLoading: boolean;
+	isSuccess: boolean;
+};
+
+type ThenMethod<Params, Result = unknown, FetchReturnData = unknown> = <
+	TResult1 = PublicStacheBase<Params, Result, FetchReturnData>,
+	TResult2 = never
+>(
+	onfulfilled?:
+		| ((
+				value: PublicStacheBase<Params, Result, FetchReturnData>
+		  ) => TResult1 | PromiseLike<TResult1>)
+		| null
+		| undefined,
+	onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
+) => PromiseLike<TResult1 | TResult2>;
+
+type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = PublicStacheBase<
+	Params,
+	Result,
+	FetchReturnData
+> & {
+	readonly then: ThenMethod<Params, Result, FetchReturnData>;
+};
 
 type CreateStacheFn = <StacheParams, Result>(
 	defineOptions: CreateStacheOptions<StacheParams, Result>
@@ -162,7 +190,7 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 					}
 					void tick().then(() => {
 						// If reference count reaches zero, schedule cleanup
-						if (stache.referenceCount === 0) {
+						if (stache.referenceCount === 0 && !browser) {
 							stache.cleanupTimeout = setTimeout(() => {
 								// Double-check reference count before deleting from cache
 								if (stache.referenceCount <= 0) {
@@ -178,7 +206,7 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 			};
 		});
 
-		return {
+		const publicStache: PublicStache<StacheParams, Result, FetchReturnData> = {
 			// Access the stache instance reactively because it is a $state
 			get data() {
 				return stache.data;
@@ -216,8 +244,21 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 			invalidate: () => stache.invalidate(),
 			get _stache() {
 				return stache;
+			},
+
+			get then(): ThenMethod<StacheParams, Result, FetchReturnData> {
+				const status = stache.fetchStatus;
+				if (status === 'idle' || status === 'loading') {
+					return (onfulfilled, onrejected) =>
+						stache.promise.then(() => publicStache).then(onfulfilled, onrejected);
+				}
+				// Return undefined at runtime to break recursive thenable unwrapping,
+				// but type as always-present so `await` type-checks
+				return undefined as unknown as ThenMethod<StacheParams, Result, FetchReturnData>;
 			}
 		};
+
+		return publicStache;
 	};
 
 	const invalidate = (args: StacheParams) => {
@@ -232,4 +273,4 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 };
 
 export { createStache };
-export type { CreateStacheFn, UseStacheFn, PublicStache };
+export type { CreateStacheFn, UseStacheFn, PublicStache, PublicStacheBase };

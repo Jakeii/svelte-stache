@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createStache } from '$lib/index.js';
+	import { createStache } from '$lib';
 
 	interface User {
 		id: string;
@@ -15,7 +15,7 @@
 	const { useStache: getUser } = createStache({
 		id: 'demo-user',
 		fetch: async (userId: string): Promise<User> => {
-			const response = await fetch(`/api/users/${userId}`);
+			const response = await fetch(`http://localhost:5173/api/users/${userId}`);
 			if (!response.ok) {
 				throw new Error('Failed to fetch user');
 			}
@@ -29,10 +29,12 @@
 
 	let enabled = $state(true);
 
-	const user = getUser(() => ({
+	const user = await getUser(() => ({
 		params: userId,
 		enabled: enabled
 	}));
+
+	$inspect('data', user.data);
 </script>
 
 <div class="demo-container">

@@ -2,6 +2,8 @@ import { hashKey } from './utils';
 import type { GlobalStacheCache, StacheCache } from './cache/stache.svelte';
 import type { GlobalPagedStacheCache } from './cache/paged-stache.svelte';
 import { SvelteDate } from 'svelte/reactivity';
+import { hydratable, tick } from 'svelte';
+import { browser } from '$app/environment';
 
 // type BaseStacheParams = unknown;
 
@@ -174,9 +176,38 @@ class Stache<FetchParams, Result, FetchReturnData> {
 
 	readonly pageCacheKey: string | null = null;
 
-	#enabled = true;
+	#enabled = $state(true);
 	#fetchStatus: 'idle' | 'loading' | 'error' | 'success' = $state('idle');
 	#cacheStatus: 'fresh' | 'stale' | 'empty' = $state('empty');
+	#promise: Promise<void>;
+
+	#then = $derived.by(() => {
+		const p = this.#promise;
+
+		return (
+			resolve:
+				| ((
+						value: FetchReturnData | null
+				  ) => FetchReturnData | PromiseLike<FetchReturnData | null> | null)
+				| null
+				| undefined,
+			reject: ((reason: unknown) => PromiseLike<never>) | null | undefined
+		) => {
+			const result = (async () => {
+				await p;
+				// svelte-ignore await_reactivity_loss
+				await tick();
+				return this.#data;
+			})();
+
+			if (resolve || reject) {
+				return result.then(resolve, reject);
+			}
+
+			return result;
+		};
+	});
+
 	#data: FetchReturnData | null = $state(null);
 	#error: unknown = $state(null);
 
@@ -256,11 +287,11 @@ class Stache<FetchParams, Result, FetchReturnData> {
 
 		if (globalThis?.window && this.refetchOnWindowFocus) {
 			window.addEventListener('focus', () => {
-				this.run();
+				this.#run();
 			});
 		}
 
-		this.run();
+		this.#promise = this.#run();
 	}
 
 	/**
@@ -276,7 +307,7 @@ class Stache<FetchParams, Result, FetchReturnData> {
 			this.#enabled = enabled;
 		}
 
-		this.run();
+		this.#promise = this.#run();
 	}
 
 	/**
@@ -287,54 +318,72 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 * @param params Parameters to pass to the stache function.
 	 * @param previousQuery Existing data from a previous fetch to be used when fetching new data.
 	 */
-	private async run(bypassCanRun = false): Promise<void> {
+	async #run(bypassCanRun = false): Promise<void> {
 		if ((!bypassCanRun && !this.canRun(this.params)) || this.#fetchStatus === 'loading') {
-			return;
+			return Promise.resolve();
 		}
 		this.#fetchStatus = 'loading';
 		this.#error = null;
-		try {
-			const data = this.fetchPageParams
-				? await (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(
-						this.params,
-						this.fetchPageParams
-					)
-				: await (this.fetch as FetchFn<FetchParams, FetchReturnData>)(this.params);
-			this.#fetchStatus = 'success';
-			this.#cacheStatus = 'fresh';
-			this.scheduleCacheStatusUpdate();
-			this.#data = data;
-			this.#lastFetched = new SvelteDate();
-		} catch (err) {
-			if (err instanceof DOMException && err.name === 'AbortError') {
-				// Aborted request, do nothing
-				this.#fetchStatus = 'idle';
-				return;
-			}
-			this.#error = err;
-			this.#fetchStatus = 'error';
-			return;
-		}
+
+		// Don't use Promise.withResolvers, it's too new still
+		let resolve: () => void;
+		let reject: (reason?: unknown) => void;
+		const promise = new Promise<void>((res, rej) => {
+			resolve = res;
+			reject = rej;
+		});
+		Promise.resolve(
+			hydratable(`stache:${this.id}:${this.cacheKey}`, () =>
+				this.fetchPageParams
+					? (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(
+							this.params,
+							this.fetchPageParams
+						)
+					: (this.fetch as FetchFn<FetchParams, FetchReturnData>)(this.params)
+			)
+		)
+			.then((data) => {
+				this.#fetchStatus = 'success';
+				this.#cacheStatus = 'fresh';
+				this.#scheduleCacheStatusUpdate();
+				this.#data = data;
+				this.#lastFetched = new SvelteDate();
+				resolve();
+			})
+			.catch((err) => {
+				if (err instanceof DOMException && err.name === 'AbortError') {
+					// Aborted request, do nothing
+					this.#fetchStatus = 'idle';
+					reject(err);
+				} else {
+					this.#error = err;
+					this.#fetchStatus = 'error';
+					reject(err);
+				}
+			});
+		return promise;
 	}
 
-	private scheduleCacheStatusUpdate() {
-		if (this.#scheduleCacheStatusCheckTimeout) {
-			clearTimeout(this.#scheduleCacheStatusCheckTimeout);
-		}
-		this.#scheduleCacheStatusCheckTimeout = setTimeout(() => {
-			this.#cacheStatus = 'stale';
-			if (this.refetchOnStale) {
-				this.run();
+	#scheduleCacheStatusUpdate() {
+		if (browser) {
+			if (this.#scheduleCacheStatusCheckTimeout) {
+				clearTimeout(this.#scheduleCacheStatusCheckTimeout);
 			}
-			this.#scheduleCacheStatusCheckTimeout = null;
-		}, this.staleTime);
+			this.#scheduleCacheStatusCheckTimeout = setTimeout(() => {
+				this.#cacheStatus = 'stale';
+				if (this.refetchOnStale) {
+					this.#promise = this.#run();
+				}
+				this.#scheduleCacheStatusCheckTimeout = null;
+			}, this.staleTime);
+		}
 	}
 
 	/**
 	 * Invalidates the stache, forcing it to refetch its data.
 	 */
-	async invalidate() {
-		await this.run(true);
+	invalidate() {
+		this.#promise = this.#run(true);
 	}
 
 	get enabled() {
@@ -359,6 +408,14 @@ class Stache<FetchParams, Result, FetchReturnData> {
 
 	get lastFetched() {
 		return this.#lastFetched;
+	}
+
+	get promise() {
+		return this.#promise;
+	}
+
+	get then() {
+		return this.#then;
 	}
 }
 

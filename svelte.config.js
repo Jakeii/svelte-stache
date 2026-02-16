@@ -24,11 +24,11 @@ const config = {
 	},
 		extensions: [".svelte", ".md"],
 
-		// compilerOptions: {
-		// 	experimental: {
-		// 		async: true
-		// 	},
-		// },
+		compilerOptions: {
+			experimental: {
+				async: true
+			},
+		},
 };
 
 export default config;
