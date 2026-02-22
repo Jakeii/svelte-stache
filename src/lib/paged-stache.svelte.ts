@@ -14,25 +14,25 @@ import {
 	type UsePagedStacheOptions,
 	type FetchPageParams
 } from './stache.class.svelte';
-import type { PublicStache, UseStacheFn } from './stache.svelte';
+import type { UseStacheFn } from './stache.svelte';
 import { hashKey } from './utils';
 import type { Exact, Merge } from 'type-fest';
 
-type CreatePagedStacheOptions<StacheParams, Result, FetchReturnData> = Merge<
-	StacheConstructorOptions<StacheParams, Result, FetchReturnData>,
+type CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData> = Merge<
+	StacheConstructorOptions<StacheParams, PageFetchReturnData>,
 	{
-		fetch: PagedFetchFn<StacheParams, FetchReturnData>;
+		fetch: PagedFetchFn<StacheParams, PageFetchReturnData>;
 		pageSize: number;
-		getData?: (data: FetchReturnData) => Result;
-		getTotalCount?: (data: FetchReturnData) => number;
+		getData?: (data: PageFetchReturnData) => PageResult;
+		getTotalCount?: (data: PageFetchReturnData) => number;
 		globalCache?: GlobalPagedStacheCache;
 	}
 >;
 
-type CreatePagedStacheFn = <StacheParams, Result, FetchReturnData>(
-	defineOptions: CreatePagedStacheOptions<StacheParams, Result, FetchReturnData>
+type CreatePagedStacheFn = <StacheParams, PageResult, PageFetchReturnData>(
+	defineOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>
 ) => {
-	useStache: UseStacheFn<StacheParams, Result>;
+	useStache: UseStacheFn<StacheParams, PageResult>;
 	/**
 	 * Invalidates the paged stache with the given parameters, if it exists.
 	 * @param args The parameters of the paged stache to invalidate.
@@ -40,9 +40,14 @@ type CreatePagedStacheFn = <StacheParams, Result, FetchReturnData>(
 	invalidate: (args: StacheParams) => void;
 };
 
-type PublicPagedStache<Params, Result = unknown, FetchReturnData = unknown> = Merge<
+type PublicPagedStache<
+	Params,
+	Result,
+	PageResult = Result[],
+	PageFetchReturnData = unknown
+> = Merge<
 	Pick<
-		Stache<Params, Result, FetchReturnData>,
+		Stache<Params, PageFetchReturnData>,
 		| 'data'
 		| 'enabled'
 		| 'error'
@@ -50,12 +55,12 @@ type PublicPagedStache<Params, Result = unknown, FetchReturnData = unknown> = Me
 		| 'lastFetched'
 		| 'invalidate'
 		| 'cacheStatus'
-		| 'referenceCount'
 		| 'params'
 	>,
 	{
-		_stache: Stache<Params, Result, FetchReturnData> | null;
 		data: Result | null;
+		pages: Array<PageResult | null>;
+		hasMore: boolean;
 		isError: boolean;
 		isLoading: boolean;
 		isSuccess: boolean;
@@ -64,17 +69,17 @@ type PublicPagedStache<Params, Result = unknown, FetchReturnData = unknown> = Me
 >;
 
 // Helper function to create/retrieve page staches
-const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
+const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 	cache: PagedStacheCache,
-	createOptions: CreatePagedStacheOptions<StacheParams, Result, FetchReturnData>,
-	useOptions: UsePagedStacheOptions<StacheParams, Result>
-): Array<Stache<StacheParams, Result, FetchReturnData>> => {
+	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>,
+	useOptions: UsePagedStacheOptions<StacheParams, PageResult>
+): Array<Stache<StacheParams, PageFetchReturnData>> => {
 	const { pageOffset = 0, pageCount = 1 } = useOptions.pageParams || {};
 	const { pageSize = 10 } = createOptions;
 
 	const stacheKey = hashKey(useOptions?.params);
 
-	const pageCache = getPageCache<StacheParams, Result, FetchReturnData>(cache, stacheKey);
+	const pageCache = getPageCache<StacheParams, PageResult, PageFetchReturnData>(cache, stacheKey);
 
 	return Array.from({ length: pageCount }, (_, i) => i).map((i) => {
 		const pageIndex = pageOffset + i;
@@ -83,7 +88,10 @@ const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
 			pageSize
 		});
 
-		let stache = getPagedStache<StacheParams, Result, FetchReturnData>(pageCache, pageStacheKey);
+		let stache = getPagedStache<StacheParams, PageResult, PageFetchReturnData>(
+			pageCache,
+			pageStacheKey
+		);
 
 		if (!stache) {
 			const fetchPageParams: FetchPageParams = {
@@ -91,27 +99,24 @@ const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
 				pageSize
 			};
 
-			const stacheConstructorOptions: StacheConstructorOptions<
-				StacheParams,
-				Result,
-				FetchReturnData
-			> = {
-				id: createOptions.id,
-				fetch: createOptions.fetch,
-				retries: createOptions.retries,
-				staleTime: createOptions.staleTime,
-				cleanupTime: createOptions.cleanupTime,
-				refetchOnStale: createOptions.refetchOnStale,
-				refetchOnWindowFocus: createOptions.refetchOnWindowFocus,
-				globalCache: createOptions.globalCache
-			};
+			const stacheConstructorOptions: StacheConstructorOptions<StacheParams, PageFetchReturnData> =
+				{
+					id: createOptions.id,
+					fetch: createOptions.fetch,
+					retries: createOptions.retries,
+					staleTime: createOptions.staleTime,
+					cleanupTime: createOptions.cleanupTime,
+					refetchOnStale: createOptions.refetchOnStale,
+					refetchOnWindowFocus: createOptions.refetchOnWindowFocus,
+					globalCache: createOptions.globalCache
+				};
 
-			const usePagedOptions: UsePagedStacheOptions<StacheParams, Result> = {
+			const usePagedOptions: UsePagedStacheOptions<StacheParams, PageResult> = {
 				params: useOptions.params as StacheParams,
 				enabled: useOptions.enabled
 			};
 
-			stache = new Stache<StacheParams, Result, FetchReturnData>(
+			stache = new Stache<StacheParams, PageFetchReturnData>(
 				stacheConstructorOptions,
 				usePagedOptions,
 				fetchPageParams
@@ -134,20 +139,28 @@ const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
  * @param createOptions The options to define the stache.
  * @returns An object containing the `useStache` function and an `invalidate` method.
  */
-const createPagedStache = <StacheParams, Result, FetchReturnData>(
-	createOptions: CreatePagedStacheOptions<StacheParams, Result, FetchReturnData>
+const createPagedStache = <
+	StacheParams,
+	PageResult extends Array<unknown>,
+	PageFetchReturnData,
+	Result = PageResult
+>(
+	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>
 ) => {
 	const cache = getPagedStacheCache(createOptions.id, createOptions.globalCache);
 
-	const useStache = <T extends Exact<UsePagedStacheOptions<StacheParams, Result>, T>>(
+	const useStache = <T extends Exact<UsePagedStacheOptions<StacheParams, PageResult>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
-		const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, Result>;
-		const { getData, getTotalCount } = createOptions;
+		const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, PageResult>;
+		const {
+			getData = (data: PageFetchReturnData) => data as unknown as PageResult,
+			getTotalCount
+		} = createOptions;
 
 		let effectHasRun = $state(false);
 		let pages = $state(
-			getOrCreatePageStaches<StacheParams, Result, FetchReturnData>(
+			getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData>(
 				cache,
 				createOptions,
 				useOptions
@@ -158,7 +171,7 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 
 		// Effect to reactively update pages when pageParams change
 		$effect.pre(() => {
-			const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, Result>;
+			const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, PageResult>;
 
 			// Use untrack to avoid infinite loops when updating pages
 			untrack(() => {
@@ -167,7 +180,7 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 					return;
 				}
 				// Get new pages based on updated pageParams
-				pages = getOrCreatePageStaches<StacheParams, Result, FetchReturnData>(
+				pages = getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData>(
 					cache,
 					createOptions,
 					useOptions
@@ -177,7 +190,10 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 			return () => {
 				const stacheKey = hashKey(useOptions?.params);
 
-				const pageCache = getPageCache<StacheParams, Result, FetchReturnData>(cache, stacheKey);
+				const pageCache = getPageCache<StacheParams, PageResult, PageFetchReturnData>(
+					cache,
+					stacheKey
+				);
 				// Cleanup: Decrement reference count of page staches when effect re-runs or component unmounts
 				pages.forEach((stache, pageIndex) => {
 					const pageStacheKey = hashKey({
@@ -208,28 +224,31 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 			};
 		});
 
-		const pagedStache: PublicPagedStache<StacheParams, Result, FetchReturnData> = {
+		const pagedStache: PublicPagedStache<StacheParams, Result, PageResult, PageFetchReturnData> = {
 			// Aggregate data from all page staches
 			get data() {
-				const pagesData = pages
-					.flatMap((stache) => {
-						const pageData = stache.data && getData ? getData(stache.data) : stache.data;
-						return pageData;
-					})
+				const pagesData = this.pages
 					.filter((page) => {
 						return page !== null && page !== undefined;
-					});
-				return Array.isArray(pagesData) ? (pagesData as unknown as Result) : null;
+					})
+					.flat() as Result;
+				return pagesData;
 			},
 			get pages() {
-				return pages.map((stache) => (stache.data && getData ? getData(stache.data) : stache.data));
+				return pages.map((stache) => (stache.data ? getData(stache.data) : null));
+			},
+
+			get enabled() {
+				return pages.some((stache) => stache.enabled);
 			},
 
 			get totalCount() {
 				if (getTotalCount) {
 					// Assume total count is same across all pages, take from first page
 					const firstPage = pages[0];
-					return firstPage && firstPage.data ? getTotalCount(firstPage.data as FetchReturnData) : 0;
+					return firstPage && firstPage.data
+						? getTotalCount(firstPage.data as PageFetchReturnData)
+						: 0;
 				}
 				return pages.length * pageSize; // Fallback if no getTotalCount provided
 			},
@@ -268,18 +287,17 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 						: 'empty';
 			},
 			get params() {
-				return useOptions.params;
+				return useOptions.params as StacheParams;
 			},
 			get hasMore() {
 				return Array.isArray(this.data) ? this.data.length < this.totalCount : false;
 			},
 			invalidate: () => {
 				pages.forEach((stache) => stache.invalidate());
-			},
-			get _stache() {
-				return null; // Not applicable for paged staches
 			}
 		};
+
+		return pagedStache;
 	};
 
 	const invalidate = async (args: StacheParams) => {

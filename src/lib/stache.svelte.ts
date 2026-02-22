@@ -16,7 +16,7 @@ import type { Exact, Merge } from 'type-fest';
 import { browser } from '$app/environment';
 
 type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
-	StacheConstructorOptions<StacheFnParams, FetchReturnData, FetchReturnData>,
+	StacheConstructorOptions<StacheFnParams, FetchReturnData>,
 	{
 		fetch: FetchFn<StacheFnParams, FetchReturnData>;
 		globalCache?: GlobalStacheCache;
@@ -24,7 +24,7 @@ type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 >;
 
 type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
-	Stache<Params, Result, FetchReturnData>,
+	Stache<Params, FetchReturnData>,
 	| 'data'
 	| 'enabled'
 	| 'error'
@@ -32,10 +32,8 @@ type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
 	| 'lastFetched'
 	| 'invalidate'
 	| 'cacheStatus'
-	| 'referenceCount'
 	| 'params'
 > & {
-	_stache: Stache<Params, Result, FetchReturnData> | null;
 	isError: boolean;
 	isLoading: boolean;
 	isSuccess: boolean;
@@ -51,14 +49,6 @@ type ThenMethod<Params, Result = unknown, FetchReturnData = unknown> = <
 		| undefined,
 	onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
 ) => PromiseLike<TResult1 | TResult2>;
-
-type PublicStachePromise<Params, Result = unknown, FetchReturnData = unknown> = PublicStache<
-	Params,
-	Result,
-	FetchReturnData
-> & {
-	readonly then: ThenMethod<Params, Result, FetchReturnData>;
-};
 
 type CreateStacheFn = <StacheParams, Result>(
 	defineOptions: CreateStacheOptions<StacheParams, Result>
@@ -89,10 +79,10 @@ const getOrCreateStache = <StacheParams, Result, FetchReturnData>(
 	stacheKey: string,
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>,
 	useOptions: UseStacheOptions<StacheParams>
-): Stache<StacheParams, Result, FetchReturnData> => {
-	let stache = getStache<StacheParams, Result, FetchReturnData>(cache, stacheKey);
+): Stache<StacheParams, FetchReturnData> => {
+	let stache = getStache<StacheParams, FetchReturnData>(cache, stacheKey);
 	if (!stache) {
-		stache = new Stache<StacheParams, Result, FetchReturnData>(createOptions, useOptions);
+		stache = new Stache<StacheParams, FetchReturnData>(createOptions, useOptions);
 		cache.set(stacheKey, stache);
 	} else {
 		stache.referenceCount++;
@@ -133,22 +123,17 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 
 	const useStache = <T extends Exact<UseStacheOptions<StacheParams>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
-	): PromiseLike<PublicStache<StacheParams, Result, FetchReturnData>> & {
-		sync: () => PublicStache<StacheParams, Result, FetchReturnData>;
-	} => {
+	) => {
 		const useOptions = useOptionsFn() as UseStacheOptions<StacheParams>;
 		const stacheKey = hashKey(useOptions?.params);
 
-		let effectHasRun = $state(false);
+		let effectHasRun = false;
 		// why not a derived? because state is mutated in the stache instance which isn't allowed in a derived.
-		let stache: Stache<StacheParams, Result, FetchReturnData> = $state(
-			getOrCreateStache<StacheParams, Result, FetchReturnData>(
-				cache,
-				stacheKey,
-				createOptions,
-				useOptions
-			)
-		);
+		let stache: Stache<StacheParams, FetchReturnData> = getOrCreateStache<
+			StacheParams,
+			Result,
+			FetchReturnData
+		>(cache, stacheKey, createOptions, useOptions);
 
 		// Reactive effect to handle parameter changes and stache lifecycle
 		// $effect is used over $derived for deeper reactivity and cleanup control
@@ -207,7 +192,9 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 			};
 		});
 
-		const publicStache: PublicStache<StacheParams, Result, FetchReturnData> = {
+		let resolved = false;
+
+		const publicStache = {
 			// Access the stache instance reactively because it is a $state
 			get data() {
 				return stache.data;
@@ -236,31 +223,37 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 			get cacheStatus() {
 				return stache.cacheStatus;
 			},
-			get referenceCount() {
-				return stache.referenceCount;
-			},
 			get params() {
 				return stache.params;
 			},
 			invalidate: () => stache.invalidate(),
-			get _stache() {
-				return stache;
-			}
-		};
-
-		return {
 			get then(): ThenMethod<StacheParams, Result, FetchReturnData> {
-				return (onfulfilled, onrejected) =>
-					stache.promise.then(() => publicStache).then(onfulfilled, onrejected);
+				if (!resolved) {
+					return (onfulfilled, onrejected) =>
+						stache.promise
+							.then(() => {
+								resolved = true;
+								if (stache.fetchStatus === 'error') {
+									return Promise.reject(stache.error);
+								}
+								return publicStache;
+							})
+							.then(onfulfilled, onrejected);
+				}
+				// return undefined to indicate that the promise has already resolved and prevent further chaining
+				return undefined as unknown as ThenMethod<StacheParams, Result, FetchReturnData>;
 			},
 
-			sync() {
-				stache.promise.catch(() => {
-					// Catch errors to prevent unhandled promise rejections when using sync()
-				});
-				return publicStache;
+			get catch() {
+				return (onrejected: (reason: unknown) => void) => stache.promise.catch(onrejected);
+			},
+
+			get finally() {
+				return stache.promise.finally(() => publicStache);
 			}
 		};
+
+		return publicStache;
 	};
 
 	const invalidate = (args: StacheParams) => {

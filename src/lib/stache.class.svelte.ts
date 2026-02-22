@@ -1,8 +1,8 @@
 import { hashKey } from './utils';
-import type { GlobalStacheCache, StacheCache } from './cache/stache.svelte';
+import type { GlobalStacheCache } from './cache/stache.svelte';
 import type { GlobalPagedStacheCache } from './cache/paged-stache.svelte';
 import { SvelteDate } from 'svelte/reactivity';
-import { hydratable, tick } from 'svelte';
+import { hydratable } from 'svelte';
 import { browser } from '$app/environment';
 
 // type BaseStacheParams = unknown;
@@ -38,7 +38,7 @@ type PagedFetchFn<StacheFnParams, FetchReturnData> = (
 	pageParams: FetchPageParams
 ) => Promise<FetchReturnData> | FetchReturnData;
 
-type StacheConstructorOptions<StacheFnParams, Result, FetchReturnData> = {
+type StacheConstructorOptions<StacheFnParams, FetchReturnData> = {
 	/**
 	 * Unique identifier for the stache type.
 	 * Used in conjunction with `params` to uniquely identify a stache instance.
@@ -138,7 +138,7 @@ type UsePagedStacheOptions<Params, Result> = {
  * Queries are automatically cleaned up from the cache after a period of inactivity (no references).
  *
  */
-class Stache<FetchParams, Result, FetchReturnData> {
+class Stache<FetchParams, FetchReturnData> {
 	#scheduleCacheStatusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	/**
@@ -181,40 +181,13 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	#cacheStatus: 'fresh' | 'stale' | 'empty' = $state('empty');
 	#promise: Promise<void>;
 
-	#then = $derived.by(() => {
-		const p = this.#promise;
-
-		return (
-			resolve:
-				| ((
-						value: FetchReturnData | null
-				  ) => FetchReturnData | PromiseLike<FetchReturnData | null> | null)
-				| null
-				| undefined,
-			reject: ((reason: unknown) => PromiseLike<never>) | null | undefined
-		) => {
-			const result = (async () => {
-				await p;
-				// svelte-ignore await_reactivity_loss
-				await tick();
-				return this.#data;
-			})();
-
-			if (resolve || reject) {
-				return result.then(resolve, reject);
-			}
-
-			return result;
-		};
-	});
-
 	#raw: FetchReturnData | null = $state.raw(null);
 
 	#data = $derived.by(() => this.#raw);
 
-	#error: unknown = $state(null);
+	#error: unknown = $state.raw(null);
 
-	#lastFetched: SvelteDate | null = $state(null);
+	#lastFetched: Date | null = $state.raw(null);
 
 	readonly staleTime = 5 * 60 * 1000;
 
@@ -253,7 +226,7 @@ class Stache<FetchParams, Result, FetchReturnData> {
 			cleanupTime,
 			refetchOnStale,
 			refetchOnWindowFocus
-		}: StacheConstructorOptions<FetchParams, Result, FetchReturnData>,
+		}: StacheConstructorOptions<FetchParams, FetchReturnData>,
 		{ params, enabled }: UseStacheOptions<FetchParams>,
 		fetchPageParams?: FetchPageParams
 	) {
@@ -293,9 +266,7 @@ class Stache<FetchParams, Result, FetchReturnData> {
 			});
 		}
 
-		this.#promise = this.#run({
-			rejectOnError: true
-		});
+		this.#promise = this.#run();
 	}
 
 	/**
@@ -323,11 +294,9 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 * @param previousQuery Existing data from a previous fetch to be used when fetching new data.
 	 */
 	#run({
-		invalidated = false,
-		rejectOnError = false
+		invalidated = false
 	}: {
 		invalidated?: boolean;
-		rejectOnError?: boolean;
 	} = {}): Promise<void> {
 		if ((!invalidated && !this.canRun(this.params)) || this.#fetchStatus === 'loading') {
 			return Promise.resolve();
@@ -367,11 +336,12 @@ class Stache<FetchParams, Result, FetchReturnData> {
 				} else {
 					this.#error = err;
 					this.#fetchStatus = 'error';
-					if (rejectOnError) {
-						reject(err);
-					} else {
-						resolve();
-					}
+					// if (rejectOnError) {
+					// 	console.error('rejecting');
+					// 	// reject(err);
+					// } else {
+					resolve();
+					// }
 				}
 			});
 		return promise;
@@ -427,10 +397,6 @@ class Stache<FetchParams, Result, FetchReturnData> {
 
 	get promise() {
 		return this.#promise;
-	}
-
-	get then() {
-		return this.#then;
 	}
 }
 

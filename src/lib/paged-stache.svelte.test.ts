@@ -79,7 +79,7 @@ describe('createPagedStache cache implementation', () => {
 				expect(stache).toBeDefined();
 				flushSync();
 
-				await vi.waitUntil(() => stache.data !== null && stache.data.length > 0);
+				await vi.waitUntil(() => stache.data !== null && stache.data?.length > 0);
 
 				expect(fetchFn).toHaveBeenCalledWith({ query: 'test' }, { pageIndex: 0, pageSize: 10 });
 				expect(stache.data).toHaveLength(10);
@@ -98,7 +98,7 @@ describe('createPagedStache cache implementation', () => {
 
 				const globalCache = new SvelteMap<
 					string,
-					SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+					SvelteMap<string, SvelteMap<string, Stache<any, any>>>
 				>();
 
 				const { useStache } = createPagedStache({
@@ -118,7 +118,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data !== null && stache.data.length === 30);
+				await vi.waitUntil(() => stache.data !== null && stache.data?.length === 30);
 
 				// Should fetch 3 pages
 				// expect(fetchFn).toHaveBeenCalledTimes(3);
@@ -159,13 +159,13 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data !== null && stache.data.length === 30);
+				await vi.waitUntil(() => stache.data !== null && stache.data?.length === 30);
 
 				// Check aggregated data
 				expect(stache.data).toHaveLength(30);
-				expect(stache.data[0]).toEqual({ id: 0, value: 'item-0' });
-				expect(stache.data[10]).toEqual({ id: 10, value: 'item-10' });
-				expect(stache.data[29]).toEqual({ id: 29, value: 'item-29' });
+				expect(stache.data?.[0]).toEqual({ id: 0, value: 'item-0' });
+				expect(stache.data?.[10]).toEqual({ id: 10, value: 'item-10' });
+				expect(stache.data?.[29]).toEqual({ id: 29, value: 'item-29' });
 			})
 		);
 
@@ -319,7 +319,7 @@ describe('createPagedStache cache implementation', () => {
 			withEffectRoot(async () => {
 				const globalCache = new SvelteMap<
 					string,
-					SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+					SvelteMap<string, SvelteMap<string, Stache<any, any>>>
 				>();
 				const fetchFn = vi
 					.fn()
@@ -556,6 +556,7 @@ describe('createPagedStache cache implementation', () => {
 
 				expect(stache.isError).toBe(true);
 				expect(stache.error).toBeInstanceOf(Error);
+				// @ts-expect-error - error type is unknown due to aggregation
 				expect(stache.error?.message).toBe('Page 1 error');
 			})
 		);
@@ -657,7 +658,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
 				expect(stache.data).toHaveLength(20);
 				expect(stache.totalCount).toBe(100);
@@ -687,7 +688,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
 				expect(stache.data).toHaveLength(20);
 			})
@@ -716,7 +717,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length > 0);
+				await vi.waitUntil(() => stache.data?.length || 0 > 0);
 
 				// Fallback should be pageCount * pageSize
 				expect(stache.totalCount).toBe(30);
@@ -750,10 +751,10 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
 				expect(stache.hasMore).toBe(true);
-				expect(stache.data.length).toBe(20);
+				expect(stache.data?.length).toBe(20);
 				expect(stache.totalCount).toBe(100);
 			})
 		);
@@ -783,10 +784,10 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 25);
+				await vi.waitUntil(() => stache.data?.length === 25);
 
 				expect(stache.hasMore).toBe(false);
-				expect(stache.data.length).toBe(25);
+				expect(stache.data?.length).toBe(25);
 				expect(stache.totalCount).toBe(25);
 			})
 		);
@@ -857,7 +858,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
 				expect(fetchFn).toHaveBeenCalledTimes(2);
 
@@ -895,7 +896,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
 				expect(fetchFn).toHaveBeenCalledTimes(2);
 
@@ -934,7 +935,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 10);
+				await vi.waitUntil(() => stache.data?.length === 10);
 
 				// Try to invalidate non-existent params
 				invalidate({ query: 'non-existent' });
@@ -978,7 +979,7 @@ describe('createPagedStache cache implementation', () => {
 				await vi.waitUntil(() => stache.isError);
 
 				// Should have data from successful pages (0 and 2)
-				expect(stache.data.length).toBeGreaterThan(0);
+				expect(stache.data?.length).toBeGreaterThan(0);
 				expect(stache.isError).toBe(true);
 			})
 		);
@@ -1118,7 +1119,7 @@ describe('createPagedStache cache implementation', () => {
 			vi.useFakeTimers();
 			const globalCache = new SvelteMap<
 				string,
-				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+				SvelteMap<string, SvelteMap<string, Stache<any, any>>>
 			>();
 			const fetchFn = vi
 				.fn()
@@ -1190,7 +1191,7 @@ describe('createPagedStache cache implementation', () => {
 
 			const globalCache = new SvelteMap<
 				string,
-				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+				SvelteMap<string, SvelteMap<string, Stache<any, any>>>
 			>();
 
 			const { useStache } = createPagedStache({
@@ -1214,7 +1215,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 30);
+				await vi.waitUntil(() => stache.data?.length === 30);
 				expect(fetchFn).toHaveBeenCalledTimes(3);
 			})();
 
@@ -1236,7 +1237,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 10);
+				await vi.waitUntil(() => stache.data?.length === 10);
 
 				// Page 0 should have refCount 1, others still 0
 				expect(paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))?.referenceCount).toBe(1);
@@ -1273,7 +1274,7 @@ describe('createPagedStache cache implementation', () => {
 			vi.useFakeTimers();
 			const globalCache = new SvelteMap<
 				string,
-				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+				SvelteMap<string, SvelteMap<string, Stache<any, any>>>
 			>();
 			const fetchFn = vi
 				.fn()
@@ -1301,7 +1302,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
 				const paramsCache = globalCache
 					.get('paged-param-change-cleanup-test')!
@@ -1315,7 +1316,7 @@ describe('createPagedStache cache implementation', () => {
 				pageOffset = 2;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data[0]?.id === 20);
+				await vi.waitUntil(() => stache.data?.[0]?.id === 20);
 
 				// Pages 0 and 1 should have refCount 0 now
 				expect(paramsCache!.get(hashKey({ pageIndex: 0, pageSize: 10 }))?.referenceCount).toBe(0);
@@ -1356,7 +1357,7 @@ describe('createPagedStache cache implementation', () => {
 			vi.useFakeTimers();
 			const globalCache = new SvelteMap<
 				string,
-				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+				SvelteMap<string, SvelteMap<string, Stache<any, any>>>
 			>();
 			const fetchFn = vi
 				.fn()
@@ -1382,7 +1383,7 @@ describe('createPagedStache cache implementation', () => {
 				}));
 
 				flushSync();
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 			})();
 
 			// Cache should still exist after effect cleanup
@@ -1408,7 +1409,7 @@ describe('createPagedStache cache implementation', () => {
 			vi.useFakeTimers();
 			const globalCache = new SvelteMap<
 				string,
-				SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>
+				SvelteMap<string, SvelteMap<string, Stache<any, any>>>
 			>();
 			const fetchFn = vi
 				.fn()
@@ -1435,7 +1436,7 @@ describe('createPagedStache cache implementation', () => {
 				}));
 
 				flushSync();
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
 				// Wait for stale
 				vi.advanceTimersToNextTimer();
@@ -1491,7 +1492,7 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 10);
+				await vi.waitUntil(() => stache.data?.length === 10);
 
 				expect(stache.data).toHaveLength(10);
 				expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -1500,7 +1501,7 @@ describe('createPagedStache cache implementation', () => {
 				pageCount = 3;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 30);
+				await vi.waitUntil(() => stache.data?.length === 30);
 
 				expect(stache.data).toHaveLength(30);
 				// Should fetch 2 additional pages (pages 1 and 2)
@@ -1535,19 +1536,19 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
-				expect(stache.data[0]).toEqual({ id: 0, value: 'item-0' });
-				expect(stache.data[10]).toEqual({ id: 10, value: 'item-10' });
+				expect(stache.data?.[0]).toEqual({ id: 0, value: 'item-0' });
+				expect(stache.data?.[10]).toEqual({ id: 10, value: 'item-10' });
 
 				// Change offset to view different page window
 				pageOffset = 2;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data[0]?.id === 20);
+				await vi.waitUntil(() => stache.data?.[0]?.id === 20);
 
-				expect(stache.data[0]).toEqual({ id: 20, value: 'item-20' });
-				expect(stache.data[10]).toEqual({ id: 30, value: 'item-30' });
+				expect(stache.data?.[0]).toEqual({ id: 20, value: 'item-20' });
+				expect(stache.data?.[10]).toEqual({ id: 30, value: 'item-30' });
 			})
 		);
 
@@ -1578,21 +1579,21 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 10);
+				await vi.waitUntil(() => stache.data?.length === 10);
 				expect(stache.hasMore).toBe(true);
 
 				// User scrolls - load more
 				pageCount = 2;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 				expect(stache.hasMore).toBe(true);
 
 				// User scrolls more - load more
 				pageCount = 3;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 30);
+				await vi.waitUntil(() => stache.data?.length === 30);
 				expect(stache.hasMore).toBe(true);
 				expect(stache.data).toHaveLength(30);
 			})
@@ -1625,14 +1626,14 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 30);
+				await vi.waitUntil(() => stache.data?.length === 30);
 				expect(stache.data).toHaveLength(30);
 
 				// Decrease pageCount (e.g., user navigates away and comes back)
 				pageCount = 1;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 10);
+				await vi.waitUntil(() => stache.data?.length === 10);
 				expect(stache.data).toHaveLength(10);
 			})
 		);
@@ -1665,18 +1666,18 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
-				expect(stache.data[0]).toEqual({ id: 0, value: 'item-0' });
+				await vi.waitUntil(() => stache.data?.length === 20);
+				expect(stache.data?.[0]).toEqual({ id: 0, value: 'item-0' });
 
 				// Change both offset and count
 				pageOffset = 3;
 				pageCount = 3;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data[0]?.id === 30);
+				await vi.waitUntil(() => stache.data?.[0]?.id === 30);
 
 				expect(stache.data).toHaveLength(30);
-				expect(stache.data[0]).toEqual({ id: 30, value: 'item-30' });
+				expect(stache.data?.[0]).toEqual({ id: 30, value: 'item-30' });
 			})
 		);
 
@@ -1707,14 +1708,14 @@ describe('createPagedStache cache implementation', () => {
 
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 				expect(fetchFn).toHaveBeenCalledTimes(2); // Pages 0 and 1
 
 				// Increase to 4 pages
 				pageCount = 4;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 40);
+				await vi.waitUntil(() => stache.data?.length === 40);
 
 				// Should only fetch 2 additional pages (pages 2 and 3), reusing pages 0 and 1
 				expect(fetchFn).toHaveBeenCalledTimes(4);
@@ -1723,7 +1724,7 @@ describe('createPagedStache cache implementation', () => {
 				pageCount = 2;
 				flushSync();
 
-				await vi.waitUntil(() => stache.data.length === 20);
+				await vi.waitUntil(() => stache.data?.length === 20);
 
 				// Should still be 4 fetches (cached pages 0 and 1)
 				expect(fetchFn).toHaveBeenCalledTimes(4);

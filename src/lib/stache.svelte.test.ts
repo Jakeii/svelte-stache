@@ -36,10 +36,12 @@ describe('createStache cache implementation', () => {
 		it(
 			'should return a function that creates Stache instances',
 			withEffectRoot(async () => {
+				const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any>>>();
 				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
 					id: 'test-stache',
-					fetch: fetchFn
+					fetch: fetchFn,
+					globalCache
 				});
 
 				const params: number | string = $state(1);
@@ -59,13 +61,14 @@ describe('createStache cache implementation', () => {
 				expect(stache.isError).toBe(false);
 				expect(stache.isLoading).toBe(false);
 				expect(stache.isSuccess).toBe(true);
-				expect(stache.referenceCount).toBe(1);
+				expect(globalCache.get('test-stache')?.get(hashKey(1))?.referenceCount).toBe(1);
 			})
 		);
 
 		it(
 			'should have the correct initial state',
 			withEffectRoot(async () => {
+				const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any>>>();
 				let resolveStache: (value: any) => void;
 				const stachePromise = new Promise((resolve) => {
 					resolveStache = resolve;
@@ -74,7 +77,8 @@ describe('createStache cache implementation', () => {
 				const fetchFn = vi.fn().mockReturnValue(stachePromise);
 				const { useStache } = createStache({
 					id: 'initial-state-test',
-					fetch: fetchFn
+					fetch: fetchFn,
+					globalCache
 				});
 
 				const params = $state('param');
@@ -88,7 +92,9 @@ describe('createStache cache implementation', () => {
 				expect(stache.isLoading).toBe(false);
 				expect(stache.isSuccess).toBe(false);
 				expect(stache.lastFetched).toBe(null);
-				expect(stache.referenceCount).toBe(1);
+				expect(globalCache.get('initial-state-test')?.get(hashKey('param'))?.referenceCount).toBe(
+					1
+				);
 
 				flushSync();
 
@@ -101,7 +107,9 @@ describe('createStache cache implementation', () => {
 
 				expect(stache.isLoading).toBe(true);
 				expect(stache.isLoading).toBe(true);
-				expect(stache.referenceCount).toBe(1);
+				expect(globalCache.get('initial-state-test')?.get(hashKey('param'))?.referenceCount).toBe(
+					1
+				);
 
 				// Resolve the stache
 				resolveStache!({ data: 'initial' });
@@ -112,7 +120,9 @@ describe('createStache cache implementation', () => {
 				expect(stache.isError).toBe(false);
 				expect(stache.isLoading).toBe(false);
 				expect(stache.isSuccess).toBe(true);
-				expect(stache.referenceCount).toBe(1);
+				expect(globalCache.get('initial-state-test')?.get(hashKey('param'))?.referenceCount).toBe(
+					1
+				);
 			})
 		);
 
@@ -158,7 +168,7 @@ describe('createStache cache implementation', () => {
 		it(
 			'should share the same Stache instance between components',
 			withEffectRoot(async () => {
-				const queryCache = new SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>();
+				const queryCache = new SvelteMap<string, SvelteMap<string, Stache<any, any>>>();
 				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
 					id: 'shared-stache',
@@ -256,7 +266,7 @@ describe('createStache cache implementation', () => {
 				fetch: fetchFn,
 				globalCache
 			});
-			let stache1: PublicStache<any, any, any>;
+			let stache1: PublicStache<any, any>;
 
 			await withEffectRoot(async () => {
 				expect(globalCache.has('cleanup-test')).toBe(true);
@@ -276,21 +286,11 @@ describe('createStache cache implementation', () => {
 
 				// Now await after all staches are created
 				stache1 = await stache1Thenable;
-				const stache2 = await stache2Thenable;
-				const stache3 = await stache3Thenable;
 
-				expect(stache1.referenceCount).toBe(3);
+				expect(globalCache.get('cleanup-test')?.get(hashKey('param1')).referenceCount).toBe(3);
 
-				expect(globalCache.get('cleanup-test')?.get(hashKey('param1'))).toBeDefined();
+				expect(globalCache.get('cleanup-test')?.size).toBe(1);
 
-				// All should be the same instance (cache hit)
-				expect(stache1._stache).toBe(stache2._stache);
-				expect(stache2._stache).toBe(stache3._stache);
-
-				await vi.waitUntil(() => stache1.referenceCount === 3);
-
-				// Wait for automatic stache execution
-				await vi.waitUntil(() => stache1.data !== null);
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 			})();
 
@@ -333,7 +333,7 @@ describe('createStache cache implementation', () => {
 			flushSync();
 			await vi.waitUntil(() => stache1.data !== null);
 			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(stache1.referenceCount).toBe(1);
+			expect(globalCache.get('ref-count-test')?.get(hashKey('param1')).referenceCount).toBe(1);
 		})();
 
 		await withEffectRoot(async () => {
@@ -363,7 +363,7 @@ describe('createStache cache implementation', () => {
 
 	it('should only refetch referenced staches', async () => {
 		const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
-		const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>();
+		const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any>>>();
 		const { useStache } = createStache({
 			id: 'invalidate-test',
 			fetch: fetchFn,
@@ -461,13 +461,15 @@ describe('createStache cache implementation', () => {
 		it(
 			'should maintain separate caches for different params',
 			withEffectRoot(async () => {
+				const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any>>>();
 				const fetchFn = vi.fn().mockImplementation((params) => {
 					return Promise.resolve({ data: `result-${params.id}` });
 				});
 
 				const { useStache } = createStache({
 					id: 'param-test',
-					fetch: fetchFn
+					fetch: fetchFn,
+					globalCache
 				});
 
 				// Create queries with different params — synchronously
@@ -486,10 +488,7 @@ describe('createStache cache implementation', () => {
 				const stache2 = await stache2Thenable;
 				const stache3 = await stache3Thenable;
 
-				// stache1 and stache3 should be the same instance (same params)
-				expect(stache1._stache).toBe(stache3._stache);
-				// stache2 should be different (different params)
-				expect(stache1._stache).not.toBe(stache2._stache);
+				expect(globalCache.get('param-test')?.size).toBe(2);
 
 				// Wait for automatic stache execution
 				await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
@@ -504,7 +503,7 @@ describe('createStache cache implementation', () => {
 		it(
 			'old cache entries from previous params should be cleaned up after timeout',
 			withEffectRoot(async () => {
-				const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any, any>>>();
+				const globalCache = new SvelteMap<string, SvelteMap<string, Stache<any, any>>>();
 				const fetchFn = vi.fn().mockImplementation((params) => {
 					return Promise.resolve({ data: `result-${params}` });
 				});
@@ -946,7 +945,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params })).sync();
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1098,7 +1097,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params })).sync();
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1129,9 +1128,9 @@ describe('createStache cache implementation', () => {
 					await useStache(() => ({ params }));
 				} catch (error) {
 					// Should be in error state
-					expect(stache.sync().fetchStatus).toBe('error');
-					expect(stache.sync().isError).toBe(true);
-					expect(stache.sync().data).toBe(null);
+					expect(stache.fetchStatus).toBe('error');
+					expect(stache.isError).toBe(true);
+					expect(stache.data).toBe(null);
 					expect(error).toStrictEqual(regularError);
 				}
 			})
@@ -1154,7 +1153,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params })).sync();
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1197,7 +1196,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params })).sync();
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1230,7 +1229,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params })).sync();
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1254,7 +1253,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params })).sync();
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1317,7 +1316,7 @@ describe('createStache cache implementation', () => {
 
 				let enabled = $state(false);
 				const params = $state('param');
-				const stache = useStache(() => ({ params, enabled })).sync();
+				const stache = useStache(() => ({ params, enabled }));
 
 				flushSync();
 
@@ -1349,10 +1348,9 @@ describe('createStache cache implementation', () => {
 				globalCache
 			});
 
-			let stache: any;
 			await withEffectRoot(async () => {
 				const params = $state('param');
-				stache = await useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 				await vi.waitUntil(() => stache.data !== null);
@@ -1362,7 +1360,7 @@ describe('createStache cache implementation', () => {
 
 			// Cache should exist and have 0 references after effect cleanup
 			expect(globalCache.get('custom-cleanup-test')?.get(hashKey('param'))).toBeDefined();
-			expect(stache.referenceCount).toBe(0);
+			expect(globalCache.get('custom-cleanup-test')?.get(hashKey('param'))?.referenceCount).toBe(0);
 
 			// Advance time by custom cleanup time
 			vi.advanceTimersToNextTimer();
@@ -1469,11 +1467,13 @@ describe('createStache cache implementation', () => {
 		it(
 			'should handle stale data with multiple components sharing same stache',
 			withEffectRoot(async () => {
+				const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
 				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
 					id: 'shared-stale-test',
 					fetch: fetchFn,
-					staleTime: 100
+					staleTime: 100,
+					globalCache
 				});
 
 				// Create multiple components sharing the same stache — synchronously
@@ -1492,12 +1492,9 @@ describe('createStache cache implementation', () => {
 				const stache2 = await stache2Thenable;
 				const stache3 = await stache3Thenable;
 
-				// All should be the same instance
-				expect(stache1._stache).toBe(stache2._stache);
-				expect(stache2._stache).toBe(stache3._stache);
+				expect(globalCache.get('shared-stale-test')?.get(hashKey('shared-param'))).toBeDefined();
+				expect(globalCache.get('shared-stale-test')?.size).toBe(1);
 
-				// Wait for fetch
-				await vi.waitUntil(() => stache1.data !== null);
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 				expect(stache1.cacheStatus).toBe('fresh');
 
@@ -1532,10 +1529,9 @@ describe('createStache cache implementation', () => {
 				globalCache
 			});
 
-			let stache: any;
 			await withEffectRoot(async () => {
 				const params = $state('param');
-				stache = await useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 				await vi.waitUntil(() => stache.data !== null);
@@ -1545,8 +1541,10 @@ describe('createStache cache implementation', () => {
 			})();
 
 			// Should be stale with 0 references
-			expect(stache.cacheStatus).toBe('stale');
-			expect(stache.referenceCount).toBe(0);
+			expect(globalCache.get('cleanup-stale-test')?.get(hashKey('param')).cacheStatus).toBe(
+				'stale'
+			);
+			expect(globalCache.get('cleanup-stale-test')?.get(hashKey('param')).referenceCount).toBe(0);
 
 			// Advance cleanup time
 			vi.advanceTimersToNextTimer();
@@ -1614,7 +1612,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params })).sync();
+				const stache = useStache(() => ({ params }));
 
 				flushSync();
 

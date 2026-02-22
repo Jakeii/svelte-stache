@@ -15,23 +15,20 @@ type StacheId = string;
 /**
  * The paged stache cache structure.
  */
-type PagedStacheCache = SvelteMap<StacheParamsKey, SvelteMap<PageKey, Stache<any, any, any>>>;
+type PagedStacheCache = SvelteMap<StacheParamsKey, SvelteMap<PageKey, Stache<any, any>>>;
 
 type GlobalPagedStacheCache = SvelteMap<StacheId, PagedStacheCache>;
 
 const pagedGlobalStacheCache: GlobalPagedStacheCache = new SvelteMap();
 
-const getPagedStacheCache = <FetchParams, Result, FetchReturnData>(
+const getPagedStacheCache = <FetchParams, FetchReturnData>(
 	id: string,
 	globalCache?: GlobalPagedStacheCache
 ): PagedStacheCache => {
 	const pagedStacheCache: GlobalPagedStacheCache = globalCache ?? pagedGlobalStacheCache;
 	let cache = pagedStacheCache.get(id);
 	if (!cache) {
-		cache = new SvelteMap<
-			string,
-			SvelteMap<PageKey, Stache<FetchParams, Result, FetchReturnData>>
-		>();
+		cache = new SvelteMap<string, SvelteMap<PageKey, Stache<FetchParams, FetchReturnData>>>();
 		pagedStacheCache.set(id, cache);
 	}
 	return cache;
@@ -40,20 +37,20 @@ const getPagedStacheCache = <FetchParams, Result, FetchReturnData>(
 const getPageCache = <FetchParams, Result, FetchReturnData>(
 	pagedStacheCache: PagedStacheCache,
 	stacheKey: string
-): SvelteMap<PageKey, Stache<FetchParams, Result, FetchReturnData>> => {
+): SvelteMap<PageKey, Stache<FetchParams, FetchReturnData>> => {
 	let cache = pagedStacheCache.get(stacheKey);
 	if (!cache) {
-		cache = new SvelteMap<PageKey, Stache<FetchParams, Result, FetchReturnData>>();
+		cache = new SvelteMap<PageKey, Stache<FetchParams, FetchReturnData>>();
 		pagedStacheCache.set(stacheKey, cache);
 	}
 	return cache;
 };
 
 const getPagedStache = <FetchParams, Result, FetchReturnData>(
-	pageCache: SvelteMap<string, Stache<FetchParams, Result, FetchReturnData>>,
+	pageCache: SvelteMap<string, Stache<FetchParams, FetchReturnData>>,
 	pageKey: string
-): Stache<FetchParams, Result, FetchReturnData> | undefined => {
-	return pageCache?.get(pageKey) as Stache<FetchParams, Result, FetchReturnData> | undefined;
+): Stache<FetchParams, FetchReturnData> | undefined => {
+	return pageCache?.get(pageKey) as Stache<FetchParams, FetchReturnData> | undefined;
 };
 
 const getGlobalPagedStacheCache = (): GlobalPagedStacheCache => pagedGlobalStacheCache;
