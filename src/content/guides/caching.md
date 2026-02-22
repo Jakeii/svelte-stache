@@ -1,12 +1,12 @@
 ---
 title: Caching
-description: Understanding how Svelte Stache caches and manages data
+description: Understanding how Stache caches and manages data
 section: Guides
 ---
 
 # Caching
 
-Svelte Stache uses a smart caching system to minimize network requests and provide instant data when possible. This guide explains how it works.
+Stache uses a smart caching system to minimize network requests and provide instant data when possible. This guide explains how it works.
 
 ## How Caching Works
 

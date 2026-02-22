@@ -4,7 +4,7 @@ description: A state management library for Svelte 5 inspired by TanStack Query,
 section: Overview
 ---
 
-# Svelte Stache
+# Stache
 
 A state management library for Svelte 5 inspired by [TanStack Query](https://tanstack.com/query), built with Svelte runes for reactive data fetching, caching, and mutations.
 
@@ -12,7 +12,7 @@ Supports experimental Svelte 5 features like top-level await and hydration, prov
 
 Can be used with or instead of sveltekit remote functions, making it flexible for various data fetching strategies.
 
-## Why Svelte Stache?
+## Why Stache?
 
 Data fetching in modern web applications involves more than just making API calls. You need to handle:
 
@@ -22,7 +22,7 @@ Data fetching in modern web applications involves more than just making API call
 - **Stale data** - Know when to refetch
 - **Memory management** - Clean up unused data
 
-Svelte Stache handles all of this with a simple, declarative API that feels natural in Svelte.
+Stache handles all of this with a simple, declarative API that feels natural in Svelte.
 
 ## Core Concepts
 
@@ -57,7 +57,7 @@ Data transitions through states:
 
 ## Main Exports
 
-Svelte Stache provides three main functions:
+Stache provides three main functions:
 
 | Function            | Purpose                                         |
 | ------------------- | ----------------------------------------------- |

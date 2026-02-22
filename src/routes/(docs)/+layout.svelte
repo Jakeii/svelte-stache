@@ -9,9 +9,9 @@
 	{#snippet logo()}
 		<span class="logo-text">
 			<span class="logo-icon">📦</span>
-			<span class="logo-name">Svelte Stache</span>
+			<span class="logo-name">Stache</span>
 		</span>
-		<span class="sr-only">Svelte Stache</span>
+		<span class="sr-only">Stache</span>
 	{/snippet}
 
 	{@render children?.()}

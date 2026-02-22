@@ -1,16 +1,16 @@
 ---
 title: Getting Started
-description: Install and start using Svelte Stache in your project
+description: Install and start using Stache in your project
 section: Overview
 ---
 
 # Getting Started
 
-This guide will walk you through installing Svelte Stache and creating your first query.
+This guide will walk you through installing Stache and creating your first query.
 
 ## Installation
 
-Install Svelte Stache using your preferred package manager:
+Install Stache using your preferred package manager:
 
 ```bash
 npm install svelte-stache

@@ -6,7 +6,7 @@ section: API
 
 # createStache
 
-Creates a reusable, cacheable query definition. This is the primary function for data fetching in Svelte Stache.
+Creates a reusable, cacheable query definition. This is the primary function for data fetching in Stache.
 
 ## Import
 

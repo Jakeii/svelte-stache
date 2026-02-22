@@ -1,12 +1,12 @@
 ---
 title: DevTools
-description: Inspect and debug your Svelte Stache cache with the built-in DevTools
+description: Inspect and debug your Stache cache with the built-in DevTools
 section: Guides
 ---
 
 # DevTools
 
-Svelte Stache includes a built-in DevTools panel for inspecting and debugging your cache in development. Similar to TanStack Query DevTools, it provides real-time visibility into all cached queries.
+Stache includes a built-in DevTools panel for inspecting and debugging your cache in development. Similar to TanStack Query DevTools, it provides real-time visibility into all cached queries.
 
 ## Installation
 

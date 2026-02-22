@@ -1,7 +1,7 @@
 import { defineSiteConfig } from '@svecodocs/kit';
 
 export const siteConfig = defineSiteConfig({
-	name: 'Svelte Stache',
+	name: 'Stache',
 	url: 'https://svelte-stache.dev',
 	ogImage: {
 		url: 'https://svelte-stache.dev/og.png',
