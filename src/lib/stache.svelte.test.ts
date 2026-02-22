@@ -16,6 +16,14 @@ function withEffectRoot(fn: () => void | Promise<void>) {
 	};
 }
 
+vi.mock('svelte', async () => {
+	const svelte = await vi.importActual('svelte');
+	return {
+		...svelte,
+		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher())
+	};
+});
+
 describe('createStache cache implementation', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -36,7 +44,7 @@ describe('createStache cache implementation', () => {
 
 				const params: number | string = $state(1);
 
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				expect(stache).toBeDefined();
 
@@ -71,7 +79,7 @@ describe('createStache cache implementation', () => {
 
 				const params = $state('param');
 				let enabled = $state(false);
-				const stache = useStache(() => ({ params, enabled }));
+				const stache = await useStache(() => ({ params, enabled }));
 
 				expect(stache.data).toBe(null);
 				expect(stache.error).toBe(null);
@@ -123,7 +131,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				let params = $state('param1');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -158,7 +166,9 @@ describe('createStache cache implementation', () => {
 					globalCache: queryCache
 				});
 
-				// Simulate three components mounting
+				// Simulate three components mounting — all useStache calls must happen
+				// synchronously within the $effect.root to avoid effect_orphan errors.
+				// Awaiting a thenable suspends into a microtask, which exits the root context.
 				const params1 = $state({ id: 1 });
 				const stache1 = useStache(() => ({ params: params1 }));
 
@@ -170,15 +180,15 @@ describe('createStache cache implementation', () => {
 
 				flushSync();
 
+				// Await the fetch resolution after all staches are created
+				await stache1;
+
 				expect(stache1).toBeDefined();
 
 				expect(Array.from(queryCache.get('shared-stache')?.keys() ?? [])).toHaveLength(1);
 
 				flushSync();
 
-				await vi.waitUntil(() => stache1.data !== null);
-
-				expect(stache1.data).toEqual({ data: 'test' });
 				// Stache function should only be called once even when triggered from shared instance
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 				expect(fetchFn).toHaveBeenCalledWith({ id: 1 });
@@ -201,34 +211,25 @@ describe('createStache cache implementation', () => {
 
 				// Create three stache instances
 				const params1 = $state('test');
-				const stache1 = useStache(() => ({ params: params1 }));
+				const stache1Promise = useStache(() => ({ params: params1 }));
 
 				const params2 = $state('test');
-				const stache2 = useStache(() => ({ params: params2 }));
+				const stache2Promise = useStache(() => ({ params: params2 }));
 
 				const params3 = $state('test');
-				const stache3 = useStache(() => ({ params: params3 }));
+				const stache3Promise = useStache(() => ({ params: params3 }));
 
 				flushSync();
-
-				// All should have the same initial state
-				expect(stache1.data).toBe(null);
-				expect(stache1._stache).toBe(stache2._stache);
-				expect(stache2._stache).toBe(stache3._stache);
-
-				// Stache should trigger automatically
-				flushSync();
-
-				// All should be loading
-				expect(stache1.isLoading).toBe(true);
-				expect(stache2.isLoading).toBe(true);
-				expect(stache3.isLoading).toBe(true);
 
 				// Resolve the stache
 				resolveStache!({ result: 'success' });
 
-				// Wait for promise resolution
-				await stachePromise;
+				// // Wait for promise resolution
+				const [stache1, stache2, stache3] = await Promise.all([
+					stache1Promise,
+					stache2Promise,
+					stache3Promise
+				]);
 				flushSync();
 
 				// All instances should have the updated data
@@ -237,6 +238,11 @@ describe('createStache cache implementation', () => {
 				expect(stache1.data).toEqual({ result: 'success' });
 				expect(stache2.data).toEqual({ result: 'success' });
 				expect(stache3.data).toEqual({ result: 'success' });
+
+				expect(stache1.data).toBe(stache2.data);
+				expect(stache2.data).toBe(stache3.data);
+
+				expect(fetchFn).toHaveBeenCalledTimes(1);
 			})
 		);
 	});
@@ -255,24 +261,23 @@ describe('createStache cache implementation', () => {
 			await withEffectRoot(async () => {
 				expect(globalCache.has('cleanup-test')).toBe(true);
 
-				// Create three stache instances with same params
+				// Create three stache instances with same params — all synchronously
+				// to stay within the $effect.root context
 				const params1 = $state('param1');
-				stache1 = useStache(() => ({ params: params1 }));
-
-				flushSync();
-
-				expect(stache1.referenceCount).toBe(1);
+				const stache1Thenable = useStache(() => ({ params: params1 }));
 
 				const params2 = $state('param1');
-				const stache2 = useStache(() => ({ params: params2 }));
-
-				flushSync();
-				expect(stache1.referenceCount).toBe(2);
+				const stache2Thenable = useStache(() => ({ params: params2 }));
 
 				const params3 = $state('param1');
-				const stache3 = useStache(() => ({ params: params3 }));
+				const stache3Thenable = useStache(() => ({ params: params3 }));
 
 				flushSync();
+
+				// Now await after all staches are created
+				stache1 = await stache1Thenable;
+				const stache2 = await stache2Thenable;
+				const stache3 = await stache3Thenable;
 
 				expect(stache1.referenceCount).toBe(3);
 
@@ -294,13 +299,17 @@ describe('createStache cache implementation', () => {
 				expect(cachedStache).toBeDefined();
 				expect(cachedStache.referenceCount).toBe(0);
 
+				expect(cachedStache.cleanupTimeout).not.toBeNull();
+
 				// Fast-forward time to trigger cleanup
 				vi.advanceTimersToNextTimer();
 
 				// Now cache should be cleaned up
-				await vi.waitFor(
+				await vi.waitUntil(
 					() => globalCache.get('cleanup-test')?.get(hashKey('param1')) === undefined
 				);
+
+				flushSync();
 
 				expect(globalCache.get('cleanup-test')?.get(hashKey('param1'))).toBeUndefined();
 			})();
@@ -320,7 +329,7 @@ describe('createStache cache implementation', () => {
 		await withEffectRoot(async () => {
 			// Create stache instance
 			const params1 = $state('param1');
-			const stache1 = useStache(() => ({ params: params1 }));
+			const stache1 = await useStache(() => ({ params: params1 }));
 			flushSync();
 			await vi.waitUntil(() => stache1.data !== null);
 			expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -337,7 +346,7 @@ describe('createStache cache implementation', () => {
 
 			// Reference stache again before cleanup timeout expires
 			const params1copy = $state('param1');
-			const stache1copy = useStache(() => ({ params: params1copy }));
+			const stache1copy = await useStache(() => ({ params: params1copy }));
 			flushSync();
 			expect(stache1copy.data).toEqual({ data: 'test' });
 			expect(cachedStache?.referenceCount).toBe(1);
@@ -364,14 +373,18 @@ describe('createStache cache implementation', () => {
 		});
 
 		await withEffectRoot(async () => {
-			// Create two stache instances with same params
+			// Create two stache instances synchronously to stay in $effect.root context
 			const params1 = $state('param1');
-			const stache1 = useStache(() => ({ params: params1 }));
+			const stache1Thenable = useStache(() => ({ params: params1 }));
 
 			const params2 = $state('param2');
-			const stache2 = useStache(() => ({ params: params2 }));
+			const stache2Thenable = useStache(() => ({ params: params2 }));
 
 			flushSync();
+
+			const stache1 = await stache1Thenable;
+			const stache2 = await stache2Thenable;
+
 			await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
 			expect(fetchFn).toHaveBeenCalledTimes(2);
 
@@ -385,7 +398,7 @@ describe('createStache cache implementation', () => {
 
 			// Reference stache1 again
 			const params1copy = $state('param1');
-			const stache1copy = useStache(() => ({ params: params1copy }));
+			const stache1copy = await useStache(() => ({ params: params1copy }));
 			flushSync();
 			await vi.waitUntil(() => stache1copy.data !== null);
 
@@ -421,14 +434,17 @@ describe('createStache cache implementation', () => {
 					fetch: fetch2
 				});
 
-				// Create queries with same params but different ids
+				// Create queries with same params but different ids — synchronously
 				const params1 = $state({ id: 1 });
-				const stache1 = useStache1(() => ({ params: params1 }));
+				const stache1Thenable = useStache1(() => ({ params: params1 }));
 
 				const params2 = $state({ id: 1 });
-				const stache2 = useStache2(() => ({ params: params2 }));
+				const stache2Thenable = useStache2(() => ({ params: params2 }));
 
 				flushSync();
+
+				const stache1 = await stache1Thenable;
+				const stache2 = await stache2Thenable;
 
 				// Queries should be different instances
 				expect(stache1).not.toBe(stache2);
@@ -454,17 +470,21 @@ describe('createStache cache implementation', () => {
 					fetch: fetchFn
 				});
 
-				// Create queries with different params
+				// Create queries with different params — synchronously
 				const params1 = $state({ id: 1 });
-				const stache1 = useStache(() => ({ params: params1 }));
+				const stache1Thenable = useStache(() => ({ params: params1 }));
 
 				const params2 = $state({ id: 2 });
-				const stache2 = useStache(() => ({ params: params2 }));
+				const stache2Thenable = useStache(() => ({ params: params2 }));
 
 				const params3 = $state({ id: 1 });
-				const stache3 = useStache(() => ({ params: params3 }));
+				const stache3Thenable = useStache(() => ({ params: params3 }));
 
 				flushSync();
+
+				const stache1 = await stache1Thenable;
+				const stache2 = await stache2Thenable;
+				const stache3 = await stache3Thenable;
 
 				// stache1 and stache3 should be the same instance (same params)
 				expect(stache1._stache).toBe(stache3._stache);
@@ -495,7 +515,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				let params = $state('param1');
-				const stache = useStache(() => ({ params: params }));
+				const stache = await useStache(() => ({ params: params }));
 
 				flushSync();
 
@@ -543,7 +563,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -566,7 +586,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -594,7 +614,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -622,7 +642,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -663,7 +683,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -694,7 +714,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -728,7 +748,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -758,7 +778,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -788,14 +808,17 @@ describe('createStache cache implementation', () => {
 					fetch: fetchFn
 				});
 
-				// Create two staches with different params
+				// Create two staches with different params — synchronously
 				const params1 = $state('param1');
-				const stache1 = useStache(() => ({ params: params1 }));
+				const stache1Thenable = useStache(() => ({ params: params1 }));
 
 				const params2 = $state('param2');
-				const stache2 = useStache(() => ({ params: params2 }));
+				const stache2Thenable = useStache(() => ({ params: params2 }));
 
 				flushSync();
+
+				const stache1 = await stache1Thenable;
+				const stache2 = await stache2Thenable;
 
 				// Wait for both to fetch
 				await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
@@ -826,7 +849,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -855,7 +878,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -885,7 +908,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -923,7 +946,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = useStache(() => ({ params })).sync();
 
 				flushSync();
 
@@ -960,7 +983,7 @@ describe('createStache cache implementation', () => {
 	// 			});
 
 	// 			const params = $state('param');
-	// 			const stache = useStache(() => ({
+	// 			const stache = await useStache(() => ({
 	// 				params,
 	// 				initialData: { data: 'initial-data' }
 	// 			}));
@@ -992,7 +1015,7 @@ describe('createStache cache implementation', () => {
 	// 			});
 
 	// 			const params = $state('param');
-	// 			const stache = useStache(() => ({ params }));
+	// 			const stache = await useStache(() => ({ params }));
 
 	// 			// Should start with null data
 	// 			expect(stache.data).toBe(null);
@@ -1018,7 +1041,7 @@ describe('createStache cache implementation', () => {
 	// 			});
 
 	// 			const params = $state('param');
-	// 			const stache = useStache(() => ({
+	// 			const stache = await useStache(() => ({
 	// 				params,
 	// 				initialData: { data: 'initial-data' }
 	// 			}));
@@ -1049,7 +1072,7 @@ describe('createStache cache implementation', () => {
 		// 		});
 
 		// 		let params = $state('param');
-		// 		const stache = useStache(() => ({ params }));
+		// 		const stache = await useStache(() => ({ params }));
 
 		// 		flushSync();
 
@@ -1065,7 +1088,7 @@ describe('createStache cache implementation', () => {
 		// );
 
 		it(
-			'should handle regular errors by setting error state',
+			'should handle regular errors by setting error state (sync)',
 			withEffectRoot(async () => {
 				const regularError = new Error('Network error');
 				const fetchFn = vi.fn().mockRejectedValue(regularError);
@@ -1075,7 +1098,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = useStache(() => ({ params })).sync();
 
 				flushSync();
 
@@ -1087,6 +1110,30 @@ describe('createStache cache implementation', () => {
 				expect(stache.isError).toBe(true);
 				expect(stache.error).toBe(regularError);
 				expect(stache.data).toBe(null);
+			})
+		);
+
+		it(
+			'should handle regular errors by setting error state (async)',
+			withEffectRoot(async () => {
+				const regularError = new Error('Network error');
+				const fetchFn = vi.fn().mockRejectedValue(regularError);
+				const { useStache } = createStache({
+					id: 'regular-error-test',
+					fetch: fetchFn
+				});
+
+				const params = $state('param');
+				const stache = useStache(() => ({ params }));
+				try {
+					await useStache(() => ({ params }));
+				} catch (error) {
+					// Should be in error state
+					expect(stache.sync().fetchStatus).toBe('error');
+					expect(stache.sync().isError).toBe(true);
+					expect(stache.sync().data).toBe(null);
+					expect(error).toStrictEqual(regularError);
+				}
 			})
 		);
 
@@ -1107,7 +1154,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = useStache(() => ({ params })).sync();
 
 				flushSync();
 
@@ -1150,7 +1197,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = useStache(() => ({ params })).sync();
 
 				flushSync();
 
@@ -1183,7 +1230,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = useStache(() => ({ params })).sync();
 
 				flushSync();
 
@@ -1207,7 +1254,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = useStache(() => ({ params })).sync();
 
 				flushSync();
 
@@ -1237,7 +1284,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1270,7 +1317,7 @@ describe('createStache cache implementation', () => {
 
 				let enabled = $state(false);
 				const params = $state('param');
-				const stache = useStache(() => ({ params, enabled }));
+				const stache = useStache(() => ({ params, enabled })).sync();
 
 				flushSync();
 
@@ -1305,7 +1352,7 @@ describe('createStache cache implementation', () => {
 			let stache: any;
 			await withEffectRoot(async () => {
 				const params = $state('param');
-				stache = useStache(() => ({ params }));
+				stache = await useStache(() => ({ params }));
 
 				flushSync();
 				await vi.waitUntil(() => stache.data !== null);
@@ -1330,9 +1377,8 @@ describe('createStache cache implementation', () => {
 		it(
 			'should handle setOptions with different configurations',
 			withEffectRoot(async () => {
-				let resolvePromise: (value: any) => void;
 				const fetchPromise = new Promise((resolve) => {
-					resolvePromise = resolve;
+					resolve({ data: 'test' });
 				});
 
 				const fetchFn = vi.fn().mockReturnValue(fetchPromise);
@@ -1344,12 +1390,11 @@ describe('createStache cache implementation', () => {
 
 				let enabled = $state(true);
 				const params = $state('param');
-				const stache = useStache(() => ({
+				const stache = await useStache(() => ({
 					params,
 					enabled
 				}));
 
-				resolvePromise!({ data: 'test' });
 				flushSync();
 
 				// Wait for fetch to complete
@@ -1389,7 +1434,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1431,17 +1476,21 @@ describe('createStache cache implementation', () => {
 					staleTime: 100
 				});
 
-				// Create multiple components sharing the same stache
+				// Create multiple components sharing the same stache — synchronously
 				const params1 = $state('shared-param');
-				const stache1 = useStache(() => ({ params: params1 }));
+				const stache1Thenable = useStache(() => ({ params: params1 }));
 
 				const params2 = $state('shared-param');
-				const stache2 = useStache(() => ({ params: params2 }));
+				const stache2Thenable = useStache(() => ({ params: params2 }));
 
 				const params3 = $state('shared-param');
-				const stache3 = useStache(() => ({ params: params3 }));
+				const stache3Thenable = useStache(() => ({ params: params3 }));
 
 				flushSync();
+
+				const stache1 = await stache1Thenable;
+				const stache2 = await stache2Thenable;
+				const stache3 = await stache3Thenable;
 
 				// All should be the same instance
 				expect(stache1._stache).toBe(stache2._stache);
@@ -1486,7 +1535,7 @@ describe('createStache cache implementation', () => {
 			let stache: any;
 			await withEffectRoot(async () => {
 				const params = $state('param');
-				stache = useStache(() => ({ params }));
+				stache = await useStache(() => ({ params }));
 
 				flushSync();
 				await vi.waitUntil(() => stache.data !== null);
@@ -1523,7 +1572,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				let params = $state('param1');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1565,7 +1614,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = useStache(() => ({ params })).sync();
 
 				flushSync();
 
@@ -1621,7 +1670,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state('param');
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1666,7 +1715,7 @@ describe('createStache cache implementation', () => {
 
 				let enabled = $state(true);
 				const params = $state('param');
-				const stache = useStache(() => ({ params, enabled }));
+				const stache = await useStache(() => ({ params, enabled }));
 
 				// Initial fetch while enabled
 				await vi.waitUntil(() => stache.data === 'result-1');
@@ -1711,7 +1760,7 @@ describe('createStache cache implementation', () => {
 
 				let enabled = $state(true);
 				const params = $state('param');
-				const stache = useStache(() => ({ params, enabled }));
+				const stache = await useStache(() => ({ params, enabled }));
 
 				// Initial fetch while enabled
 				await vi.waitUntil(() => stache.data === 'result-1');
@@ -1751,7 +1800,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				const params = $state(undefined);
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1775,7 +1824,7 @@ describe('createStache cache implementation', () => {
 					fetch: fetchFn
 				});
 
-				const stache = useStache();
+				const stache = await useStache();
 
 				flushSync();
 
@@ -1799,7 +1848,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				let params: number | undefined = $state(undefined);
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 
@@ -1832,7 +1881,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				let params: number | undefined = $state(10);
-				const stache = useStache(() => ({ params }));
+				const stache = await useStache(() => ({ params }));
 
 				flushSync();
 

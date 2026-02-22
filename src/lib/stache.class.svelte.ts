@@ -208,7 +208,10 @@ class Stache<FetchParams, Result, FetchReturnData> {
 		};
 	});
 
-	#data: FetchReturnData | null = $state(null);
+	#raw: FetchReturnData | null = $state.raw(null);
+
+	#data = $derived.by(() => this.#raw);
+
 	#error: unknown = $state(null);
 
 	#lastFetched: SvelteDate | null = $state(null);
@@ -263,7 +266,6 @@ class Stache<FetchParams, Result, FetchReturnData> {
 		this.cacheKey = hashKey(this.params);
 		this.fetchPageParams = fetchPageParams;
 		this.pageCacheKey = fetchPageParams ? hashKey(fetchPageParams) : null;
-		this.#data = null;
 		if (staleTime !== undefined) {
 			if (staleTime < 0) {
 				throw new Error('staleTime must be a non-negative number');
@@ -287,11 +289,13 @@ class Stache<FetchParams, Result, FetchReturnData> {
 
 		if (globalThis?.window && this.refetchOnWindowFocus) {
 			window.addEventListener('focus', () => {
-				this.#run();
+				this.#promise = this.#run();
 			});
 		}
 
-		this.#promise = this.#run();
+		this.#promise = this.#run({
+			rejectOnError: true
+		});
 	}
 
 	/**
@@ -318,8 +322,14 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 * @param params Parameters to pass to the stache function.
 	 * @param previousQuery Existing data from a previous fetch to be used when fetching new data.
 	 */
-	async #run(bypassCanRun = false): Promise<void> {
-		if ((!bypassCanRun && !this.canRun(this.params)) || this.#fetchStatus === 'loading') {
+	#run({
+		invalidated = false,
+		rejectOnError = false
+	}: {
+		invalidated?: boolean;
+		rejectOnError?: boolean;
+	} = {}): Promise<void> {
+		if ((!invalidated && !this.canRun(this.params)) || this.#fetchStatus === 'loading') {
 			return Promise.resolve();
 		}
 		this.#fetchStatus = 'loading';
@@ -346,19 +356,22 @@ class Stache<FetchParams, Result, FetchReturnData> {
 				this.#fetchStatus = 'success';
 				this.#cacheStatus = 'fresh';
 				this.#scheduleCacheStatusUpdate();
-				this.#data = data;
+				this.#raw = data;
 				this.#lastFetched = new SvelteDate();
 				resolve();
 			})
 			.catch((err) => {
 				if (err instanceof DOMException && err.name === 'AbortError') {
-					// Aborted request, do nothing
 					this.#fetchStatus = 'idle';
 					reject(err);
 				} else {
 					this.#error = err;
 					this.#fetchStatus = 'error';
-					reject(err);
+					if (rejectOnError) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				}
 			});
 		return promise;
@@ -383,7 +396,9 @@ class Stache<FetchParams, Result, FetchReturnData> {
 	 * Invalidates the stache, forcing it to refetch its data.
 	 */
 	invalidate() {
-		this.#promise = this.#run(true);
+		this.#promise = this.#run({
+			invalidated: true
+		});
 	}
 
 	get enabled() {

@@ -16,6 +16,14 @@ function withEffectRoot(fn: () => void | Promise<void>) {
 	};
 }
 
+vi.mock('svelte', async () => {
+	const svelte = await vi.importActual('svelte');
+	return {
+		...svelte,
+		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher())
+	};
+});
+
 // Helper to create mock paged responses
 function createMockPagedResponse(pageIndex: number, pageSize: number, totalCount: number) {
 	const start = pageIndex * pageSize;

@@ -14,7 +14,7 @@ import {
 	type UsePagedStacheOptions,
 	type FetchPageParams
 } from './stache.class.svelte';
-import type { UseStacheFn } from './stache.svelte';
+import type { PublicStache, UseStacheFn } from './stache.svelte';
 import { hashKey } from './utils';
 import type { Exact, Merge } from 'type-fest';
 
@@ -39,6 +39,29 @@ type CreatePagedStacheFn = <StacheParams, Result, FetchReturnData>(
 	 */
 	invalidate: (args: StacheParams) => void;
 };
+
+type PublicPagedStache<Params, Result = unknown, FetchReturnData = unknown> = Merge<
+	Pick<
+		Stache<Params, Result, FetchReturnData>,
+		| 'data'
+		| 'enabled'
+		| 'error'
+		| 'fetchStatus'
+		| 'lastFetched'
+		| 'invalidate'
+		| 'cacheStatus'
+		| 'referenceCount'
+		| 'params'
+	>,
+	{
+		_stache: Stache<Params, Result, FetchReturnData> | null;
+		data: Result | null;
+		isError: boolean;
+		isLoading: boolean;
+		isSuccess: boolean;
+		totalCount: number;
+	}
+>;
 
 // Helper function to create/retrieve page staches
 const getOrCreatePageStaches = <StacheParams, Result, FetchReturnData>(
@@ -185,7 +208,7 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 			};
 		});
 
-		return {
+		const pagedStache: PublicPagedStache<StacheParams, Result, FetchReturnData> = {
 			// Aggregate data from all page staches
 			get data() {
 				const pagesData = pages
@@ -242,7 +265,7 @@ const createPagedStache = <StacheParams, Result, FetchReturnData>(
 					? 'fresh'
 					: pages.some((stache) => stache.cacheStatus === 'stale')
 						? 'stale'
-						: 'expired';
+						: 'empty';
 			},
 			get params() {
 				return useOptions.params;

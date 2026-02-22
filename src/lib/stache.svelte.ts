@@ -23,7 +23,7 @@ type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 	}
 >;
 
-type PublicStacheBase<Params, Result = unknown, FetchReturnData = unknown> = Pick<
+type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
 	Stache<Params, Result, FetchReturnData>,
 	| 'data'
 	| 'enabled'
@@ -42,19 +42,17 @@ type PublicStacheBase<Params, Result = unknown, FetchReturnData = unknown> = Pic
 };
 
 type ThenMethod<Params, Result = unknown, FetchReturnData = unknown> = <
-	TResult1 = PublicStacheBase<Params, Result, FetchReturnData>,
+	TResult1 = PublicStache<Params, Result, FetchReturnData>,
 	TResult2 = never
 >(
 	onfulfilled?:
-		| ((
-				value: PublicStacheBase<Params, Result, FetchReturnData>
-		  ) => TResult1 | PromiseLike<TResult1>)
+		| ((value: PublicStache<Params, Result, FetchReturnData>) => TResult1 | PromiseLike<TResult1>)
 		| null
 		| undefined,
 	onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
 ) => PromiseLike<TResult1 | TResult2>;
 
-type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = PublicStacheBase<
+type PublicStachePromise<Params, Result = unknown, FetchReturnData = unknown> = PublicStache<
 	Params,
 	Result,
 	FetchReturnData
@@ -135,11 +133,14 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 
 	const useStache = <T extends Exact<UseStacheOptions<StacheParams>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
-	) => {
+	): PromiseLike<PublicStache<StacheParams, Result, FetchReturnData>> & {
+		sync: () => PublicStache<StacheParams, Result, FetchReturnData>;
+	} => {
 		const useOptions = useOptionsFn() as UseStacheOptions<StacheParams>;
 		const stacheKey = hashKey(useOptions?.params);
 
 		let effectHasRun = $state(false);
+		// why not a derived? because state is mutated in the stache instance which isn't allowed in a derived.
 		let stache: Stache<StacheParams, Result, FetchReturnData> = $state(
 			getOrCreateStache<StacheParams, Result, FetchReturnData>(
 				cache,
@@ -190,7 +191,7 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 					}
 					void tick().then(() => {
 						// If reference count reaches zero, schedule cleanup
-						if (stache.referenceCount === 0 && !browser) {
+						if (stache.referenceCount === 0 && browser) {
 							stache.cleanupTimeout = setTimeout(() => {
 								// Double-check reference count before deleting from cache
 								if (stache.referenceCount <= 0) {
@@ -244,21 +245,22 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 			invalidate: () => stache.invalidate(),
 			get _stache() {
 				return stache;
-			},
-
-			get then(): ThenMethod<StacheParams, Result, FetchReturnData> {
-				const status = stache.fetchStatus;
-				if (status === 'idle' || status === 'loading') {
-					return (onfulfilled, onrejected) =>
-						stache.promise.then(() => publicStache).then(onfulfilled, onrejected);
-				}
-				// Return undefined at runtime to break recursive thenable unwrapping,
-				// but type as always-present so `await` type-checks
-				return undefined as unknown as ThenMethod<StacheParams, Result, FetchReturnData>;
 			}
 		};
 
-		return publicStache;
+		return {
+			get then(): ThenMethod<StacheParams, Result, FetchReturnData> {
+				return (onfulfilled, onrejected) =>
+					stache.promise.then(() => publicStache).then(onfulfilled, onrejected);
+			},
+
+			sync() {
+				stache.promise.catch(() => {
+					// Catch errors to prevent unhandled promise rejections when using sync()
+				});
+				return publicStache;
+			}
+		};
 	};
 
 	const invalidate = (args: StacheParams) => {
@@ -273,4 +275,4 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 };
 
 export { createStache };
-export type { CreateStacheFn, UseStacheFn, PublicStache, PublicStacheBase };
+export type { CreateStacheFn, UseStacheFn, PublicStache };
