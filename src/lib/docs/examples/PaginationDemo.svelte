@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PUBLIC_CF_PAGES_URL } from '$env/static/public';
 	import { createPagedStache } from '$lib/index.js';
 
 	interface Post {
@@ -39,7 +40,7 @@
 				params.set('category', filters.category);
 			}
 
-			const response = await fetch(`/api/posts?${params}`);
+			const response = await fetch(`${PUBLIC_CF_PAGES_URL}/api/posts?${params}`);
 			return response.json();
 		},
 		getData: (response) => response.data,

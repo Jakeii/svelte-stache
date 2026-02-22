@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PUBLIC_CF_PAGES_URL } from '$env/static/public';
 	import { createStache } from '$lib/index.js';
 	import { Debounced } from 'runed';
 
@@ -17,7 +18,9 @@
 				return [];
 			}
 
-			const response = await fetch(`/api/users?search=${encodeURIComponent(query)}`);
+			const response = await fetch(
+				`${PUBLIC_CF_PAGES_URL}/api/users?search=${encodeURIComponent(query)}`
+			);
 			return response.json();
 		},
 		staleTime: 1000 * 5
