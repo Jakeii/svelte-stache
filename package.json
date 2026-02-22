@@ -82,5 +82,8 @@
 	"keywords": [
 		"svelte"
 	],
-	"packageManager": "pnpm@10.28.2"
+	"packageManager": "pnpm@10.28.2",
+	"dependencies": {
+		"@sveltejs/adapter-cloudflare": "^7.2.8"
+	}
 }
