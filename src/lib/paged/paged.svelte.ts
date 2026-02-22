@@ -6,16 +6,16 @@ import {
 	getPagedStacheCache,
 	type GlobalPagedStacheCache,
 	type PagedStacheCache
-} from './cache/paged-stache.svelte';
+} from './paged-cache.svelte';
 import {
-	Stache,
+	CoreStache,
 	type StacheConstructorOptions,
 	type PagedFetchFn,
 	type UsePagedStacheOptions,
 	type FetchPageParams
-} from './stache.class.svelte';
-import type { UseStacheFn } from './stache.svelte';
-import { hashKey } from './utils';
+} from '../core/stache.class.svelte';
+import type { UseStacheFn } from '../stache/stache.svelte';
+import { hashKey } from '../utils';
 import type { Exact, Merge } from 'type-fest';
 
 type CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData> = Merge<
@@ -47,7 +47,7 @@ type PublicPagedStache<
 	PageFetchReturnData = unknown
 > = Merge<
 	Pick<
-		Stache<Params, PageFetchReturnData>,
+		CoreStache<Params, PageFetchReturnData>,
 		| 'data'
 		| 'enabled'
 		| 'error'
@@ -73,13 +73,13 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 	cache: PagedStacheCache,
 	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>,
 	useOptions: UsePagedStacheOptions<StacheParams, PageResult>
-): Array<Stache<StacheParams, PageFetchReturnData>> => {
+): Array<CoreStache<StacheParams, PageFetchReturnData>> => {
 	const { pageOffset = 0, pageCount = 1 } = useOptions.pageParams || {};
 	const { pageSize = 10 } = createOptions;
 
 	const stacheKey = hashKey(useOptions?.params);
 
-	const pageCache = getPageCache<StacheParams, PageResult, PageFetchReturnData>(cache, stacheKey);
+	const pageCache = getPageCache<StacheParams, PageFetchReturnData>(cache, stacheKey);
 
 	return Array.from({ length: pageCount }, (_, i) => i).map((i) => {
 		const pageIndex = pageOffset + i;
@@ -88,10 +88,7 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 			pageSize
 		});
 
-		let stache = getPagedStache<StacheParams, PageResult, PageFetchReturnData>(
-			pageCache,
-			pageStacheKey
-		);
+		let stache = getPagedStache<StacheParams, PageFetchReturnData>(pageCache, pageStacheKey);
 
 		if (!stache) {
 			const fetchPageParams: FetchPageParams = {
@@ -116,7 +113,7 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 				enabled: useOptions.enabled
 			};
 
-			stache = new Stache<StacheParams, PageFetchReturnData>(
+			stache = new CoreStache<StacheParams, PageFetchReturnData>(
 				stacheConstructorOptions,
 				usePagedOptions,
 				fetchPageParams
@@ -190,10 +187,7 @@ const createPagedStache = <
 			return () => {
 				const stacheKey = hashKey(useOptions?.params);
 
-				const pageCache = getPageCache<StacheParams, PageResult, PageFetchReturnData>(
-					cache,
-					stacheKey
-				);
+				const pageCache = getPageCache<StacheParams, PageResult>(cache, stacheKey);
 				// Cleanup: Decrement reference count of page staches when effect re-runs or component unmounts
 				pages.forEach((stache, pageIndex) => {
 					const pageStacheKey = hashKey({

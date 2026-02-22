@@ -1,6 +1,6 @@
-import { hashKey } from './utils';
-import type { GlobalStacheCache } from './cache/stache.svelte';
-import type { GlobalPagedStacheCache } from './cache/paged-stache.svelte';
+import { hashKey } from '../utils';
+import type { GlobalStacheCache } from '../stache/cache.svelte';
+import type { GlobalPagedStacheCache } from '../paged/paged-cache.svelte';
 import { SvelteDate } from 'svelte/reactivity';
 import { hydratable } from 'svelte';
 import { browser } from '$app/environment';
@@ -82,6 +82,19 @@ type StacheConstructorOptions<StacheFnParams, FetchReturnData> = {
 	 * Default is true.
 	 */
 	refetchOnWindowFocus?: boolean;
+
+	/**
+	 * Whether your fetch function return type is hydratable.
+	 *
+	 * If true, will use svelte's `hydratable` function to attempt to cache the result during server-side rendering and reuse it on the client to avoid unnecessary fetches.
+	 *
+	 * See https://svelte.dev/docs/svelte/hydratable for more details.
+	 *
+	 * You may want to set this to false if you do not have experimental support for `async` svelte enabled, or if your fetch function return type cannot be parsed with [devalue](https://www.npmjs.com/package/devalue) (which is what `hydratable` uses under the hood for serialization).
+	 *
+	 * @default false
+	 */
+	isHydratable?: boolean;
 };
 
 type UseStacheOptions<Params> = {
@@ -117,6 +130,18 @@ type UsePagedStacheOptions<Params, Result> = {
 	enabled?: boolean;
 };
 
+const maybeHydratable = <T>(
+	key: string,
+	fetcher: () => Promise<T> | T,
+	isHydratable: boolean
+): Promise<T> | T => {
+	if (isHydratable) {
+		return hydratable(key, () => fetcher());
+	} else {
+		return fetcher();
+	}
+};
+
 /**
  * A class representing a stache with its state and behavior.
  * Manages fetching, caching, and state tracking.
@@ -138,7 +163,7 @@ type UsePagedStacheOptions<Params, Result> = {
  * Queries are automatically cleaned up from the cache after a period of inactivity (no references).
  *
  */
-class Stache<FetchParams, FetchReturnData> {
+class CoreStache<FetchParams, FetchReturnData> {
 	#scheduleCacheStatusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	/**
@@ -148,6 +173,8 @@ class Stache<FetchParams, FetchReturnData> {
 	 * Queries with the same `id` but different `params` are treated as distinct instances.
 	 */
 	readonly id: string;
+
+	readonly isHydratable: boolean;
 
 	/**
 	 * Function to fetch the stache data.
@@ -225,13 +252,15 @@ class Stache<FetchParams, FetchReturnData> {
 			staleTime,
 			cleanupTime,
 			refetchOnStale,
-			refetchOnWindowFocus
+			refetchOnWindowFocus,
+			isHydratable = false
 		}: StacheConstructorOptions<FetchParams, FetchReturnData>,
 		{ params, enabled }: UseStacheOptions<FetchParams>,
 		fetchPageParams?: FetchPageParams
 	) {
 		this.id = id;
 		this.fetch = fetchFn;
+		this.isHydratable = isHydratable;
 		if (retries !== undefined) {
 			this.retries = retries;
 		}
@@ -312,13 +341,16 @@ class Stache<FetchParams, FetchReturnData> {
 			reject = rej;
 		});
 		Promise.resolve(
-			hydratable(`stache:${this.id}:${this.cacheKey}`, () =>
-				this.fetchPageParams
-					? (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(
-							this.params,
-							this.fetchPageParams
-						)
-					: (this.fetch as FetchFn<FetchParams, FetchReturnData>)(this.params)
+			maybeHydratable(
+				`stache:${this.id}:${this.cacheKey}`,
+				() =>
+					this.fetchPageParams
+						? (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(
+								this.params,
+								this.fetchPageParams
+							)
+						: (this.fetch as FetchFn<FetchParams, FetchReturnData>)(this.params),
+				this.isHydratable
 			)
 		)
 			.then((data) => {
@@ -400,7 +432,7 @@ class Stache<FetchParams, FetchReturnData> {
 	}
 }
 
-export { Stache };
+export { CoreStache };
 export type {
 	UseStacheOptions,
 	UsePagedStacheOptions,

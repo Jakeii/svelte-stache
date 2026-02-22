@@ -1,16 +1,16 @@
 import {
-	Stache,
+	CoreStache,
 	type FetchFn,
 	type StacheConstructorOptions,
 	type UseStacheOptions
-} from './stache.class.svelte';
+} from '../core/stache.class.svelte';
 import {
 	getStache,
 	getStacheCache,
 	type GlobalStacheCache,
 	type StacheCache
-} from './cache/stache.svelte';
-import { hashKey } from './utils';
+} from './cache.svelte';
+import { hashKey } from '../utils';
 import { tick, untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';
 import { browser } from '$app/environment';
@@ -23,8 +23,8 @@ type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 	}
 >;
 
-type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
-	Stache<Params, FetchReturnData>,
+type Stache<Params, FetchReturnData = unknown> = Pick<
+	CoreStache<Params, FetchReturnData>,
 	| 'data'
 	| 'enabled'
 	| 'error'
@@ -39,12 +39,12 @@ type PublicStache<Params, Result = unknown, FetchReturnData = unknown> = Pick<
 	isSuccess: boolean;
 };
 
-type ThenMethod<Params, Result = unknown, FetchReturnData = unknown> = <
-	TResult1 = PublicStache<Params, Result, FetchReturnData>,
+type ThenMethod<Params, FetchReturnData = unknown> = <
+	TResult1 = Stache<Params, FetchReturnData>,
 	TResult2 = never
 >(
 	onfulfilled?:
-		| ((value: PublicStache<Params, Result, FetchReturnData>) => TResult1 | PromiseLike<TResult1>)
+		| ((value: Stache<Params, FetchReturnData>) => TResult1 | PromiseLike<TResult1>)
 		| null
 		| undefined,
 	onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
@@ -62,7 +62,7 @@ type CreateStacheFn = <StacheParams, Result>(
 };
 
 type UseStacheFn<StacheParams, Result> = {
-	(optionsFn?: () => UseStacheOptions<StacheParams>): PublicStache<StacheParams, Result>;
+	(optionsFn?: () => UseStacheOptions<StacheParams>): Stache<StacheParams, Result>;
 };
 
 /**
@@ -74,15 +74,15 @@ type UseStacheFn<StacheParams, Result> = {
  * @param useOptions The options to use when creating a new stache.
  * @returns The existing or newly created stache instance.
  */
-const getOrCreateStache = <StacheParams, Result, FetchReturnData>(
+const getOrCreateStache = <StacheParams, FetchReturnData>(
 	cache: StacheCache,
 	stacheKey: string,
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>,
 	useOptions: UseStacheOptions<StacheParams>
-): Stache<StacheParams, FetchReturnData> => {
+): CoreStache<StacheParams, FetchReturnData> => {
 	let stache = getStache<StacheParams, FetchReturnData>(cache, stacheKey);
 	if (!stache) {
-		stache = new Stache<StacheParams, FetchReturnData>(createOptions, useOptions);
+		stache = new CoreStache<StacheParams, FetchReturnData>(createOptions, useOptions);
 		cache.set(stacheKey, stache);
 	} else {
 		stache.referenceCount++;
@@ -116,7 +116,7 @@ const getOrCreateStache = <StacheParams, Result, FetchReturnData>(
  * @param createOptions The options to define the stache.
  * @returns An object containing the `useStache` function and an `invalidate` method.
  */
-const createStache = <StacheParams, Result, FetchReturnData>(
+const createStache = <StacheParams, FetchReturnData>(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
 	const cache = getStacheCache(createOptions.id, createOptions.globalCache);
@@ -129,9 +129,8 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 
 		let effectHasRun = false;
 		// why not a derived? because state is mutated in the stache instance which isn't allowed in a derived.
-		let stache: Stache<StacheParams, FetchReturnData> = getOrCreateStache<
+		let stache: CoreStache<StacheParams, FetchReturnData> = getOrCreateStache<
 			StacheParams,
-			Result,
 			FetchReturnData
 		>(cache, stacheKey, createOptions, useOptions);
 
@@ -153,7 +152,7 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 				const hasExistingStache = cache.has(stacheKey);
 
 				// Get or create the stache instance based on the updated parameters
-				const nextStache = getOrCreateStache<StacheParams, Result, FetchReturnData>(
+				const nextStache = getOrCreateStache<StacheParams, FetchReturnData>(
 					cache,
 					stacheKey,
 					createOptions,
@@ -227,7 +226,7 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 				return stache.params;
 			},
 			invalidate: () => stache.invalidate(),
-			get then(): ThenMethod<StacheParams, Result, FetchReturnData> {
+			get then(): ThenMethod<StacheParams, FetchReturnData> {
 				if (!resolved) {
 					return (onfulfilled, onrejected) =>
 						stache.promise
@@ -241,7 +240,7 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 							.then(onfulfilled, onrejected);
 				}
 				// return undefined to indicate that the promise has already resolved and prevent further chaining
-				return undefined as unknown as ThenMethod<StacheParams, Result, FetchReturnData>;
+				return undefined as unknown as ThenMethod<StacheParams, FetchReturnData>;
 			},
 
 			get catch() {
@@ -268,4 +267,4 @@ const createStache = <StacheParams, Result, FetchReturnData>(
 };
 
 export { createStache };
-export type { CreateStacheFn, UseStacheFn, PublicStache };
+export type { CreateStacheFn, UseStacheFn, Stache };

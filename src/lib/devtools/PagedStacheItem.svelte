@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { Stache } from '../stache.class.svelte';
-	import type { PagedStacheCache } from '../cache/paged-stache.svelte';
-	import { invalidatePagedStacheById } from '../cache/paged-stache.svelte';
+	import type { CoreStache } from '../core/stache.class.svelte';
+	import type { PagedStacheCache } from '../paged/paged-cache.svelte';
+	import { invalidatePagedStacheById } from '../paged/paged-cache.svelte';
 	import StatusBadge from './StatusBadge.svelte';
 	import StacheItem from './StacheItem.svelte';
 

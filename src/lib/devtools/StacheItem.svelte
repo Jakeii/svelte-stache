@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { Stache } from '../stache.class.svelte';
+	import type { CoreStache } from '../core/stache.class.svelte';
 	import StatusBadge from './StatusBadge.svelte';
 	import JsonViewer from './JsonViewer.svelte';
 
 	interface Props {
-		stache: Stache<unknown, unknown, unknown>;
+		stache: CoreStache<unknown, unknown, unknown>;
 		stacheKey: string;
 	}
 
@@ -53,9 +53,18 @@
 			</svg>
 		</span>
 		<StatusBadge fetchStatus={stache.fetchStatus} cacheStatus={stache.cacheStatus} />
-		<span class="stache-key" title={stacheKey}>{stacheKey === 'no-params' ? '(no params)' : stacheKey}</span>
+		<span class="stache-key" title={stacheKey}
+			>{stacheKey === 'no-params' ? '(no params)' : stacheKey}</span
+		>
 		<span class="ref-count" title="Reference count">
-			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<svg
+				width="12"
+				height="12"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+			>
 				<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
 				<circle cx="9" cy="7" r="4"></circle>
 				<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -139,12 +148,23 @@
 			</div>
 
 			<div class="actions">
-				<button class="invalidate-btn" onclick={() => stache.invalidate()} disabled={stache.isFetching}>
+				<button
+					class="invalidate-btn"
+					onclick={() => stache.invalidate()}
+					disabled={stache.isFetching}
+				>
 					{#if stache.isFetching}
 						<span class="spinner"></span>
 						Fetching...
 					{:else}
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
 							<polyline points="23 4 23 10 17 10"></polyline>
 							<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
 						</svg>
@@ -347,7 +367,9 @@
 		font-size: 0.75rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: opacity 0.15s, background-color 0.15s;
+		transition:
+			opacity 0.15s,
+			background-color 0.15s;
 	}
 
 	.invalidate-btn:hover:not(:disabled) {

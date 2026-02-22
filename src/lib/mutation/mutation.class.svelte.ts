@@ -1,4 +1,4 @@
-import type { UseStacheFn } from '../stache.svelte';
+import type { UseStacheFn } from '../stache/stache.svelte';
 
 type BaseMutationParams = unknown[] | unknown;
 

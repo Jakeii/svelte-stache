@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getGlobalStacheCache, invalidateStacheById } from '../cache/stache.svelte';
-	import { getGlobalPagedStacheCache } from '../cache/paged-stache.svelte';
+	import { getGlobalStacheCache, invalidateStacheById } from '../stache/cache.svelte';
+	import { getGlobalPagedStacheCache } from '../paged/paged-cache.svelte';
 	import StacheItem from './StacheItem.svelte';
 	import PagedStacheItem from './PagedStacheItem.svelte';
 

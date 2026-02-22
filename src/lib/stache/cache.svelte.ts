@@ -1,7 +1,8 @@
 import { SvelteMap } from 'svelte/reactivity';
-import type { Stache } from '../stache.class.svelte';
+import type { CoreStache } from '../core/stache.class.svelte';
 
-type StacheCache = SvelteMap<string, Stache<any, any>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StacheCache = SvelteMap<string, CoreStache<any, any>>;
 
 type GlobalStacheCache = SvelteMap<string, StacheCache>;
 
@@ -14,7 +15,7 @@ const getStacheCache = <FetchParams, FetchReturnData>(
 	const stacheCache: GlobalStacheCache = globalCache ?? globalStacheCache;
 	let cache = stacheCache.get(id);
 	if (!cache) {
-		cache = new SvelteMap<string, Stache<FetchParams, FetchReturnData>>();
+		cache = new SvelteMap<string, CoreStache<FetchParams, FetchReturnData>>();
 		stacheCache.set(id, cache);
 	}
 	return cache;
@@ -23,8 +24,8 @@ const getStacheCache = <FetchParams, FetchReturnData>(
 const getStache = <FetchParams, FetchReturnData>(
 	stacheCache: StacheCache,
 	stacheKey: string
-): Stache<FetchParams, FetchReturnData> | undefined => {
-	return stacheCache.get(stacheKey) as Stache<FetchParams, FetchReturnData> | undefined;
+): CoreStache<FetchParams, FetchReturnData> | undefined => {
+	return stacheCache.get(stacheKey) as CoreStache<FetchParams, FetchReturnData> | undefined;
 };
 
 const getGlobalStacheCache = (): GlobalStacheCache => globalStacheCache;
