@@ -129,10 +129,9 @@ const createStache = <StacheParams, FetchReturnData>(
 
 		let effectHasRun = false;
 		// why not a derived? because state is mutated in the stache instance which isn't allowed in a derived.
-		let stache: CoreStache<StacheParams, FetchReturnData> = getOrCreateStache<
-			StacheParams,
-			FetchReturnData
-		>(cache, stacheKey, createOptions, useOptions);
+		let stache: CoreStache<StacheParams, FetchReturnData> = $state(
+			getOrCreateStache<StacheParams, FetchReturnData>(cache, stacheKey, createOptions, useOptions)
+		);
 
 		// Reactive effect to handle parameter changes and stache lifecycle
 		// $effect is used over $derived for deeper reactivity and cleanup control
