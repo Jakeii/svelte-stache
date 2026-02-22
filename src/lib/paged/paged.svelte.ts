@@ -40,12 +40,7 @@ type CreatePagedStacheFn = <StacheParams, PageResult, PageFetchReturnData>(
 	invalidate: (args: StacheParams) => void;
 };
 
-type PagedStache<
-	Params,
-	Result,
-	PageResult = Result[],
-	PageFetchReturnData = unknown
-> = Merge<
+type PagedStache<Params, Result, PageResult = Result[], PageFetchReturnData = unknown> = Merge<
 	Pick<
 		CoreStache<Params, PageFetchReturnData>,
 		| 'data'
