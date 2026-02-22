@@ -25,9 +25,6 @@
 		"!dist/**/*.test.*",
 		"!dist/**/*.spec.*"
 	],
-	"sideEffects": [
-		"**/*.css"
-	],
 	"svelte": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"type": "module",
@@ -69,6 +66,7 @@
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.5.0",
 		"publint": "^0.3.17",
+		"runed": "^0.37.1",
 		"svelte": "^5.53.0",
 		"svelte-check": "^4.4.1",
 		"tailwindcss": "^4.2.0",
@@ -83,7 +81,6 @@
 	"keywords": [
 		"svelte"
 	],
-	"dependencies": {
-		"runed": "^0.37.1"
-	}
+	"dependencies": {},
+	"packageManager": "pnpm@10.28.2"
 }
