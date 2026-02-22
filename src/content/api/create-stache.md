@@ -17,8 +17,8 @@ import { createStache } from 'svelte-stache';
 ## Signature
 
 ```typescript
-function createStache<Params, Result, FetchReturn = Result>(
-	options: CreateStacheOptions<Params, Result, FetchReturn>
+function createStache<Params, Result>(
+	options: CreateStacheOptions<Params, Result>
 ): {
 	useStache: UseStacheFn<Params, Result>;
 	invalidate: (params: Params) => void;
@@ -44,9 +44,9 @@ createStache({
 
 #### `fetch`
 
-**Type:** `(params: Params) => Promise<FetchReturn>`
+**Type:** `(params: Params) => Promise<Result> | Result`
 
-An async function that fetches the data. Receives the params and should return the data.
+A function that fetches the data. Receives the params and should return the data.
 
 ```typescript
 createStache({
@@ -135,6 +135,21 @@ createStache({
 });
 ```
 
+#### `isHydratable`
+
+**Type:** `boolean`
+**Default:** `false`
+
+When `true`, wraps the fetch in Svelte's `hydratable()` to cache the result during SSR and reuse it on the client, avoiding duplicate fetches on hydration. Requires experimental async Svelte support and a return type compatible with [devalue](https://github.com/Rich-Harris/devalue) serialization.
+
+```typescript
+createStache({
+	id: 'user',
+	fetch: fetchUser,
+	isHydratable: true
+});
+```
+
 ## Return Value
 
 ### `useStache`
@@ -150,7 +165,7 @@ const user = getUser(() => ({ params: 'user-123' }));
 
 ### `invalidate`
 
-A function to manually invalidate cached data for specific params. Forces a refetch the next time the data is requested.
+A function to manually invalidate cached data for specific params. Forces a refetch immediately.
 
 ```typescript
 const { invalidate: invalidateUser } = createStache({ ... });
@@ -161,15 +176,12 @@ invalidateUser('user-123');
 
 ## useStache Options
 
-When calling `useStache`, you must provide an options object with at the very least the `params` property. You can also provide optional properties to control fetching behaviour.
-
-It must be provided as a function that returns the options object. This allows Svelte's reactivity system to track changes to the options.
+When calling `useStache`, pass an options function that returns an object. This allows Svelte's reactivity system to track changes to the options.
 
 ```typescript
 const user = getUser(() => ({
 	params: userId,
-	enabled: true,
-	initialData: cachedUser
+	enabled: true
 }));
 ```
 
@@ -181,9 +193,9 @@ The parameters to pass to the fetch function, the type of which is inferred from
 
 Is used as part of the cache key along with the stache `id` to uniquely identify this query instance.
 
-`Params` needs to be truthy unless `allowFalsyParams` is set to `true` in the stache options.
-
-````typescript
+```typescript
+const user = getUser(() => ({ params: userId }));
+```
 
 ### `enabled`
 
@@ -197,19 +209,6 @@ const user = getUser(() => ({
 	params: userId,
 	enabled: !!userId // Only fetch when userId is truthy
 }));
-````
-
-### `initialData`
-
-**Type:** `Result`
-
-Initial data to use before the first fetch completes. Useful for SSR hydration.
-
-```typescript
-const user = getUser(() => ({
-	params: userId,
-	initialData: ssrUser // Use server-rendered data initially
-}));
 ```
 
 ## Stache Object
@@ -218,29 +217,28 @@ The object returned by `useStache` with reactive properties:
 
 ### Data Properties
 
-| Property | Type                  | Description               |
-| -------- | --------------------- | ------------------------- |
-| `data`   | `Result \| undefined` | The fetched data          |
-| `error`  | `unknown`             | Error if the fetch failed |
-| `params` | `Params`              | Current parameters        |
+| Property | Type             | Description               |
+| -------- | ---------------- | ------------------------- |
+| `data`   | `Result \| null` | The fetched data          |
+| `error`  | `unknown`        | Error if the fetch failed |
+| `params` | `Params`         | Current parameters        |
 
 ### Status Properties
 
-| Property      | Type                                          | Description                    |
-| ------------- | --------------------------------------------- | ------------------------------ |
-| `fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'` | Current fetch status           |
-| `cacheStatus` | `'fresh' \| 'stale'`                          | Whether data is fresh or stale |
-| `isLoading`   | `boolean`                                     | True during initial load       |
-| `isFetching`  | `boolean`                                     | True during any fetch          |
-| `isError`     | `boolean`                                     | True if fetch failed           |
-| `isSuccess`   | `boolean`                                     | True if fetch succeeded        |
+| Property      | Type                                           | Description           |
+| ------------- | ---------------------------------------------- | --------------------- |
+| `fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'`  | Current fetch status  |
+| `cacheStatus` | `'fresh' \| 'stale' \| 'empty'`                | Cache freshness state |
+| `isLoading`   | `boolean`                                      | True while fetching   |
+| `isError`     | `boolean`                                      | True if fetch failed  |
+| `isSuccess`   | `boolean`                                      | True if fetch succeeded |
 
 ### Metadata Properties
 
-| Property         | Type                | Description                            |
-| ---------------- | ------------------- | -------------------------------------- |
-| `lastFetched`    | `Date \| undefined` | Time of last successful fetch          |
-| `referenceCount` | `number`            | Number of components using this stache |
+| Property      | Type           | Description                   |
+| ------------- | -------------- | ----------------------------- |
+| `lastFetched` | `Date \| null` | Time of last successful fetch |
+| `enabled`     | `boolean`      | Whether the stache is active  |
 
 ### Methods
 
@@ -293,15 +291,20 @@ const { useStache: getUser, invalidate: invalidateUser } = createStache({
 </script>
 ```
 
-### With Initial Data (SSR)
+### Using with await (SSR)
 
 ```svelte
 <script lang="ts">
 	let { data } = $props(); // From +page.server.ts
 
 	const user = getUser(() => ({
-		params: data.userId,
-		initialData: data.user // Server-side loaded user
+		params: data.userId
 	}));
 </script>
+
+{#await user}
+	<p>Loading...</p>
+{:then result}
+	<h1>{result.data?.name}</h1>
+{/await}
 ```

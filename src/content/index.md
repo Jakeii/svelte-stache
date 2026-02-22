@@ -6,7 +6,11 @@ section: Overview
 
 # Svelte Stache
 
-Svelte Stache is a state management library for Svelte 5 that brings the powerful patterns of [TanStack Query](https://tanstack.com/query) to the Svelte ecosystem, built entirely with Svelte 5 runes.
+A state management library for Svelte 5 inspired by [TanStack Query](https://tanstack.com/query), built with Svelte runes for reactive data fetching, caching, and mutations.
+
+Supports experimental Svelte 5 features like top-level await and hydration, providing a seamless experience across client and server rendering.
+
+Can be used with or instead of sveltekit remote functions, making it flexible for various data fetching strategies.
 
 ## Why Svelte Stache?
 
@@ -28,8 +32,8 @@ A "stache" (short for cache + state) represents a cached piece of server data. E
 
 ```typescript
 const { useStache } = createStache({
-  id: 'user',
-  fetch: (userId) => api.getUser(userId)
+	id: 'user',
+	fetch: (userId) => api.getUser(userId)
 });
 
 const user = useStache(() => ({ params: 'user-123' }));
@@ -47,6 +51,7 @@ Staches track how many components are using them. When a component unmounts, the
 ### Cache Status
 
 Data transitions through states:
+
 - **Fresh** - Recently fetched, within `staleTime`
 - **Stale** - Older than `staleTime`, may need refresh
 
@@ -54,35 +59,35 @@ Data transitions through states:
 
 Svelte Stache provides three main functions:
 
-| Function | Purpose |
-|----------|---------|
-| `createStache` | Create cacheable query definitions |
-| `createPagedStache` | Create paginated query definitions |
-| `createMutation` | Create mutation handlers for data modifications |
+| Function            | Purpose                                         |
+| ------------------- | ----------------------------------------------- |
+| `createStache`      | Create cacheable query definitions              |
+| `createPagedStache` | Create paginated query definitions              |
+| `createMutation`    | Create mutation handlers for data modifications |
 
 ## Quick Example
 
 ```svelte
 <script lang="ts">
-  import { createStache } from 'svelte-stache';
+	import { createStache } from 'svelte-stache';
 
-  const { useStache: getUser } = createStache({
-    id: 'user',
-    fetch: async (id: string) => {
-      const res = await fetch(`/api/users/${id}`);
-      return res.json();
-    }
-  });
+	const { useStache: getUser } = createStache({
+		id: 'user',
+		fetch: async (id: string) => {
+			const res = await fetch(`/api/users/${id}`);
+			return res.json();
+		}
+	});
 
-  const user = getUser(() => ({ params: 'user-123' }));
+	const user = getUser(() => ({ params: 'user-123' }));
 </script>
 
 {#if user.isLoading}
-  <p>Loading...</p>
+	<p>Loading...</p>
 {:else if user.isError}
-  <p>Error: {user.error}</p>
+	<p>Error: {user.error}</p>
 {:else}
-  <h1>Hello, {user.data.name}!</h1>
+	<h1>Hello, {user.data.name}!</h1>
 {/if}
 ```
 

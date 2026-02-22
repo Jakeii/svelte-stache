@@ -23,9 +23,11 @@ Add the DevTools component to your app's root layout:
 ```svelte
 <script lang="ts">
 	import { StacheDevtools } from 'svelte-stache/devtools';
+
+	let { children } = $props();
 </script>
 
-<slot />
+{@render children()}
 
 <StacheDevtools />
 ```
@@ -40,9 +42,11 @@ To exclude DevTools from production builds, conditionally render based on enviro
 <script lang="ts">
 	import { dev } from '$app/environment';
 	import { StacheDevtools } from 'svelte-stache/devtools';
+
+	let { children } = $props();
 </script>
 
-<slot />
+{@render children()}
 
 {#if dev}
 	<StacheDevtools />

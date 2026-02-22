@@ -56,7 +56,11 @@ Both components receive the same reactive stache object. When one component trig
 
 ## Cache Status
 
-Data in the cache has two possible statuses:
+Data in the cache has three possible statuses:
+
+### Empty
+
+Data is **empty** when no fetch has completed yet for this stache instance.
 
 ### Fresh
 
@@ -133,14 +137,7 @@ createStache({
 
 ## Reference Counting
 
-Staches track how many components are using them:
-
-```
-Component mounts    → referenceCount++
-Component unmounts  → referenceCount--
-```
-
-When `referenceCount` reaches 0, the stache schedules cleanup.
+Staches track how many components are using them internally. When a component mounts it increments the reference count; when it unmounts the count decrements. When the count reaches 0, the stache schedules cleanup.
 
 ## Cleanup
 

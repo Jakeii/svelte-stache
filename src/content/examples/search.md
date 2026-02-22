@@ -88,7 +88,7 @@ export const { useStache: searchUsers } = createStache({
   {/if}
 </div>
 
-{#if results.isFetching}
+{#if results.isLoading}
   <div class="loading">Searching...</div>
 {:else if results.isError}
   <div class="error">Search failed</div>

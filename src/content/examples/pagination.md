@@ -95,7 +95,7 @@ export const { useStache: getPosts, invalidate: invalidatePosts } = createPagedS
   }));
 
   const loadMore = () => {
-    if (posts.hasMore && !posts.isFetching) {
+    if (posts.hasMore && !posts.isLoading) {
       pageCount++;
     }
   };
@@ -131,11 +131,11 @@ export const { useStache: getPosts, invalidate: invalidatePosts } = createPagedS
   {/each}
 </div>
 
-{#if posts.isFetching}
+{#if posts.isLoading}
   <div class="loading">Loading more posts...</div>
 {/if}
 
-{#if posts.hasMore && !posts.isFetching}
+{#if posts.hasMore && !posts.isLoading}
   <button class="load-more" onclick={loadMore}>
     Load More Posts
   </button>
@@ -152,7 +152,7 @@ export const { useStache: getPosts, invalidate: invalidatePosts } = createPagedS
 2. **Total Count** - Use `getTotalCount` to extract the total from your API response
 3. **Has More** - The `hasMore` property tells you if there are more pages to load
 4. **Filter Reset** - When filters change, reset `pageCount` to start fresh
-5. **Loading States** - `isFetching` is true when loading any page
+5. **Loading States** - `isLoading` is true when loading any page
 
 ## What to Try
 

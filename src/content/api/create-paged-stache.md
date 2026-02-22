@@ -6,7 +6,7 @@ section: API
 
 # createPagedStache
 
-Creates a paginated query definition that manages multiple pages of data. Built on top of `createStache` with additional pagination features.
+Creates a paginated query definition that manages multiple pages of data. Each page is a separate cached instance, enabling per-page caching and independent status tracking.
 
 ## Import
 
@@ -17,10 +17,10 @@ import { createPagedStache } from 'svelte-stache';
 ## Signature
 
 ```typescript
-function createPagedStache<Params, Result, FetchReturn>(
-  options: CreatePagedStacheOptions<Params, Result, FetchReturn>
+function createPagedStache<Params, PageResult, PageFetchReturn>(
+  options: CreatePagedStacheOptions<Params, PageResult, PageFetchReturn>
 ): {
-  useStache: UsePagedStacheFn<Params, Result>;
+  useStache: UsePagedStacheFn<Params, PageResult>;
   invalidate: (params: Params) => void;
 }
 ```
@@ -47,9 +47,9 @@ createPagedStache({
 
 #### `fetch`
 
-**Type:** `(params: Params, pageParams: { pageIndex: number; pageSize: number }) => Promise<FetchReturn>`
+**Type:** `(params: Params, pageParams: { pageIndex: number; pageSize: number }) => Promise<PageFetchReturn> | PageFetchReturn`
 
-An async function that fetches a single page. Receives both your params and pagination info.
+A function that fetches a single page. Receives both your params and pagination info.
 
 ```typescript
 createPagedStache({
@@ -68,9 +68,9 @@ createPagedStache({
 
 #### `getData`
 
-**Type:** `(response: FetchReturn) => Result[]`
+**Type:** `(response: PageFetchReturn) => PageResult`
 
-Extracts the data array from the API response. Use when your API wraps data in an object.
+Extracts the page data from the API response. Use when your API wraps data in an object.
 
 ```typescript
 createPagedStache({
@@ -84,9 +84,9 @@ createPagedStache({
 
 #### `getTotalCount`
 
-**Type:** `(response: FetchReturn) => number`
+**Type:** `(response: PageFetchReturn) => number`
 
-Extracts the total count from the API response. Used to determine if more pages exist.
+Extracts the total count from the API response. Used to calculate `hasMore`. If not provided, falls back to `pages.length * pageSize`.
 
 ```typescript
 createPagedStache({
@@ -100,15 +100,13 @@ createPagedStache({
 
 ## Return Value
 
-Same as `createStache`:
-
 ### `useStache`
 
 A function to use the paginated query in a component.
 
 ### `invalidate`
 
-A function to manually invalidate cached pages.
+A function to manually invalidate all cached pages for specific params.
 
 ## useStache Options
 
@@ -136,8 +134,8 @@ Your custom parameters passed to the fetch function.
 
 Controls which pages to fetch:
 
-- `pageOffset` - The starting page index (0-based)
-- `pageCount` - How many pages to fetch
+- `pageOffset` - The starting page index (0-based, default: 0)
+- `pageCount` - How many consecutive pages to fetch (default: 1)
 
 ```typescript
 // Fetch pages 0, 1, 2
@@ -154,33 +152,27 @@ pageParams: { pageOffset: 5, pageCount: 2 }
 
 Same as `createStache` - controls whether fetching is enabled.
 
-### `initialData`
-
-**Type:** `Result[]`
-
-Initial flattened data array to use before fetching.
-
 ## Paged Stache Object
 
-Returns all properties from a regular stache, plus pagination-specific ones:
+Returns all base stache properties, plus pagination-specific ones:
 
 ### Pagination Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `data` | `Result[]` | Flattened array of all loaded items |
-| `pages` | `Result[][]` | Array of page arrays |
-| `totalCount` | `number` | Total items across all pages (if `getTotalCount` provided) |
-| `hasMore` | `boolean` | Whether more pages exist |
+| `data` | `PageResult \| null` | All loaded items aggregated (flattened via `.flat()`) |
+| `pages` | `Array<PageResult \| null>` | Per-page data after `getData()`, null if not yet loaded |
+| `totalCount` | `number` | Total items (from `getTotalCount` or `pages.length * pageSize`) |
+| `hasMore` | `boolean` | Whether more pages exist (`data.length < totalCount`) |
 
 ### Status Aggregation
 
 Status properties are aggregated across all loaded pages:
 
 - `isLoading` - True if any page is loading
-- `isFetching` - True if any page is fetching
 - `isError` - True if any page has an error
 - `isSuccess` - True only if all pages succeeded
+- `cacheStatus` - `'fresh'` if all pages fresh, `'stale'` if any stale, `'empty'` otherwise
 
 ## Examples
 
@@ -237,7 +229,7 @@ const { useStache: getPosts } = createPagedStache({
   }));
 
   const loadMore = () => {
-    if (posts.hasMore && !posts.isFetching) {
+    if (posts.hasMore && !posts.isLoading) {
       pageCount++;
     }
   };
@@ -252,11 +244,11 @@ const { useStache: getPosts } = createPagedStache({
   {/each}
 </div>
 
-{#if posts.isFetching}
+{#if posts.isLoading}
   <div class="loading">Loading...</div>
 {/if}
 
-{#if posts.hasMore && !posts.isFetching}
+{#if posts.hasMore && !posts.isLoading}
   <button onclick={loadMore}>Load More</button>
 {/if}
 

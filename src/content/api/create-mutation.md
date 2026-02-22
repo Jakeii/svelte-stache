@@ -150,7 +150,7 @@ The mutation instance with reactive properties and methods:
 | `isLoading` | `boolean` | True while mutation is executing |
 | `isError` | `boolean` | True if mutation failed |
 | `isSuccess` | `boolean` | True if mutation succeeded |
-| `data` | `Result \| undefined` | The mutation result |
+| `data` | `Result \| null` | The mutation result |
 | `error` | `unknown` | Error if mutation failed |
 
 ### Methods
@@ -323,9 +323,9 @@ const useToggleLike = createMutation({
     // (You might use a store or context for this)
     updatePostLikeStatus(postId, true);
   },
-  onError: (error, postId) => {
+  onError: (error) => {
     // Revert on error
-    updatePostLikeStatus(postId, false);
+    updatePostLikeStatus('unknown', false);
     showToast('Failed to like post');
   }
 });

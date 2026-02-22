@@ -90,14 +90,13 @@ user.data        // The fetched data (or undefined)
 user.error       // Error if fetch failed
 
 // Status flags
-user.isLoading   // True during initial load
-user.isFetching  // True during any fetch (initial or refetch)
+user.isLoading   // True while fetching
 user.isError     // True if fetch failed
 user.isSuccess   // True if fetch succeeded
 
 // Cache information
 user.fetchStatus // 'idle' | 'loading' | 'error' | 'success'
-user.cacheStatus // 'fresh' | 'stale'
+user.cacheStatus // 'fresh' | 'stale' | 'empty'
 user.lastFetched // Date of last successful fetch
 
 // Actions
