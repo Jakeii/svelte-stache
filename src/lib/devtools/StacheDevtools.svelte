@@ -201,15 +201,11 @@
 	aria-label={isOpen ? 'Close Stache Devtools' : 'Open Stache Devtools'}
 	title={isOpen ? 'Close Stache Devtools' : 'Open Stache Devtools'}
 >
-	<svg
-		class="toggle-icon"
-		width="24"
-		height="24"
-		viewBox="0 0 100 60"
-		fill="currentColor"
-	>
+	<svg class="toggle-icon" width="24" height="24" viewBox="0 0 100 60" fill="currentColor">
 		<!-- Mustache icon -->
-		<path d="M10 30 C 10 10, 30 10, 35 25 C 40 35, 45 35, 50 30 C 55 35, 60 35, 65 25 C 70 10, 90 10, 90 30 C 90 45, 75 50, 65 45 C 60 42, 55 42, 50 45 C 45 42, 40 42, 35 45 C 25 50, 10 45, 10 30" />
+		<path
+			d="M10 30 C 10 10, 30 10, 35 25 C 40 35, 45 35, 50 30 C 55 35, 60 35, 65 25 C 70 10, 90 10, 90 30 C 90 45, 75 50, 65 45 C 60 42, 55 42, 50 45 C 45 42, 40 42, 35 45 C 25 50, 10 45, 10 30"
+		/>
 	</svg>
 </button>
 

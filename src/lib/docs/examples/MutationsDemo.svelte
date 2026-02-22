@@ -137,7 +137,7 @@
 	{#if createdPosts.length > 0}
 		<div class="created-posts">
 			<h4>Recently Created Posts</h4>
-			{#each createdPosts as post}
+			{#each createdPosts as post (post.id)}
 				<div class="created-post">
 					<span class="category-tag">{post.category}</span>
 					<span class="post-title">{post.title}</span>

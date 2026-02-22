@@ -26,26 +26,26 @@ Create a stache for searching users:
 import { createStache } from 'svelte-stache';
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  avatar: string;
+	id: string;
+	name: string;
+	email: string;
+	role: string;
+	avatar: string;
 }
 
 export const { useStache: searchUsers } = createStache({
-  id: 'user-search',
-  fetch: async (query: string): Promise<User[]> => {
-    // Don't search if query is empty
-    if (!query.trim()) {
-      return [];
-    }
+	id: 'user-search',
+	fetch: async (query: string): Promise<User[]> => {
+		// Don't search if query is empty
+		if (!query.trim()) {
+			return [];
+		}
 
-    const response = await fetch(`/api/users?search=${encodeURIComponent(query)}`);
-    return response.json();
-  },
-  staleTime: 1000 * 60, // 1 minute - search results can be cached briefly
-  refetchOnWindowFocus: false, // Don't refetch search on focus
+		const response = await fetch(`/api/users?search=${encodeURIComponent(query)}`);
+		return response.json();
+	},
+	staleTime: 1000 * 60, // 1 minute - search results can be cached briefly
+	refetchOnWindowFocus: false // Don't refetch search on focus
 });
 ```
 
@@ -53,66 +53,66 @@ export const { useStache: searchUsers } = createStache({
 
 ```svelte title="UserSearch.svelte"
 <script lang="ts">
-  import { searchUsers } from '$lib/queries/search-users';
+	import { searchUsers } from '$lib/queries/search-users';
 
-  let inputValue = $state('');
-  let debouncedQuery = $state('');
-  let debounceTimer: ReturnType<typeof setTimeout>;
+	let inputValue = $state('');
+	let debouncedQuery = $state('');
+	let debounceTimer: ReturnType<typeof setTimeout>;
 
-  // Debounce the search query
-  $effect(() => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      debouncedQuery = inputValue;
-    }, 300);
+	// Debounce the search query
+	$effect(() => {
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			debouncedQuery = inputValue;
+		}, 300);
 
-    return () => clearTimeout(debounceTimer);
-  });
+		return () => clearTimeout(debounceTimer);
+	});
 
-  // The search only runs when debouncedQuery changes
-  const results = searchUsers(() => ({
-    params: debouncedQuery,
-    enabled: debouncedQuery.length > 0,
-  }));
+	// The search only runs when debouncedQuery changes
+	const results = searchUsers(() => ({
+		params: debouncedQuery,
+		enabled: debouncedQuery.length > 0
+	}));
 </script>
 
 <div class="search-container">
-  <input
-    type="search"
-    bind:value={inputValue}
-    placeholder="Search users by name, email, or role..."
-  />
+	<input
+		type="search"
+		bind:value={inputValue}
+		placeholder="Search users by name, email, or role..."
+	/>
 
-  {#if inputValue && inputValue !== debouncedQuery}
-    <span class="typing-indicator">Typing...</span>
-  {/if}
+	{#if inputValue && inputValue !== debouncedQuery}
+		<span class="typing-indicator">Typing...</span>
+	{/if}
 </div>
 
 {#if results.isLoading}
-  <div class="loading">Searching...</div>
+	<div class="loading">Searching...</div>
 {:else if results.isError}
-  <div class="error">Search failed</div>
+	<div class="error">Search failed</div>
 {:else if debouncedQuery && results.data?.length === 0}
-  <div class="no-results">No users found for "{debouncedQuery}"</div>
+	<div class="no-results">No users found for "{debouncedQuery}"</div>
 {:else if results.data && results.data.length > 0}
-  <ul class="results">
-    {#each results.data as user}
-      <li class="user-result">
-        <img src={user.avatar} alt={user.name} />
-        <div class="user-info">
-          <span class="name">{user.name}</span>
-          <span class="email">{user.email}</span>
-        </div>
-        <span class="role">{user.role}</span>
-      </li>
-    {/each}
-  </ul>
+	<ul class="results">
+		{#each results.data as user}
+			<li class="user-result">
+				<img src={user.avatar} alt={user.name} />
+				<div class="user-info">
+					<span class="name">{user.name}</span>
+					<span class="email">{user.email}</span>
+				</div>
+				<span class="role">{user.role}</span>
+			</li>
+		{/each}
+	</ul>
 {/if}
 
 <div class="cache-info">
-  {#if debouncedQuery}
-    <span>Cache: {results.cacheStatus}</span>
-  {/if}
+	{#if debouncedQuery}
+		<span>Cache: {results.cacheStatus}</span>
+	{/if}
 </div>
 ```
 
@@ -128,14 +128,14 @@ export const { useStache: searchUsers } = createStache({
 The debounce effect ensures we don't make a request on every keystroke:
 
 ```typescript
-let inputValue = $state('');      // Updates immediately
-let debouncedQuery = $state('');  // Updates after 300ms pause
+let inputValue = $state(''); // Updates immediately
+let debouncedQuery = $state(''); // Updates after 300ms pause
 
 $effect(() => {
-  const timer = setTimeout(() => {
-    debouncedQuery = inputValue;  // Only update after user stops typing
-  }, 300);
-  return () => clearTimeout(timer);
+	const timer = setTimeout(() => {
+		debouncedQuery = inputValue; // Only update after user stops typing
+	}, 300);
+	return () => clearTimeout(timer);
 });
 
 // Query uses debouncedQuery, not inputValue

@@ -27,41 +27,41 @@ import { createMutation } from 'svelte-stache';
 import { invalidatePosts } from '$lib/queries/posts';
 
 interface CreatePostInput {
-  title: string;
-  content: string;
-  category: string;
+	title: string;
+	content: string;
+	category: string;
 }
 
 interface Post {
-  id: string;
-  title: string;
-  content: string;
-  category: string;
-  author: string;
-  publishedAt: string;
+	id: string;
+	title: string;
+	content: string;
+	category: string;
+	author: string;
+	publishedAt: string;
 }
 
 export const useCreatePost = createMutation({
-  mutationFn: async (data: CreatePostInput): Promise<Post> => {
-    const response = await fetch('/api/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+	mutationFn: async (data: CreatePostInput): Promise<Post> => {
+		const response = await fetch('/api/posts', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(data)
+		});
 
-    if (!response.ok) {
-      throw new Error('Failed to create post');
-    }
+		if (!response.ok) {
+			throw new Error('Failed to create post');
+		}
 
-    return response.json();
-  },
-  onSuccess: () => {
-    // Invalidate the posts list so it refetches
-    invalidatePosts();
-  },
-  onError: (error) => {
-    console.error('Failed to create post:', error);
-  },
+		return response.json();
+	},
+	onSuccess: () => {
+		// Invalidate the posts list so it refetches
+		invalidatePosts();
+	},
+	onError: (error) => {
+		console.error('Failed to create post:', error);
+	}
 });
 ```
 
@@ -69,94 +69,94 @@ export const useCreatePost = createMutation({
 
 ```svelte title="CreatePostForm.svelte"
 <script lang="ts">
-  import { useCreatePost } from '$lib/mutations/post';
+	import { useCreatePost } from '$lib/mutations/post';
 
-  const mutation = useCreatePost({
-    onSuccess: ({ result }) => {
-      // Clear form on success
-      title = '';
-      content = '';
-      category = 'Technology';
-      successMessage = `Post "${result.title}" created!`;
+	const mutation = useCreatePost({
+		onSuccess: ({ result }) => {
+			// Clear form on success
+			title = '';
+			content = '';
+			category = 'Technology';
+			successMessage = `Post "${result.title}" created!`;
 
-      // Clear success message after 3 seconds
-      setTimeout(() => successMessage = '', 3000);
-    },
-  });
+			// Clear success message after 3 seconds
+			setTimeout(() => (successMessage = ''), 3000);
+		}
+	});
 
-  let title = $state('');
-  let content = $state('');
-  let category = $state('Technology');
-  let successMessage = $state('');
+	let title = $state('');
+	let content = $state('');
+	let category = $state('Technology');
+	let successMessage = $state('');
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
+	const handleSubmit = async (e: Event) => {
+		e.preventDefault();
 
-    if (!title.trim() || !content.trim()) return;
+		if (!title.trim() || !content.trim()) return;
 
-    await mutation.mutate({
-      title: title.trim(),
-      content: content.trim(),
-      category,
-    });
-  };
+		await mutation.mutate({
+			title: title.trim(),
+			content: content.trim(),
+			category
+		});
+	};
 
-  const isValid = $derived(title.trim().length > 0 && content.trim().length > 0);
+	const isValid = $derived(title.trim().length > 0 && content.trim().length > 0);
 </script>
 
 <form onsubmit={handleSubmit}>
-  <div class="field">
-    <label for="title">Title</label>
-    <input
-      id="title"
-      type="text"
-      bind:value={title}
-      placeholder="Enter post title"
-      disabled={mutation.isLoading}
-    />
-  </div>
+	<div class="field">
+		<label for="title">Title</label>
+		<input
+			id="title"
+			type="text"
+			bind:value={title}
+			placeholder="Enter post title"
+			disabled={mutation.isLoading}
+		/>
+	</div>
 
-  <div class="field">
-    <label for="category">Category</label>
-    <select id="category" bind:value={category} disabled={mutation.isLoading}>
-      <option value="Technology">Technology</option>
-      <option value="Design">Design</option>
-      <option value="Business">Business</option>
-      <option value="Lifestyle">Lifestyle</option>
-    </select>
-  </div>
+	<div class="field">
+		<label for="category">Category</label>
+		<select id="category" bind:value={category} disabled={mutation.isLoading}>
+			<option value="Technology">Technology</option>
+			<option value="Design">Design</option>
+			<option value="Business">Business</option>
+			<option value="Lifestyle">Lifestyle</option>
+		</select>
+	</div>
 
-  <div class="field">
-    <label for="content">Content</label>
-    <textarea
-      id="content"
-      bind:value={content}
-      placeholder="Write your post content..."
-      rows="4"
-      disabled={mutation.isLoading}
-    ></textarea>
-  </div>
+	<div class="field">
+		<label for="content">Content</label>
+		<textarea
+			id="content"
+			bind:value={content}
+			placeholder="Write your post content..."
+			rows="4"
+			disabled={mutation.isLoading}
+		></textarea>
+	</div>
 
-  {#if mutation.isError}
-    <div class="error">
-      {mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}
-    </div>
-  {/if}
+	{#if mutation.isError}
+		<div class="error">
+			{mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}
+		</div>
+	{/if}
 
-  {#if successMessage}
-    <div class="success">{successMessage}</div>
-  {/if}
+	{#if successMessage}
+		<div class="success">{successMessage}</div>
+	{/if}
 
-  <button type="submit" disabled={mutation.isLoading || !isValid}>
-    {mutation.isLoading ? 'Creating...' : 'Create Post'}
-  </button>
+	<button type="submit" disabled={mutation.isLoading || !isValid}>
+		{mutation.isLoading ? 'Creating...' : 'Create Post'}
+	</button>
 </form>
 
 <div class="status-info">
-  <span>Status: {mutation.status}</span>
-  {#if mutation.data}
-    <span>Last created: {mutation.data.title}</span>
-  {/if}
+	<span>Status: {mutation.status}</span>
+	{#if mutation.data}
+		<span>Last created: {mutation.data.title}</span>
+	{/if}
 </div>
 ```
 

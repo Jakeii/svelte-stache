@@ -26,48 +26,48 @@ Create a paged stache for fetching posts:
 import { createPagedStache } from 'svelte-stache';
 
 interface Post {
-  id: string;
-  title: string;
-  excerpt: string;
-  author: string;
-  category: string;
-  publishedAt: string;
-  readTime: number;
+	id: string;
+	title: string;
+	excerpt: string;
+	author: string;
+	category: string;
+	publishedAt: string;
+	readTime: number;
 }
 
 interface PostsResponse {
-  data: Post[];
-  meta: {
-    total: number;
-    page: number;
-    perPage: number;
-    totalPages: number;
-  };
+	data: Post[];
+	meta: {
+		total: number;
+		page: number;
+		perPage: number;
+		totalPages: number;
+	};
 }
 
 interface PostFilters {
-  category: string | null;
+	category: string | null;
 }
 
 export const { useStache: getPosts, invalidate: invalidatePosts } = createPagedStache({
-  id: 'posts',
-  pageSize: 10,
-  fetch: async (filters: PostFilters, { pageIndex, pageSize }): Promise<PostsResponse> => {
-    const params = new URLSearchParams({
-      page: String(pageIndex),
-      limit: String(pageSize),
-    });
+	id: 'posts',
+	pageSize: 10,
+	fetch: async (filters: PostFilters, { pageIndex, pageSize }): Promise<PostsResponse> => {
+		const params = new URLSearchParams({
+			page: String(pageIndex),
+			limit: String(pageSize)
+		});
 
-    if (filters.category && filters.category !== 'all') {
-      params.set('category', filters.category);
-    }
+		if (filters.category && filters.category !== 'all') {
+			params.set('category', filters.category);
+		}
 
-    const response = await fetch(`/api/posts?${params}`);
-    return response.json();
-  },
-  getData: (response) => response.data,
-  getTotalCount: (response) => response.meta.total,
-  staleTime: 1000 * 60 * 2, // 2 minutes
+		const response = await fetch(`/api/posts?${params}`);
+		return response.json();
+	},
+	getData: (response) => response.data,
+	getTotalCount: (response) => response.meta.total,
+	staleTime: 1000 * 60 * 2 // 2 minutes
 });
 ```
 
@@ -75,74 +75,72 @@ export const { useStache: getPosts, invalidate: invalidatePosts } = createPagedS
 
 ```svelte title="PostList.svelte"
 <script lang="ts">
-  import { getPosts } from '$lib/queries/posts';
+	import { getPosts } from '$lib/queries/posts';
 
-  let category = $state<string>('all');
-  let pageCount = $state(1);
+	let category = $state<string>('all');
+	let pageCount = $state(1);
 
-  // Reset page count when category changes
-  $effect(() => {
-    category; // Track category changes
-    pageCount = 1;
-  });
+	// Reset page count when category changes
+	$effect(() => {
+		category; // Track category changes
+		pageCount = 1;
+	});
 
-  const posts = getPosts(() => ({
-    params: { category: category === 'all' ? null : category },
-    pageParams: {
-      pageOffset: 0,
-      pageCount,
-    },
-  }));
+	const posts = getPosts(() => ({
+		params: { category: category === 'all' ? null : category },
+		pageParams: {
+			pageOffset: 0,
+			pageCount
+		}
+	}));
 
-  const loadMore = () => {
-    if (posts.hasMore && !posts.isLoading) {
-      pageCount++;
-    }
-  };
+	const loadMore = () => {
+		if (posts.hasMore && !posts.isLoading) {
+			pageCount++;
+		}
+	};
 </script>
 
 <div class="filters">
-  <label for="category">Category:</label>
-  <select id="category" bind:value={category}>
-    <option value="all">All Categories</option>
-    <option value="technology">Technology</option>
-    <option value="design">Design</option>
-    <option value="business">Business</option>
-    <option value="lifestyle">Lifestyle</option>
-    <option value="science">Science</option>
-  </select>
+	<label for="category">Category:</label>
+	<select id="category" bind:value={category}>
+		<option value="all">All Categories</option>
+		<option value="technology">Technology</option>
+		<option value="design">Design</option>
+		<option value="business">Business</option>
+		<option value="lifestyle">Lifestyle</option>
+		<option value="science">Science</option>
+	</select>
 </div>
 
 <div class="stats">
-  Showing {posts.data?.length ?? 0} of {posts.totalCount} posts
+	Showing {posts.data?.length ?? 0} of {posts.totalCount} posts
 </div>
 
 <div class="posts-grid">
-  {#each posts.data ?? [] as post}
-    <article class="post-card">
-      <span class="category">{post.category}</span>
-      <h3>{post.title}</h3>
-      <p>{post.excerpt}</p>
-      <div class="post-meta">
-        <span>{post.author}</span>
-        <span>{post.readTime} min read</span>
-      </div>
-    </article>
-  {/each}
+	{#each posts.data ?? [] as post}
+		<article class="post-card">
+			<span class="category">{post.category}</span>
+			<h3>{post.title}</h3>
+			<p>{post.excerpt}</p>
+			<div class="post-meta">
+				<span>{post.author}</span>
+				<span>{post.readTime} min read</span>
+			</div>
+		</article>
+	{/each}
 </div>
 
 {#if posts.isLoading}
-  <div class="loading">Loading more posts...</div>
+	<div class="loading">Loading more posts...</div>
 {/if}
 
 {#if posts.hasMore && !posts.isLoading}
-  <button class="load-more" onclick={loadMore}>
-    Load More Posts
-  </button>
+	<button class="load-more" onclick={loadMore}> Load More Posts </button>
 {/if}
 
 {#if !posts.hasMore && posts.data?.length}
-  <p class="end-message">You've reached the end!</p>
+	<p class="end-message">You've reached the end!</p>
 {/if}
 ```
 

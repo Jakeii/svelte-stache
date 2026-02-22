@@ -18,11 +18,11 @@ import { createPagedStache } from 'svelte-stache';
 
 ```typescript
 function createPagedStache<Params, PageResult, PageFetchReturn>(
-  options: CreatePagedStacheOptions<Params, PageResult, PageFetchReturn>
+	options: CreatePagedStacheOptions<Params, PageResult, PageFetchReturn>
 ): {
-  useStache: UsePagedStacheFn<Params, PageResult>;
-  invalidate: (params: Params) => void;
-}
+	useStache: UsePagedStacheFn<Params, PageResult>;
+	invalidate: (params: Params) => void;
+};
 ```
 
 ## Options
@@ -39,9 +39,9 @@ The number of items per page. This is passed to your fetch function.
 
 ```typescript
 createPagedStache({
-  id: 'posts',
-  pageSize: 20,
-  fetch: fetchPosts
+	id: 'posts',
+	pageSize: 20,
+	fetch: fetchPosts
 });
 ```
 
@@ -53,14 +53,14 @@ A function that fetches a single page. Receives both your params and pagination 
 
 ```typescript
 createPagedStache({
-  id: 'posts',
-  pageSize: 20,
-  fetch: async (filters, { pageIndex, pageSize }) => {
-    const res = await fetch(
-      `/api/posts?page=${pageIndex}&size=${pageSize}&category=${filters.category}`
-    );
-    return res.json();
-  }
+	id: 'posts',
+	pageSize: 20,
+	fetch: async (filters, { pageIndex, pageSize }) => {
+		const res = await fetch(
+			`/api/posts?page=${pageIndex}&size=${pageSize}&category=${filters.category}`
+		);
+		return res.json();
+	}
 });
 ```
 
@@ -74,11 +74,11 @@ Extracts the page data from the API response. Use when your API wraps data in an
 
 ```typescript
 createPagedStache({
-  id: 'posts',
-  pageSize: 20,
-  fetch: fetchPosts,
-  // API returns { items: [...], total: 100 }
-  getData: (response) => response.items,
+	id: 'posts',
+	pageSize: 20,
+	fetch: fetchPosts,
+	// API returns { items: [...], total: 100 }
+	getData: (response) => response.items
 });
 ```
 
@@ -90,11 +90,11 @@ Extracts the total count from the API response. Used to calculate `hasMore`. If 
 
 ```typescript
 createPagedStache({
-  id: 'posts',
-  pageSize: 20,
-  fetch: fetchPosts,
-  getData: (response) => response.items,
-  getTotalCount: (response) => response.total,
+	id: 'posts',
+	pageSize: 20,
+	fetch: fetchPosts,
+	getData: (response) => response.items,
+	getTotalCount: (response) => response.total
 });
 ```
 
@@ -114,11 +114,11 @@ When calling `useStache`, you pass pagination params in addition to regular para
 
 ```typescript
 const posts = getPosts(() => ({
-  params: { category: 'tech' },
-  pageParams: {
-    pageOffset: 0,
-    pageCount: 3
-  }
+	params: { category: 'tech' },
+	pageParams: {
+		pageOffset: 0,
+		pageCount: 3
+	}
 }));
 ```
 
@@ -158,12 +158,12 @@ Returns all base stache properties, plus pagination-specific ones:
 
 ### Pagination Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `data` | `PageResult \| null` | All loaded items aggregated (flattened via `.flat()`) |
-| `pages` | `Array<PageResult \| null>` | Per-page data after `getData()`, null if not yet loaded |
-| `totalCount` | `number` | Total items (from `getTotalCount` or `pages.length * pageSize`) |
-| `hasMore` | `boolean` | Whether more pages exist (`data.length < totalCount`) |
+| Property     | Type                        | Description                                                     |
+| ------------ | --------------------------- | --------------------------------------------------------------- |
+| `data`       | `PageResult \| null`        | All loaded items aggregated (flattened via `.flat()`)           |
+| `pages`      | `Array<PageResult \| null>` | Per-page data after `getData()`, null if not yet loaded         |
+| `totalCount` | `number`                    | Total items (from `getTotalCount` or `pages.length * pageSize`) |
+| `hasMore`    | `boolean`                   | Whether more pages exist (`data.length < totalCount`)           |
 
 ### Status Aggregation
 
@@ -180,12 +180,12 @@ Status properties are aggregated across all loaded pages:
 
 ```typescript
 const { useStache: getPosts } = createPagedStache({
-  id: 'posts',
-  pageSize: 10,
-  fetch: async (_, { pageIndex, pageSize }) => {
-    const res = await fetch(`/api/posts?page=${pageIndex}&limit=${pageSize}`);
-    return res.json();
-  }
+	id: 'posts',
+	pageSize: 10,
+	fetch: async (_, { pageIndex, pageSize }) => {
+		const res = await fetch(`/api/posts?page=${pageIndex}&limit=${pageSize}`);
+		return res.json();
+	}
 });
 ```
 
@@ -193,25 +193,25 @@ const { useStache: getPosts } = createPagedStache({
 
 ```typescript
 interface ApiResponse {
-  data: Post[];
-  meta: {
-    total: number;
-    page: number;
-    perPage: number;
-  };
+	data: Post[];
+	meta: {
+		total: number;
+		page: number;
+		perPage: number;
+	};
 }
 
 const { useStache: getPosts } = createPagedStache({
-  id: 'posts',
-  pageSize: 20,
-  fetch: async (filters, { pageIndex, pageSize }): Promise<ApiResponse> => {
-    const res = await fetch(
-      `/api/posts?page=${pageIndex}&limit=${pageSize}&status=${filters.status}`
-    );
-    return res.json();
-  },
-  getData: (response) => response.data,
-  getTotalCount: (response) => response.meta.total,
+	id: 'posts',
+	pageSize: 20,
+	fetch: async (filters, { pageIndex, pageSize }): Promise<ApiResponse> => {
+		const res = await fetch(
+			`/api/posts?page=${pageIndex}&limit=${pageSize}&status=${filters.status}`
+		);
+		return res.json();
+	},
+	getData: (response) => response.data,
+	getTotalCount: (response) => response.meta.total
 });
 ```
 
@@ -219,41 +219,41 @@ const { useStache: getPosts } = createPagedStache({
 
 ```svelte
 <script lang="ts">
-  import { getPosts } from '$lib/queries/posts';
+	import { getPosts } from '$lib/queries/posts';
 
-  let pageCount = $state(1);
+	let pageCount = $state(1);
 
-  const posts = getPosts(() => ({
-    params: null,
-    pageParams: { pageOffset: 0, pageCount }
-  }));
+	const posts = getPosts(() => ({
+		params: null,
+		pageParams: { pageOffset: 0, pageCount }
+	}));
 
-  const loadMore = () => {
-    if (posts.hasMore && !posts.isLoading) {
-      pageCount++;
-    }
-  };
+	const loadMore = () => {
+		if (posts.hasMore && !posts.isLoading) {
+			pageCount++;
+		}
+	};
 </script>
 
 <div class="posts">
-  {#each posts.data ?? [] as post}
-    <article>
-      <h2>{post.title}</h2>
-      <p>{post.excerpt}</p>
-    </article>
-  {/each}
+	{#each posts.data ?? [] as post}
+		<article>
+			<h2>{post.title}</h2>
+			<p>{post.excerpt}</p>
+		</article>
+	{/each}
 </div>
 
 {#if posts.isLoading}
-  <div class="loading">Loading...</div>
+	<div class="loading">Loading...</div>
 {/if}
 
 {#if posts.hasMore && !posts.isLoading}
-  <button onclick={loadMore}>Load More</button>
+	<button onclick={loadMore}>Load More</button>
 {/if}
 
 {#if !posts.hasMore && posts.data?.length}
-  <p>No more posts</p>
+	<p>No more posts</p>
 {/if}
 ```
 
@@ -261,37 +261,37 @@ const { useStache: getPosts } = createPagedStache({
 
 ```svelte
 <script lang="ts">
-  import { getPosts } from '$lib/queries/posts';
+	import { getPosts } from '$lib/queries/posts';
 
-  let category = $state('all');
-  let pageCount = $state(1);
+	let category = $state('all');
+	let pageCount = $state(1);
 
-  // Reset page count when category changes
-  $effect(() => {
-    category; // Track category
-    pageCount = 1;
-  });
+	// Reset page count when category changes
+	$effect(() => {
+		category; // Track category
+		pageCount = 1;
+	});
 
-  const posts = getPosts(() => ({
-    params: { category },
-    pageParams: { pageOffset: 0, pageCount }
-  }));
+	const posts = getPosts(() => ({
+		params: { category },
+		pageParams: { pageOffset: 0, pageCount }
+	}));
 </script>
 
 <select bind:value={category}>
-  <option value="all">All Categories</option>
-  <option value="tech">Technology</option>
-  <option value="design">Design</option>
+	<option value="all">All Categories</option>
+	<option value="tech">Technology</option>
+	<option value="design">Design</option>
 </select>
 
 <div class="posts">
-  {#each posts.data ?? [] as post}
-    <article>{post.title}</article>
-  {/each}
+	{#each posts.data ?? [] as post}
+		<article>{post.title}</article>
+	{/each}
 </div>
 
 {#if posts.hasMore}
-  <button onclick={() => pageCount++}>Load More</button>
+	<button onclick={() => pageCount++}>Load More</button>
 {/if}
 ```
 
@@ -301,27 +301,23 @@ Load a "window" of pages around the current view:
 
 ```svelte
 <script lang="ts">
-  import { getPosts } from '$lib/queries/posts';
+	import { getPosts } from '$lib/queries/posts';
 
-  let currentPage = $state(0);
-  const windowSize = 3; // Load 3 pages around current
+	let currentPage = $state(0);
+	const windowSize = 3; // Load 3 pages around current
 
-  const posts = getPosts(() => ({
-    params: null,
-    pageParams: {
-      pageOffset: Math.max(0, currentPage - 1),
-      pageCount: windowSize
-    }
-  }));
+	const posts = getPosts(() => ({
+		params: null,
+		pageParams: {
+			pageOffset: Math.max(0, currentPage - 1),
+			pageCount: windowSize
+		}
+	}));
 </script>
 
-<button onclick={() => currentPage = Math.max(0, currentPage - 1)}>
-  Previous
-</button>
+<button onclick={() => (currentPage = Math.max(0, currentPage - 1))}> Previous </button>
 
 <span>Page {currentPage + 1}</span>
 
-<button onclick={() => currentPage++} disabled={!posts.hasMore}>
-  Next
-</button>
+<button onclick={() => currentPage++} disabled={!posts.hasMore}> Next </button>
 ```

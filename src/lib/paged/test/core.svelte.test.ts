@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { createPagedStache } from '../paged.svelte';
 import { SvelteMap } from 'svelte/reactivity';
@@ -38,18 +38,6 @@ function createMockPagedResponse(pageIndex: number, pageSize: number, totalCount
 }
 
 describe('createPagedStache cache implementation', () => {
-	let cleanupFns: Array<() => void> = [];
-
-	const trackCleanup = (fn: () => void) => {
-		cleanupFns.push(fn);
-		return fn;
-	};
-
-	afterEach(() => {
-		cleanupFns.forEach((fn) => fn());
-		cleanupFns = [];
-	});
-
 	describe('createPagedStache function', () => {
 		it(
 			'should create paged stache instances with pageSize and pageParams',
@@ -96,6 +84,7 @@ describe('createPagedStache cache implementation', () => {
 
 				const globalCache = new SvelteMap<
 					string,
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
 				>();
 
@@ -234,7 +223,7 @@ describe('createPagedStache cache implementation', () => {
 		it(
 			'should have correct initial state before any pages load',
 			withEffectRoot(async () => {
-				let resolvePromise: (value: any) => void;
+				let resolvePromise: (value: unknown) => void;
 				const fetchPromise = new Promise((resolve) => {
 					resolvePromise = resolve;
 				});
@@ -315,6 +304,7 @@ describe('createPagedStache cache implementation', () => {
 			withEffectRoot(async () => {
 				const globalCache = new SvelteMap<
 					string,
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
 				>();
 				const fetchFn = vi

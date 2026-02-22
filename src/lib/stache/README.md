@@ -11,22 +11,24 @@ Implements the public `createStache` factory and the global stache cache.
 ## createStache
 
 ```ts
-const { useStache, invalidate } = createStache<StacheParams, Result>(options)
+const { useStache, invalidate } = createStache<StacheParams, Result>(options);
 ```
 
 **Options** (`CreateStacheOptions`):
+
 - All `StacheConstructorOptions` fields from `core/` (id, fetch, staleTime, cleanupTime, retries, refetchOnStale, refetchOnWindowFocus, isHydratable)
 - `fetch: FetchFn<StacheParams, Result>` — must be a non-paged fetch function
 - `globalCache?: GlobalStacheCache` — inject a custom cache (e.g. for persistence)
 
 **Returns:**
+
 - `useStache(optionsFn?)` — call inside a component to get a reactive `Stache` instance
 - `invalidate(params)` — imperatively invalidate a specific cached instance
 
 ## useStache
 
 ```ts
-const stache = useStache(() => ({ params, enabled }))
+const stache = useStache(() => ({ params, enabled }));
 ```
 
 - Must be called inside a Svelte component (uses `$effect.pre`)
@@ -37,20 +39,20 @@ const stache = useStache(() => ({ params, enabled }))
 
 ## Public Stache Object
 
-| Property | Type | Description |
-|---|---|---|
-| `data` | `Result \| null` | Fetched data |
-| `error` | `unknown` | Last error |
-| `fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'` | Fetch state |
-| `isLoading` | `boolean` | Derived from fetchStatus |
-| `isError` | `boolean` | Derived from fetchStatus |
-| `isSuccess` | `boolean` | Derived from fetchStatus |
-| `cacheStatus` | `'fresh' \| 'stale' \| 'empty'` | Cache freshness |
-| `lastFetched` | `Date \| null` | Timestamp of last success |
-| `params` | `StacheParams` | Current params |
-| `enabled` | `boolean` | Whether stache is active |
-| `invalidate()` | `() => void` | Force refetch |
-| `then` / `catch` / `finally` | Promise interface | For `{#await}` and `await` usage |
+| Property                     | Type                                          | Description                      |
+| ---------------------------- | --------------------------------------------- | -------------------------------- |
+| `data`                       | `Result \| null`                              | Fetched data                     |
+| `error`                      | `unknown`                                     | Last error                       |
+| `fetchStatus`                | `'idle' \| 'loading' \| 'error' \| 'success'` | Fetch state                      |
+| `isLoading`                  | `boolean`                                     | Derived from fetchStatus         |
+| `isError`                    | `boolean`                                     | Derived from fetchStatus         |
+| `isSuccess`                  | `boolean`                                     | Derived from fetchStatus         |
+| `cacheStatus`                | `'fresh' \| 'stale' \| 'empty'`               | Cache freshness                  |
+| `lastFetched`                | `Date \| null`                                | Timestamp of last success        |
+| `params`                     | `StacheParams`                                | Current params                   |
+| `enabled`                    | `boolean`                                     | Whether stache is active         |
+| `invalidate()`               | `() => void`                                  | Force refetch                    |
+| `then` / `catch` / `finally` | Promise interface                             | For `{#await}` and `await` usage |
 
 ### Promise Interface
 
@@ -58,9 +60,9 @@ The public stache object is thenable. On first `await`/`{#await}`, it waits for 
 
 ```svelte
 {#await stache}
-  <p>Loading...</p>
+	<p>Loading...</p>
 {:then result}
-  <p>{result.data}</p>
+	<p>{result.data}</p>
 {/await}
 ```
 
@@ -70,12 +72,12 @@ Structure: `GlobalStacheCache = SvelteMap<stacheId, SvelteMap<paramsKey, CoreSta
 
 ### Functions
 
-| Function | Description |
-|---|---|
+| Function                           | Description                                         |
+| ---------------------------------- | --------------------------------------------------- |
 | `getStacheCache(id, globalCache?)` | Get or create the inner cache for a given stache id |
-| `getStache(cache, key)` | Retrieve a specific stache instance |
-| `getGlobalStacheCache()` | Access the module-level global cache |
-| `invalidateStacheById(id)` | Invalidate all instances with a given id |
+| `getStache(cache, key)`            | Retrieve a specific stache instance                 |
+| `getGlobalStacheCache()`           | Access the module-level global cache                |
+| `invalidateStacheById(id)`         | Invalidate all instances with a given id            |
 
 ### Key Behavior
 

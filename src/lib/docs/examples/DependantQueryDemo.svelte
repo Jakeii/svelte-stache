@@ -41,7 +41,7 @@
 	}));
 
 	const departments = getDepartments(() => ({
-		params: user.data?.id ?? null
+		params: user.data?.id
 	}));
 </script>
 
@@ -95,7 +95,7 @@
 			<div class="departments">
 				<h4>Departments:</h4>
 				<ul>
-					{#each departments.data as dept}
+					{#each departments.data as dept (dept.name)}
 						<li>{dept.name} - {dept.location}</li>
 					{/each}
 				</ul>

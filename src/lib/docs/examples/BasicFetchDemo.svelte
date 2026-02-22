@@ -33,8 +33,6 @@
 		params: userId,
 		enabled: enabled
 	}));
-
-	$inspect('data', user.data);
 </script>
 
 <div class="demo-container">

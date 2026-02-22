@@ -18,8 +18,8 @@ import { createMutation } from 'svelte-stache';
 
 ```typescript
 function createMutation<Params, Result>(
-  options: MutationOptions<Params, Result>
-): (instanceOptions?: MutationInstanceOptions<Params, Result>) => Mutation<Params, Result>
+	options: MutationOptions<Params, Result>
+): (instanceOptions?: MutationInstanceOptions<Params, Result>) => Mutation<Params, Result>;
 ```
 
 ## Options
@@ -34,14 +34,14 @@ The async function that performs the mutation.
 
 ```typescript
 createMutation({
-  mutationFn: async (data: CreatePostInput) => {
-    const res = await fetch('/api/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return res.json();
-  }
+	mutationFn: async (data: CreatePostInput) => {
+		const res = await fetch('/api/posts', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(data)
+		});
+		return res.json();
+	}
 });
 ```
 
@@ -55,10 +55,10 @@ Called before the mutation executes. Useful for optimistic updates.
 
 ```typescript
 createMutation({
-  mutationFn: createPost,
-  beforeMutate: (data) => {
-    console.log('About to create post:', data.title);
-  }
+	mutationFn: createPost,
+	beforeMutate: (data) => {
+		console.log('About to create post:', data.title);
+	}
 });
 ```
 
@@ -70,10 +70,10 @@ Called after the mutation completes (success or failure). Useful for cleanup.
 
 ```typescript
 createMutation({
-  mutationFn: createPost,
-  afterMutate: (data) => {
-    console.log('Mutation completed for:', data.title);
-  }
+	mutationFn: createPost,
+	afterMutate: (data) => {
+		console.log('Mutation completed for:', data.title);
+	}
 });
 ```
 
@@ -85,12 +85,12 @@ Called when the mutation succeeds. Common use case: invalidate related queries.
 
 ```typescript
 createMutation({
-  mutationFn: createPost,
-  onSuccess: ({ params, result }) => {
-    console.log('Created post:', result.id);
-    // Invalidate posts list to refetch
-    invalidatePosts();
-  }
+	mutationFn: createPost,
+	onSuccess: ({ params, result }) => {
+		console.log('Created post:', result.id);
+		// Invalidate posts list to refetch
+		invalidatePosts();
+	}
 });
 ```
 
@@ -102,11 +102,11 @@ Called when the mutation fails.
 
 ```typescript
 createMutation({
-  mutationFn: createPost,
-  onError: (error) => {
-    console.error('Failed to create post:', error);
-    showToast('Failed to create post');
-  }
+	mutationFn: createPost,
+	onError: (error) => {
+		console.error('Failed to create post:', error);
+		showToast('Failed to create post');
+	}
 });
 ```
 
@@ -127,14 +127,14 @@ When creating a mutation instance, you can override or extend callbacks:
 
 ```typescript
 const mutation = useCreatePost({
-  onSuccess: ({ result }) => {
-    // This runs IN ADDITION to the base onSuccess
-    goto(`/posts/${result.id}`);
-  },
-  onError: (error) => {
-    // This runs IN ADDITION to the base onError
-    showErrorDialog(error);
-  }
+	onSuccess: ({ result }) => {
+		// This runs IN ADDITION to the base onSuccess
+		goto(`/posts/${result.id}`);
+	},
+	onError: (error) => {
+		// This runs IN ADDITION to the base onError
+		showErrorDialog(error);
+	}
 });
 ```
 
@@ -144,14 +144,14 @@ The mutation instance with reactive properties and methods:
 
 ### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `status` | `'idle' \| 'loading' \| 'error' \| 'success'` | Current mutation status |
-| `isLoading` | `boolean` | True while mutation is executing |
-| `isError` | `boolean` | True if mutation failed |
-| `isSuccess` | `boolean` | True if mutation succeeded |
-| `data` | `Result \| null` | The mutation result |
-| `error` | `unknown` | Error if mutation failed |
+| Property    | Type                                          | Description                      |
+| ----------- | --------------------------------------------- | -------------------------------- |
+| `status`    | `'idle' \| 'loading' \| 'error' \| 'success'` | Current mutation status          |
+| `isLoading` | `boolean`                                     | True while mutation is executing |
+| `isError`   | `boolean`                                     | True if mutation failed          |
+| `isSuccess` | `boolean`                                     | True if mutation succeeded       |
+| `data`      | `Result \| null`                              | The mutation result              |
+| `error`     | `unknown`                                     | Error if mutation failed         |
 
 ### Methods
 
@@ -173,27 +173,27 @@ await mutation.mutate({ title: 'New Post', content: '...' });
 import { createMutation } from 'svelte-stache';
 
 interface CreatePostInput {
-  title: string;
-  content: string;
+	title: string;
+	content: string;
 }
 
 interface Post {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
+	id: string;
+	title: string;
+	content: string;
+	createdAt: string;
 }
 
 const useCreatePost = createMutation({
-  mutationFn: async (data: CreatePostInput): Promise<Post> => {
-    const res = await fetch('/api/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error('Failed to create post');
-    return res.json();
-  }
+	mutationFn: async (data: CreatePostInput): Promise<Post> => {
+		const res = await fetch('/api/posts', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(data)
+		});
+		if (!res.ok) throw new Error('Failed to create post');
+		return res.json();
+	}
 });
 
 export { useCreatePost };
@@ -206,11 +206,11 @@ import { createMutation } from 'svelte-stache';
 import { invalidatePosts } from './posts-query';
 
 const useCreatePost = createMutation({
-  mutationFn: createPostApi,
-  onSuccess: () => {
-    // Refetch the posts list after creating a new post
-    invalidatePosts();
-  }
+	mutationFn: createPostApi,
+	onSuccess: () => {
+		// Refetch the posts list after creating a new post
+		invalidatePosts();
+	}
 });
 ```
 
@@ -218,44 +218,44 @@ const useCreatePost = createMutation({
 
 ```svelte
 <script lang="ts">
-  import { useCreatePost } from '$lib/mutations/post';
-  import { goto } from '$app/navigation';
+	import { useCreatePost } from '$lib/mutations/post';
+	import { goto } from '$app/navigation';
 
-  const mutation = useCreatePost({
-    onSuccess: ({ result }) => {
-      goto(`/posts/${result.id}`);
-    }
-  });
+	const mutation = useCreatePost({
+		onSuccess: ({ result }) => {
+			goto(`/posts/${result.id}`);
+		}
+	});
 
-  let title = $state('');
-  let content = $state('');
+	let title = $state('');
+	let content = $state('');
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
-    await mutation.mutate({ title, content });
-  };
+	const handleSubmit = async (e: Event) => {
+		e.preventDefault();
+		await mutation.mutate({ title, content });
+	};
 </script>
 
 <form onsubmit={handleSubmit}>
-  <div>
-    <label for="title">Title</label>
-    <input id="title" bind:value={title} required />
-  </div>
+	<div>
+		<label for="title">Title</label>
+		<input id="title" bind:value={title} required />
+	</div>
 
-  <div>
-    <label for="content">Content</label>
-    <textarea id="content" bind:value={content} required></textarea>
-  </div>
+	<div>
+		<label for="content">Content</label>
+		<textarea id="content" bind:value={content} required></textarea>
+	</div>
 
-  {#if mutation.isError}
-    <div class="error">
-      {mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}
-    </div>
-  {/if}
+	{#if mutation.isError}
+		<div class="error">
+			{mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}
+		</div>
+	{/if}
 
-  <button type="submit" disabled={mutation.isLoading}>
-    {mutation.isLoading ? 'Creating...' : 'Create Post'}
-  </button>
+	<button type="submit" disabled={mutation.isLoading}>
+		{mutation.isLoading ? 'Creating...' : 'Create Post'}
+	</button>
 </form>
 ```
 
@@ -263,20 +263,20 @@ const useCreatePost = createMutation({
 
 ```typescript
 const useUpdatePost = createMutation({
-  mutationFn: async ({ id, ...data }: UpdatePostInput) => {
-    const res = await fetch(`/api/posts/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return res.json();
-  },
-  onSuccess: ({ params }) => {
-    // Invalidate the specific post
-    invalidatePost(params.id);
-    // Also invalidate the list
-    invalidatePosts();
-  }
+	mutationFn: async ({ id, ...data }: UpdatePostInput) => {
+		const res = await fetch(`/api/posts/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(data)
+		});
+		return res.json();
+	},
+	onSuccess: ({ params }) => {
+		// Invalidate the specific post
+		invalidatePost(params.id);
+		// Also invalidate the list
+		invalidatePosts();
+	}
 });
 ```
 
@@ -284,29 +284,25 @@ const useUpdatePost = createMutation({
 
 ```svelte
 <script lang="ts">
-  import { useDeletePost } from '$lib/mutations/post';
+	import { useDeletePost } from '$lib/mutations/post';
 
-  let { postId } = $props();
+	let { postId } = $props();
 
-  const mutation = useDeletePost({
-    onSuccess: () => {
-      goto('/posts');
-    }
-  });
+	const mutation = useDeletePost({
+		onSuccess: () => {
+			goto('/posts');
+		}
+	});
 
-  const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this post?')) {
-      await mutation.mutate(postId);
-    }
-  };
+	const handleDelete = async () => {
+		if (confirm('Are you sure you want to delete this post?')) {
+			await mutation.mutate(postId);
+		}
+	};
 </script>
 
-<button
-  onclick={handleDelete}
-  disabled={mutation.isLoading}
-  class="delete-btn"
->
-  {mutation.isLoading ? 'Deleting...' : 'Delete Post'}
+<button onclick={handleDelete} disabled={mutation.isLoading} class="delete-btn">
+	{mutation.isLoading ? 'Deleting...' : 'Delete Post'}
 </button>
 ```
 
@@ -314,20 +310,20 @@ const useUpdatePost = createMutation({
 
 ```typescript
 const useToggleLike = createMutation({
-  mutationFn: async (postId: string) => {
-    const res = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-    return res.json();
-  },
-  beforeMutate: (postId) => {
-    // Optimistically update the UI
-    // (You might use a store or context for this)
-    updatePostLikeStatus(postId, true);
-  },
-  onError: (error) => {
-    // Revert on error
-    updatePostLikeStatus('unknown', false);
-    showToast('Failed to like post');
-  }
+	mutationFn: async (postId: string) => {
+		const res = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
+		return res.json();
+	},
+	beforeMutate: (postId) => {
+		// Optimistically update the UI
+		// (You might use a store or context for this)
+		updatePostLikeStatus(postId, true);
+	},
+	onError: (error) => {
+		// Revert on error
+		updatePostLikeStatus('unknown', false);
+		showToast('Failed to like post');
+	}
 });
 ```
 
@@ -335,17 +331,15 @@ const useToggleLike = createMutation({
 
 ```svelte
 <script lang="ts">
-  import { useCreatePost, useUpdatePost, useDeletePost } from '$lib/mutations/post';
+	import { useCreatePost, useUpdatePost, useDeletePost } from '$lib/mutations/post';
 
-  const createMutation = useCreatePost();
-  const updateMutation = useUpdatePost();
-  const deleteMutation = useDeletePost();
+	const createMutation = useCreatePost();
+	const updateMutation = useUpdatePost();
+	const deleteMutation = useDeletePost();
 
-  // Each mutation has independent state
-  const isAnyLoading = $derived(
-    createMutation.isLoading ||
-    updateMutation.isLoading ||
-    deleteMutation.isLoading
-  );
+	// Each mutation has independent state
+	const isAnyLoading = $derived(
+		createMutation.isLoading || updateMutation.isLoading || deleteMutation.isLoading
+	);
 </script>
 ```

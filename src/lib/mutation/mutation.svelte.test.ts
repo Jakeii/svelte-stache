@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { createMutation } from './mutation.svelte';
-import type { Mutation } from './mutation.class.svelte';
 
 const withEffectRoot = (fn: () => void | Promise<void>) => {
 	return async () => {
@@ -15,20 +14,6 @@ const withEffectRoot = (fn: () => void | Promise<void>) => {
 };
 
 describe('createMutation', () => {
-	let cleanupFns: Array<() => void> = [];
-
-	// Helper to track cleanup functions
-	const trackCleanup = (fn: () => void) => {
-		cleanupFns.push(fn);
-		return fn;
-	};
-
-	afterEach(() => {
-		// Clean up all effects after each test
-		cleanupFns.forEach((fn) => fn());
-		cleanupFns = [];
-	});
-
 	describe('createMutation function', () => {
 		it(
 			'should return a function that creates Mutation instances',
@@ -606,11 +591,12 @@ describe('createMutation', () => {
 			'should handle object parameters',
 			withEffectRoot(async () => {
 				const mutationFn = vi.fn().mockResolvedValue({ id: 123, updated: true });
-				const useMutation = createMutation<{ id: number; name: string }, { id: number; updated: boolean }>(
-					{
-						mutationFn
-					}
-				);
+				const useMutation = createMutation<
+					{ id: number; name: string },
+					{ id: number; updated: boolean }
+				>({
+					mutationFn
+				});
 
 				const mutation = useMutation();
 				await mutation.mutate({ id: 123, name: 'Test' });

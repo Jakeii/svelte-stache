@@ -29,6 +29,7 @@
 		id: 'demo-posts',
 		pageSize: 5,
 		fetch: async (filters: PostFilters, { pageIndex, pageSize }): Promise<PostsResponse> => {
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity
 			const params = new URLSearchParams({
 				page: String(pageIndex),
 				limit: String(pageSize)

@@ -36,18 +36,18 @@ First, define your query using `createStache`. This is typically done in a share
 import { createStache } from 'svelte-stache';
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
+	id: string;
+	name: string;
+	email: string;
 }
 
 export const { useStache: getUser, invalidate: invalidateUser } = createStache({
-  id: 'user',
-  fetch: async (userId: string): Promise<User> => {
-    const response = await fetch(`/api/users/${userId}`);
-    if (!response.ok) throw new Error('Failed to fetch user');
-    return response.json();
-  }
+	id: 'user',
+	fetch: async (userId: string): Promise<User> => {
+		const response = await fetch(`/api/users/${userId}`);
+		if (!response.ok) throw new Error('Failed to fetch user');
+		return response.json();
+	}
 });
 ```
 
@@ -57,24 +57,24 @@ Now use the query in your Svelte component:
 
 ```svelte title="src/routes/profile/+page.svelte"
 <script lang="ts">
-  import { getUser } from '$lib/queries/user';
+	import { getUser } from '$lib/queries/user';
 
-  let { data } = $props();
+	let { data } = $props();
 
-  const user = getUser(() => ({ params: data.userId }));
+	const user = getUser(() => ({ params: data.userId }));
 </script>
 
 {#if user.isLoading}
-  <div class="loading">Loading user...</div>
+	<div class="loading">Loading user...</div>
 {:else if user.isError}
-  <div class="error">
-    Error: {user.error instanceof Error ? user.error.message : 'Unknown error'}
-  </div>
+	<div class="error">
+		Error: {user.error instanceof Error ? user.error.message : 'Unknown error'}
+	</div>
 {:else if user.data}
-  <div class="profile">
-    <h1>{user.data.name}</h1>
-    <p>{user.data.email}</p>
-  </div>
+	<div class="profile">
+		<h1>{user.data.name}</h1>
+		<p>{user.data.email}</p>
+	</div>
 {/if}
 ```
 
@@ -86,21 +86,21 @@ The `useStache` function returns an object with reactive properties:
 const user = getUser(() => ({ params: 'user-123' }));
 
 // Data
-user.data        // The fetched data (or undefined)
-user.error       // Error if fetch failed
+user.data; // The fetched data (or undefined)
+user.error; // Error if fetch failed
 
 // Status flags
-user.isLoading   // True while fetching
-user.isError     // True if fetch failed
-user.isSuccess   // True if fetch succeeded
+user.isLoading; // True while fetching
+user.isError; // True if fetch failed
+user.isSuccess; // True if fetch succeeded
 
 // Cache information
-user.fetchStatus // 'idle' | 'loading' | 'error' | 'success'
-user.cacheStatus // 'fresh' | 'stale' | 'empty'
-user.lastFetched // Date of last successful fetch
+user.fetchStatus; // 'idle' | 'loading' | 'error' | 'success'
+user.cacheStatus; // 'fresh' | 'stale' | 'empty'
+user.lastFetched; // Date of last successful fetch
 
 // Actions
-user.invalidate() // Force a refetch
+user.invalidate(); // Force a refetch
 ```
 
 ## Reactive Parameters
@@ -109,17 +109,17 @@ Parameters can be reactive. When they change, a new fetch is triggered:
 
 ```svelte
 <script lang="ts">
-  import { getUser } from '$lib/queries/user';
+	import { getUser } from '$lib/queries/user';
 
-  let userId = $state('user-1');
+	let userId = $state('user-1');
 
-  // Automatically refetches when userId changes
-  const user = getUser(() => ({ params: userId }));
+	// Automatically refetches when userId changes
+	const user = getUser(() => ({ params: userId }));
 </script>
 
 <select bind:value={userId}>
-  <option value="user-1">User 1</option>
-  <option value="user-2">User 2</option>
+	<option value="user-1">User 1</option>
+	<option value="user-2">User 2</option>
 </select>
 
 <p>Current user: {user.data?.name ?? 'Loading...'}</p>
@@ -131,20 +131,20 @@ Customize caching behavior when creating a stache:
 
 ```typescript
 const { useStache } = createStache({
-  id: 'user',
-  fetch: fetchUser,
+	id: 'user',
+	fetch: fetchUser,
 
-  // Time until data is considered stale (default: 5 minutes)
-  staleTime: 1000 * 60 * 5,
+	// Time until data is considered stale (default: 5 minutes)
+	staleTime: 1000 * 60 * 5,
 
-  // Time to keep unused data in cache (default: 5 minutes)
-  cleanupTime: 1000 * 60 * 5,
+	// Time to keep unused data in cache (default: 5 minutes)
+	cleanupTime: 1000 * 60 * 5,
 
-  // Auto-refetch when data becomes stale
-  refetchOnStale: false,
+	// Auto-refetch when data becomes stale
+	refetchOnStale: false,
 
-  // Refetch when window regains focus (default: true)
-  refetchOnWindowFocus: true,
+	// Refetch when window regains focus (default: true)
+	refetchOnWindowFocus: true
 });
 ```
 

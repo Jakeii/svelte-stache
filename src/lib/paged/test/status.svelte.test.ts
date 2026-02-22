@@ -46,8 +46,8 @@ describe('createPagedStache cache implementation', () => {
 		it(
 			'should set isLoading to true if ANY page is fetching',
 			withEffectRoot(async () => {
-				let resolvePage0: (value: any) => void;
-				let resolvePage1: (value: any) => void;
+				let resolvePage0: (value: unknown) => void;
+				let resolvePage1: (value: unknown) => void;
 
 				const fetchFn = vi.fn().mockImplementation((params, { pageIndex }) => {
 					if (pageIndex === 0) {

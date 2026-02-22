@@ -11,10 +11,13 @@ Implements the `createPagedStache` factory for paginated data fetching. Each pag
 ## createPagedStache
 
 ```ts
-const { useStache, invalidate } = createPagedStache<StacheParams, PageResult, PageFetchReturnData>(options)
+const { useStache, invalidate } = createPagedStache<StacheParams, PageResult, PageFetchReturnData>(
+	options
+);
 ```
 
 **Options** (`CreatePagedStacheOptions`):
+
 - All `StacheConstructorOptions` fields from `core/`
 - `fetch: PagedFetchFn<StacheParams, PageFetchReturnData>` — receives `(params, { pageIndex, pageSize })`
 - `pageSize: number` — items per page
@@ -23,6 +26,7 @@ const { useStache, invalidate } = createPagedStache<StacheParams, PageResult, Pa
 - `globalCache?: GlobalPagedStacheCache` — inject a custom cache
 
 **Returns:**
+
 - `useStache(optionsFn?)` — call inside a component to get a reactive `PublicPagedStache`
 - `invalidate(params)` — invalidate all pages for a given params key
 
@@ -30,10 +34,10 @@ const { useStache, invalidate } = createPagedStache<StacheParams, PageResult, Pa
 
 ```ts
 const stache = useStache(() => ({
-  params,
-  enabled,
-  pageParams: { pageOffset: 0, pageCount: 2 }
-}))
+	params,
+	enabled,
+	pageParams: { pageOffset: 0, pageCount: 2 }
+}));
 ```
 
 - `pageParams.pageOffset` — first page index to fetch (default: 0)
@@ -44,22 +48,22 @@ const stache = useStache(() => ({
 
 ## PublicPagedStache
 
-| Property | Type | Description |
-|---|---|---|
-| `data` | `Result \| null` | All pages flattened/aggregated (via `.flat()`) |
-| `pages` | `Array<PageResult \| null>` | Per-page data (null if not yet loaded), after `getData()` |
-| `totalCount` | `number` | From `getTotalCount(firstPage.data)` or `pages.length * pageSize` |
-| `hasMore` | `boolean` | `data.length < totalCount` |
-| `fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'` | Aggregated across all pages |
-| `isLoading` | `boolean` | Any page is loading |
-| `isError` | `boolean` | Any page has errored |
-| `isSuccess` | `boolean` | All pages are successful |
-| `error` | `unknown` | First error found across pages |
-| `cacheStatus` | `'fresh' \| 'stale' \| 'empty'` | Aggregated: fresh if all fresh, stale if any stale |
-| `lastFetched` | `Date \| null` | Most recent timestamp across all pages |
-| `params` | `StacheParams` | Current params |
-| `enabled` | `boolean` | True if any page is enabled |
-| `invalidate()` | `() => void` | Invalidates all page staches |
+| Property       | Type                                          | Description                                                       |
+| -------------- | --------------------------------------------- | ----------------------------------------------------------------- |
+| `data`         | `Result \| null`                              | All pages flattened/aggregated (via `.flat()`)                    |
+| `pages`        | `Array<PageResult \| null>`                   | Per-page data (null if not yet loaded), after `getData()`         |
+| `totalCount`   | `number`                                      | From `getTotalCount(firstPage.data)` or `pages.length * pageSize` |
+| `hasMore`      | `boolean`                                     | `data.length < totalCount`                                        |
+| `fetchStatus`  | `'idle' \| 'loading' \| 'error' \| 'success'` | Aggregated across all pages                                       |
+| `isLoading`    | `boolean`                                     | Any page is loading                                               |
+| `isError`      | `boolean`                                     | Any page has errored                                              |
+| `isSuccess`    | `boolean`                                     | All pages are successful                                          |
+| `error`        | `unknown`                                     | First error found across pages                                    |
+| `cacheStatus`  | `'fresh' \| 'stale' \| 'empty'`               | Aggregated: fresh if all fresh, stale if any stale                |
+| `lastFetched`  | `Date \| null`                                | Most recent timestamp across all pages                            |
+| `params`       | `StacheParams`                                | Current params                                                    |
+| `enabled`      | `boolean`                                     | True if any page is enabled                                       |
+| `invalidate()` | `() => void`                                  | Invalidates all page staches                                      |
 
 ### fetchStatus Aggregation Logic
 
@@ -83,13 +87,13 @@ GlobalPagedStacheCache
 
 ### Functions
 
-| Function | Description |
-|---|---|
-| `getPagedStacheCache(id, globalCache?)` | Get or create the `PagedStacheCache` for a stache id |
+| Function                                    | Description                                               |
+| ------------------------------------------- | --------------------------------------------------------- |
+| `getPagedStacheCache(id, globalCache?)`     | Get or create the `PagedStacheCache` for a stache id      |
 | `getPageCache(pagedStacheCache, paramsKey)` | Get or create the page-level `SvelteMap` for given params |
-| `getPagedStache(pageCache, pageKey)` | Retrieve a specific page's `CoreStache` |
-| `getGlobalPagedStacheCache()` | Access the module-level global cache |
-| `invalidatePagedStacheById(id)` | Invalidate all pages for all param variants of a given id |
+| `getPagedStache(pageCache, pageKey)`        | Retrieve a specific page's `CoreStache`                   |
+| `getGlobalPagedStacheCache()`               | Access the module-level global cache                      |
+| `invalidatePagedStacheById(id)`             | Invalidate all pages for all param variants of a given id |
 
 ## Test Files
 

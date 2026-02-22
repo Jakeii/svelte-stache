@@ -59,25 +59,20 @@ The bundler will tree-shake the DevTools import in production when wrapped in th
 
 ### Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `initialOpen` | `boolean` | `false` | Whether the panel starts open |
-| `buttonPosition` | `'bottom-right' \| 'bottom-left' \| 'top-right' \| 'top-left'` | `'bottom-right'` | Position of the toggle button |
-| `zIndex` | `number` | `99999` | z-index for the DevTools UI |
-| `panelHeight` | `number` | `400` | Initial height of the panel in pixels |
-| `minPanelHeight` | `number` | `200` | Minimum height when resizing |
-| `maxPanelHeight` | `number` | `800` | Maximum height when resizing |
-| `theme` | `'light' \| 'dark' \| 'system'` | `'system'` | Color theme preference |
+| Prop             | Type                                                           | Default          | Description                           |
+| ---------------- | -------------------------------------------------------------- | ---------------- | ------------------------------------- |
+| `initialOpen`    | `boolean`                                                      | `false`          | Whether the panel starts open         |
+| `buttonPosition` | `'bottom-right' \| 'bottom-left' \| 'top-right' \| 'top-left'` | `'bottom-right'` | Position of the toggle button         |
+| `zIndex`         | `number`                                                       | `99999`          | z-index for the DevTools UI           |
+| `panelHeight`    | `number`                                                       | `400`            | Initial height of the panel in pixels |
+| `minPanelHeight` | `number`                                                       | `200`            | Minimum height when resizing          |
+| `maxPanelHeight` | `number`                                                       | `800`            | Maximum height when resizing          |
+| `theme`          | `'light' \| 'dark' \| 'system'`                                | `'system'`       | Color theme preference                |
 
 ### Example with Options
 
 ```svelte
-<StacheDevtools
-	initialOpen={true}
-	buttonPosition="bottom-left"
-	panelHeight={500}
-	theme="dark"
-/>
+<StacheDevtools initialOpen={true} buttonPosition="bottom-left" panelHeight={500} theme="dark" />
 ```
 
 ## Features
@@ -119,8 +114,8 @@ Filter staches by ID using the search box in the toolbar.
 
 ## Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
+| Key      | Action                   |
+| -------- | ------------------------ |
 | `Escape` | Close the DevTools panel |
 
 ### Resizable Panel
@@ -164,10 +159,10 @@ For custom debugging UIs, you can import individual DevTools components:
 
 ```typescript
 import {
-	StacheDevtools,      // Main component with toggle
+	StacheDevtools, // Main component with toggle
 	StacheDevtoolsPanel, // Panel content only
-	JsonViewer,          // JSON display component
-	StatusBadge          // Status indicator component
+	JsonViewer, // JSON display component
+	StatusBadge // Status indicator component
 } from 'svelte-stache/devtools';
 ```
 
@@ -180,11 +175,7 @@ Display any data as collapsible JSON:
 	import { JsonViewer } from 'svelte-stache/devtools';
 </script>
 
-<JsonViewer
-	data={{ user: { name: 'Alice', id: 1 } }}
-	maxLines={10}
-	initialCollapsed={false}
-/>
+<JsonViewer data={{ user: { name: 'Alice', id: 1 } }} maxLines={10} initialCollapsed={false} />
 ```
 
 ### StatusBadge
@@ -196,11 +187,7 @@ Show fetch/cache status:
 	import { StatusBadge } from 'svelte-stache/devtools';
 </script>
 
-<StatusBadge
-	fetchStatus="success"
-	cacheStatus="fresh"
-	showLabel={true}
-/>
+<StatusBadge fetchStatus="success" cacheStatus="fresh" showLabel={true} />
 ```
 
 ## Troubleshooting

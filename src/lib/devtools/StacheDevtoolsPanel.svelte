@@ -3,6 +3,7 @@
 	import { getGlobalPagedStacheCache } from '../paged/paged-cache.svelte';
 	import StacheItem from './StacheItem.svelte';
 	import PagedStacheItem from './PagedStacheItem.svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	export type Theme = 'light' | 'dark' | 'system';
 
@@ -47,16 +48,14 @@
 
 	let activeTab = $state<'staches' | 'paged'>('staches');
 	let searchFilter = $state('');
-	let expandedIds = $state<Set<string>>(new Set());
+	let expandedIds = new SvelteSet<string>();
 
 	const toggleId = (id: string) => {
-		const newSet = new Set(expandedIds);
-		if (newSet.has(id)) {
-			newSet.delete(id);
+		if (expandedIds.has(id)) {
+			expandedIds.delete(id);
 		} else {
-			newSet.add(id);
+			expandedIds.add(id);
 		}
-		expandedIds = newSet;
 	};
 
 	// Filtered stache IDs
@@ -257,7 +256,7 @@
 				</div>
 			{:else}
 				<div class="stache-list">
-					{#each filteredStacheIds as id}
+					{#each filteredStacheIds as id (id)}
 						{@const cache = globalCache.get(id)}
 						{#if cache && cache.size > 0}
 							<div class="stache-group">
@@ -305,7 +304,7 @@
 
 								{#if expandedIds.has(id)}
 									<div class="group-items">
-										{#each [...cache.entries()] as [stacheKey, stache]}
+										{#each [...cache.entries()] as [stacheKey, stache] (stacheKey)}
 											<StacheItem {stache} {stacheKey} />
 										{/each}
 									</div>
@@ -326,7 +325,7 @@
 			</div>
 		{:else}
 			<div class="stache-list">
-				{#each filteredPagedStacheIds as id}
+				{#each filteredPagedStacheIds as id (id)}
 					{@const pagedCache = pagedGlobalCache.get(id)}
 					{#if pagedCache && pagedCache.size > 0}
 						<PagedStacheItem {id} {pagedCache} />

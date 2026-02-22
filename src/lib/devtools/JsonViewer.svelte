@@ -71,11 +71,25 @@
 		</button>
 		<button class="copy-btn" onclick={copyToClipboard} title="Copy to clipboard">
 			{#if copyFeedback}
-				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<polyline points="20 6 9 17 4 12"></polyline>
 				</svg>
 			{:else}
-				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
 					<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
 				</svg>
@@ -90,9 +104,7 @@
 					Show {lines.length - maxLines} more lines...
 				</button>
 			{:else if showAll && lines.length > maxLines}
-				<button class="show-more-btn" onclick={toggleShowAll}>
-					Show less
-				</button>
+				<button class="show-more-btn" onclick={toggleShowAll}> Show less </button>
 			{/if}
 		</div>
 	{/if}
@@ -163,7 +175,9 @@
 		cursor: pointer;
 		padding: 0.25rem;
 		border-radius: 3px;
-		transition: color 0.15s, background-color 0.15s;
+		transition:
+			color 0.15s,
+			background-color 0.15s;
 	}
 
 	.copy-btn:hover {
@@ -197,7 +211,9 @@
 		color: var(--stache-devtools-text-muted, #a0a0a0);
 		font-size: 0.6875rem;
 		cursor: pointer;
-		transition: background-color 0.15s, color 0.15s;
+		transition:
+			background-color 0.15s,
+			color 0.15s;
 	}
 
 	.show-more-btn:hover {

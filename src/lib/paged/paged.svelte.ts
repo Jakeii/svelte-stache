@@ -40,7 +40,7 @@ type CreatePagedStacheFn = <StacheParams, PageResult, PageFetchReturnData>(
 	invalidate: (args: StacheParams) => void;
 };
 
-type PublicPagedStache<
+type PagedStache<
 	Params,
 	Result,
 	PageResult = Result[],
@@ -218,7 +218,7 @@ const createPagedStache = <
 			};
 		});
 
-		const pagedStache: PublicPagedStache<StacheParams, Result, PageResult, PageFetchReturnData> = {
+		const pagedStache: PagedStache<StacheParams, Result, PageResult, PageFetchReturnData> = {
 			// Aggregate data from all page staches
 			get data() {
 				const pagesData = this.pages
@@ -309,4 +309,4 @@ const createPagedStache = <
 
 export { createPagedStache };
 
-export type { CreatePagedStacheFn, CreatePagedStacheOptions };
+export type { CreatePagedStacheFn, CreatePagedStacheOptions, PagedStache };

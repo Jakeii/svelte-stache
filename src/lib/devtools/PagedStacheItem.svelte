@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { CoreStache } from '../core/stache.class.svelte';
 	import type { PagedStacheCache } from '../paged/paged-cache.svelte';
 	import { invalidatePagedStacheById } from '../paged/paged-cache.svelte';
 	import StatusBadge from './StatusBadge.svelte';
 	import StacheItem from './StacheItem.svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Props {
 		id: string;
@@ -13,20 +13,18 @@
 	let { id, pagedCache }: Props = $props();
 
 	let expanded = $state(false);
-	let expandedParams = $state<Set<string>>(new Set());
+	let expandedParams = new SvelteSet<string>();
 
 	const toggle = () => {
 		expanded = !expanded;
 	};
 
 	const toggleParams = (paramsKey: string) => {
-		const newSet = new Set(expandedParams);
-		if (newSet.has(paramsKey)) {
-			newSet.delete(paramsKey);
+		if (expandedParams.has(paramsKey)) {
+			expandedParams.delete(paramsKey);
 		} else {
-			newSet.add(paramsKey);
+			expandedParams.add(paramsKey);
 		}
-		expandedParams = newSet;
 	};
 
 	// Count total pages across all param combinations
@@ -43,7 +41,7 @@
 		let count = 0;
 		for (const pageCache of pagedCache.values()) {
 			for (const stache of pageCache.values()) {
-				if (stache.isFetching) count++;
+				if (stache.fetchStatus === 'loading') count++;
 			}
 		}
 		return count;
@@ -145,7 +143,7 @@
 
 	{#if expanded}
 		<div class="paged-details">
-			{#each [...pagedCache.entries()] as [paramsKey, pageCache]}
+			{#each [...pagedCache.entries()] as [paramsKey, pageCache] (paramsKey)}
 				<div class="params-group">
 					<button
 						class="params-header"
@@ -165,7 +163,7 @@
 
 					{#if expandedParams.has(paramsKey)}
 						<div class="pages-list">
-							{#each [...pageCache.entries()] as [pageKey, stache]}
+							{#each [...pageCache.entries()] as [pageKey, stache] (pageKey)}
 								<div class="page-item">
 									<div class="page-label">
 										<span class="page-index">Page {pageKey}</span>

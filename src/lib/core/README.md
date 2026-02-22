@@ -22,32 +22,32 @@ new CoreStache(constructorOptions, useOptions, fetchPageParams?)
 
 ### Private State (Svelte runes)
 
-| Field | Type | Description |
-|---|---|---|
-| `#enabled` | `boolean` | Whether the stache is active |
-| `#fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'` | Current fetch state |
-| `#cacheStatus` | `'fresh' \| 'stale' \| 'empty'` | Cache freshness |
-| `#raw` | `FetchReturnData \| null` | Raw fetched data (`$state.raw`) |
-| `#error` | `unknown` | Last fetch error (`$state.raw`) |
-| `#lastFetched` | `Date \| null` | Timestamp of last success (`$state.raw`) |
-| `#promise` | `Promise<void>` | In-flight fetch promise |
+| Field          | Type                                          | Description                              |
+| -------------- | --------------------------------------------- | ---------------------------------------- |
+| `#enabled`     | `boolean`                                     | Whether the stache is active             |
+| `#fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'` | Current fetch state                      |
+| `#cacheStatus` | `'fresh' \| 'stale' \| 'empty'`               | Cache freshness                          |
+| `#raw`         | `FetchReturnData \| null`                     | Raw fetched data (`$state.raw`)          |
+| `#error`       | `unknown`                                     | Last fetch error (`$state.raw`)          |
+| `#lastFetched` | `Date \| null`                                | Timestamp of last success (`$state.raw`) |
+| `#promise`     | `Promise<void>`                               | In-flight fetch promise                  |
 
 ### Public Properties
 
-| Property | Description |
-|---|---|
-| `id` | Unique stache type identifier |
-| `params` | Parameters used for this instance |
-| `cacheKey` | `hashKey(params)` — used as cache map key |
-| `fetchPageParams` | Pagination params if paged |
-| `pageCacheKey` | `hashKey(fetchPageParams)` or `null` |
-| `referenceCount` | `$state` — number of active users; drives cleanup |
-| `cleanupTimeout` | Timeout handle for deferred cache deletion |
-| `staleTime` | ms until data goes stale (default: 300000) |
-| `cleanupTime` | ms before unused instance is deleted (default: 300000) |
-| `refetchOnWindowFocus` | Refetch on window focus when stale (default: true) |
-| `refetchOnStale` | Auto-refetch when stale (default: false) |
-| `isHydratable` | Use Svelte `hydratable()` for SSR (default: false) |
+| Property               | Description                                            |
+| ---------------------- | ------------------------------------------------------ |
+| `id`                   | Unique stache type identifier                          |
+| `params`               | Parameters used for this instance                      |
+| `cacheKey`             | `hashKey(params)` — used as cache map key              |
+| `fetchPageParams`      | Pagination params if paged                             |
+| `pageCacheKey`         | `hashKey(fetchPageParams)` or `null`                   |
+| `referenceCount`       | `$state` — number of active users; drives cleanup      |
+| `cleanupTimeout`       | Timeout handle for deferred cache deletion             |
+| `staleTime`            | ms until data goes stale (default: 300000)             |
+| `cleanupTime`          | ms before unused instance is deleted (default: 300000) |
+| `refetchOnWindowFocus` | Refetch on window focus when stale (default: true)     |
+| `refetchOnStale`       | Auto-refetch when stale (default: false)               |
+| `isHydratable`         | Use Svelte `hydratable()` for SSR (default: false)     |
 
 ### Getters
 

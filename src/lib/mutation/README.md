@@ -32,6 +32,7 @@ const mutation = useCreateUser({
 ### Callback Merging
 
 Both definition-time and use-time callbacks are merged into arrays and all called in order:
+
 - `onSuccess`: `[defineOnSuccess, useOnSuccess]` (filtered for undefined)
 - `onError`: `[defineOnError, useOnError]`
 - `beforeMutate`: `[defineBeforeMutate, useBeforeMutate]`
@@ -41,22 +42,23 @@ Both definition-time and use-time callbacks are merged into arrays and all calle
 
 ### Reactive State (`$state` / `$derived`)
 
-| Property | Type | Description |
-|---|---|---|
-| `status` | `'idle' \| 'loading' \| 'error' \| 'success'` | Current mutation state |
-| `isLoading` | `boolean` | `$derived` from status |
-| `isError` | `boolean` | `$derived` from status |
-| `isSuccess` | `boolean` | `$derived` from status |
-| `data` | `Result \| null` | Last successful mutation result |
-| `error` | `unknown` | Last error |
+| Property    | Type                                          | Description                     |
+| ----------- | --------------------------------------------- | ------------------------------- |
+| `status`    | `'idle' \| 'loading' \| 'error' \| 'success'` | Current mutation state          |
+| `isLoading` | `boolean`                                     | `$derived` from status          |
+| `isError`   | `boolean`                                     | `$derived` from status          |
+| `isSuccess` | `boolean`                                     | `$derived` from status          |
+| `data`      | `Result \| null`                              | Last successful mutation result |
+| `error`     | `unknown`                                     | Last error                      |
 
 ### mutate(params)
 
 ```ts
-await mutation.mutate(params)
+await mutation.mutate(params);
 ```
 
 Execution order:
+
 1. `status = 'loading'`, clears `error`
 2. Calls all `beforeMutate` callbacks (in order)
 3. Awaits `mutationFn(params)`
@@ -71,8 +73,8 @@ The `Mutation` class supports an `invalidatesQueries` field (not exposed via `cr
 
 ```ts
 type InvalidatesQueries<Params, Result> =
-  | InvalidateStache<UseStacheFn<any, any>>[]
-  | (({ params, result }) => InvalidateStache<UseStacheFn<any, any>>[])
+	| InvalidateStache<UseStacheFn<any, any>>[]
+	| (({ params, result }) => InvalidateStache<UseStacheFn<any, any>>[]);
 ```
 
 This allows linking mutations to staches for automatic invalidation on success.

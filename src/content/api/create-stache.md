@@ -225,13 +225,13 @@ The object returned by `useStache` with reactive properties:
 
 ### Status Properties
 
-| Property      | Type                                           | Description           |
-| ------------- | ---------------------------------------------- | --------------------- |
-| `fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'`  | Current fetch status  |
-| `cacheStatus` | `'fresh' \| 'stale' \| 'empty'`                | Cache freshness state |
-| `isLoading`   | `boolean`                                      | True while fetching   |
-| `isError`     | `boolean`                                      | True if fetch failed  |
-| `isSuccess`   | `boolean`                                      | True if fetch succeeded |
+| Property      | Type                                          | Description             |
+| ------------- | --------------------------------------------- | ----------------------- |
+| `fetchStatus` | `'idle' \| 'loading' \| 'error' \| 'success'` | Current fetch status    |
+| `cacheStatus` | `'fresh' \| 'stale' \| 'empty'`               | Cache freshness state   |
+| `isLoading`   | `boolean`                                     | True while fetching     |
+| `isError`     | `boolean`                                     | True if fetch failed    |
+| `isSuccess`   | `boolean`                                     | True if fetch succeeded |
 
 ### Metadata Properties
 

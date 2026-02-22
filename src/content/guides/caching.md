@@ -21,8 +21,8 @@ Each piece of cached data is identified by a unique key composed of:
 createStache({ id: 'user', fetch: fetchUser });
 
 // These use different cache keys:
-getUser(() => ({ params: 'user-1' }));  // key: user:hash("user-1")
-getUser(() => ({ params: 'user-2' }));  // key: user:hash("user-2")
+getUser(() => ({ params: 'user-1' })); // key: user:hash("user-1")
+getUser(() => ({ params: 'user-2' })); // key: user:hash("user-2")
 ```
 
 ### Parameter Hashing
@@ -68,9 +68,9 @@ Data is **fresh** when it was fetched within the `staleTime` period. Fresh data 
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: fetchUser,
-  staleTime: 1000 * 60 * 5, // 5 minutes
+	id: 'user',
+	fetch: fetchUser,
+	staleTime: 1000 * 60 * 5 // 5 minutes
 });
 
 // If fetched less than 5 minutes ago, returns instantly
@@ -87,23 +87,23 @@ Control how long data stays fresh:
 ```typescript
 // Short stale time - data refreshes frequently
 createStache({
-  id: 'notifications',
-  fetch: fetchNotifications,
-  staleTime: 1000 * 30, // 30 seconds
+	id: 'notifications',
+	fetch: fetchNotifications,
+	staleTime: 1000 * 30 // 30 seconds
 });
 
 // Long stale time - data cached longer
 createStache({
-  id: 'user-profile',
-  fetch: fetchProfile,
-  staleTime: 1000 * 60 * 30, // 30 minutes
+	id: 'user-profile',
+	fetch: fetchProfile,
+	staleTime: 1000 * 60 * 30 // 30 minutes
 });
 
 // Zero stale time - always refetch
 createStache({
-  id: 'live-data',
-  fetch: fetchLiveData,
-  staleTime: 0, // Always considered stale
+	id: 'live-data',
+	fetch: fetchLiveData,
+	staleTime: 0 // Always considered stale
 });
 ```
 
@@ -115,9 +115,9 @@ By default, stale data is refetched when the window regains focus:
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: fetchUser,
-  refetchOnWindowFocus: true, // default
+	id: 'user',
+	fetch: fetchUser,
+	refetchOnWindowFocus: true // default
 });
 ```
 
@@ -129,9 +129,9 @@ Optionally refetch automatically when data becomes stale:
 
 ```typescript
 createStache({
-  id: 'dashboard',
-  fetch: fetchDashboard,
-  refetchOnStale: true, // Proactively keep fresh
+	id: 'dashboard',
+	fetch: fetchDashboard,
+	refetchOnStale: true // Proactively keep fresh
 });
 ```
 
@@ -145,9 +145,9 @@ Unused cache entries are automatically removed after `cleanupTime`:
 
 ```typescript
 createStache({
-  id: 'user',
-  fetch: fetchUser,
-  cleanupTime: 1000 * 60 * 5, // Remove after 5 minutes of no use
+	id: 'user',
+	fetch: fetchUser,
+	cleanupTime: 1000 * 60 * 5 // Remove after 5 minutes of no use
 });
 ```
 
@@ -176,6 +176,7 @@ invalidateUser('user-1');
 ```
 
 Invalidation:
+
 1. Marks the data as stale
 2. Triggers an immediate refetch
 3. Updates all components using this stache
@@ -184,13 +185,13 @@ Invalidation:
 
 ### Choose Appropriate Stale Times
 
-| Data Type | Suggested Stale Time |
-|-----------|---------------------|
-| User profile | 5-30 minutes |
-| Lists/feeds | 1-5 minutes |
-| Notifications | 30 seconds - 1 minute |
-| Real-time data | 0 (always stale) |
-| Static content | 1+ hours |
+| Data Type      | Suggested Stale Time  |
+| -------------- | --------------------- |
+| User profile   | 5-30 minutes          |
+| Lists/feeds    | 1-5 minutes           |
+| Notifications  | 30 seconds - 1 minute |
+| Real-time data | 0 (always stale)      |
+| Static content | 1+ hours              |
 
 ### Invalidate After Mutations
 
@@ -198,10 +199,10 @@ Always invalidate related queries after mutations:
 
 ```typescript
 const useCreatePost = createMutation({
-  mutationFn: createPost,
-  onSuccess: () => {
-    invalidatePosts(); // Refresh the posts list
-  },
+	mutationFn: createPost,
+	onSuccess: () => {
+		invalidatePosts(); // Refresh the posts list
+	}
 });
 ```
 
@@ -214,8 +215,8 @@ const useCreatePost = createMutation({
 ```typescript
 // Keep navigation data cached for the whole session
 createStache({
-  id: 'navigation',
-  fetch: fetchNavigation,
-  cleanupTime: Infinity,
+	id: 'navigation',
+	fetch: fetchNavigation,
+	cleanupTime: Infinity
 });
 ```

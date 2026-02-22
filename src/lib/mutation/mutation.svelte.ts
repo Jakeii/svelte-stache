@@ -14,10 +14,10 @@ const createMutation =
 		onError: defineOnError
 	}: {
 		mutationFn: MutationFn<Params, Result>;
-		beforeMutate?: (args: Params) => void | Promise<void>;
-		afterMutate?: (args: Params) => void | Promise<void>;
+		beforeMutate?: (args: Params) => unknown | Promise<unknown>;
+		afterMutate?: (args: Params) => unknown | Promise<unknown>;
 		onSuccess?: OnSuccessFn<Params, Result>;
-		onError?: (error: unknown) => void;
+		onError?: (error: unknown) => unknown;
 	}) =>
 	({
 		onSuccess: useOnSuccess,
@@ -26,19 +26,19 @@ const createMutation =
 		onError: useOnError
 	}: {
 		onSuccess?: OnSuccessFn<Params, Result>;
-		beforeMutate?: (args: Params) => void | Promise<void>;
-		afterMutate?: (args: Params) => void | Promise<void>;
-		onError?: (error: unknown) => void;
+		beforeMutate?: (args: Params) => unknown | Promise<unknown>;
+		afterMutate?: (args: Params) => unknown | Promise<unknown>;
+		onError?: (error: unknown) => unknown;
 	} = {}) => {
 		const onSuccess = [defineOnSuccess, useOnSuccess].filter(
 			(fn): fn is OnSuccessFn<Params, Result> => typeof fn === 'function'
 		);
 		const onError = [defineOnError, useOnError].filter((fn) => typeof fn === 'function');
 		const beforeMutate = [defineBeforeMutate, useBeforeMutate].filter(
-			(fn): fn is (args: Params) => void | Promise<void> => typeof fn === 'function'
+			(fn): fn is (args: Params) => unknown | Promise<unknown> => typeof fn === 'function'
 		);
 		const afterMutate = [defineAfterMutate, useAfterMutate].filter(
-			(fn): fn is (args: Params) => void | Promise<void> => typeof fn === 'function'
+			(fn): fn is (args: Params) => unknown | Promise<unknown> => typeof fn === 'function'
 		);
 		return new Mutation<Params, Result>({
 			mutationFn,

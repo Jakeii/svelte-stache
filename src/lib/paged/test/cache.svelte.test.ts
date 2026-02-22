@@ -50,6 +50,7 @@ describe('createPagedStache cache implementation', () => {
 			vi.useFakeTimers();
 			const globalCache = new SvelteMap<
 				string,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
 			>();
 			const fetchFn = vi
@@ -122,6 +123,7 @@ describe('createPagedStache cache implementation', () => {
 
 			const globalCache = new SvelteMap<
 				string,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
 			>();
 
@@ -205,6 +207,7 @@ describe('createPagedStache cache implementation', () => {
 			vi.useFakeTimers();
 			const globalCache = new SvelteMap<
 				string,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
 			>();
 			const fetchFn = vi
@@ -288,6 +291,7 @@ describe('createPagedStache cache implementation', () => {
 			vi.useFakeTimers();
 			const globalCache = new SvelteMap<
 				string,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
 			>();
 			const fetchFn = vi
@@ -340,6 +344,7 @@ describe('createPagedStache cache implementation', () => {
 			vi.useFakeTimers();
 			const globalCache = new SvelteMap<
 				string,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
 			>();
 			const fetchFn = vi

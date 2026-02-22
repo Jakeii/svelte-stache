@@ -2,13 +2,16 @@ import type { UseStacheFn } from '../stache/stache.svelte';
 
 type BaseMutationParams = unknown[] | unknown;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ExtractParams<T> = T extends UseStacheFn<infer P, any> ? P : never;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type InvalidateStache<Q extends UseStacheFn<any, any>> = {
 	stache: Q;
 	params: ExtractParams<Q>;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type InvalidatesQueriesObj = InvalidateStache<UseStacheFn<any, any>>[];
 
 type InvalidatesQueries<Params = BaseMutationParams, Result = unknown> =
@@ -23,8 +26,8 @@ type OnSuccessFn<Params, Result> = ({ params, result }: { params: Params; result
 
 class Mutation<Params extends BaseMutationParams, Result = unknown> {
 	mutationFn: MutationFn<Params, Result>;
-	beforeMutate?: ((args: Params) => void | Promise<void>)[];
-	afterMutate?: ((args: Params) => void | Promise<void>)[];
+	beforeMutate?: ((args: Params) => unknown | Promise<unknown>)[];
+	afterMutate?: ((args: Params) => unknown | Promise<unknown>)[];
 	invalidatesQueries: InvalidatesQueries<Params, Result> = [];
 	status = $state<'idle' | 'loading' | 'error' | 'success'>('idle');
 	isLoading = $derived(this.status === 'loading');
@@ -33,7 +36,7 @@ class Mutation<Params extends BaseMutationParams, Result = unknown> {
 	data: Result | null = $state(null);
 	error: unknown = $state(null);
 	onSuccess?: OnSuccessFn<Params, Result>[];
-	onError?: ((error: unknown) => void)[];
+	onError?: ((error: unknown) => unknown)[];
 
 	constructor({
 		mutationFn,
@@ -44,8 +47,8 @@ class Mutation<Params extends BaseMutationParams, Result = unknown> {
 		onError
 	}: {
 		mutationFn: MutationFn<Params, Result>;
-		beforeMutate?: ((args: Params) => void | Promise<void>)[];
-		afterMutate?: ((args: Params) => void | Promise<void>)[];
+		beforeMutate?: ((args: Params) => unknown | Promise<unknown>)[];
+		afterMutate?: ((args: Params) => unknown | Promise<unknown>)[];
 		invalidatesQueries?: InvalidatesQueries<Params, Result>;
 		onSuccess?: OnSuccessFn<Params, Result>[];
 		onError?: ((error: unknown) => void)[];
