@@ -1,5 +1,5 @@
- import adapter from '@sveltejs/adapter-cloudflare';
- import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import adapter from '@sveltejs/adapter-cloudflare';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import mdsxConfig from './mdsx.config.js';
 import { mdsx } from 'mdsx';
 

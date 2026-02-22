@@ -5,7 +5,7 @@
 		"dev": "vite dev",
 		"build": "vite build && npm run prepack",
 		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''",
+		"prepare": "husky",
 		"prepack": "svelte-kit sync && svelte-package && publint",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -60,6 +60,8 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.15.0",
 		"globals": "^16.5.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.2.7",
 		"mdsvex": "^0.12.6",
 		"mdsx": "^0.0.7",
 		"phosphor-svelte": "^3.1.0",
@@ -85,5 +87,14 @@
 	"packageManager": "pnpm@10.28.2",
 	"dependencies": {
 		"@sveltejs/adapter-cloudflare": "^7.2.8"
+	},
+	"lint-staged": {
+		"*.{ts,svelte,js}": [
+			"prettier --write",
+			"eslint --fix"
+		],
+		"*.{json,css,scss,md}": [
+			"prettier --write"
+		]
 	}
 }
