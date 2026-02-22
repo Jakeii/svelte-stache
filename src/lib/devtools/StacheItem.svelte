@@ -4,7 +4,7 @@
 	import JsonViewer from './JsonViewer.svelte';
 
 	interface Props {
-		stache: CoreStache<unknown, unknown, unknown>;
+		stache: CoreStache<unknown, unknown>;
 		stacheKey: string;
 	}
 
@@ -151,9 +151,9 @@
 				<button
 					class="invalidate-btn"
 					onclick={() => stache.invalidate()}
-					disabled={stache.isFetching}
+					disabled={stache.fetchStatus === 'loading'}
 				>
-					{#if stache.isFetching}
+					{#if stache.fetchStatus === 'loading'}
 						<span class="spinner"></span>
 						Fetching...
 					{:else}

@@ -7,7 +7,7 @@
 
 	let { data, maxLines = 20, initialCollapsed = true }: Props = $props();
 
-	let collapsed = $state(initialCollapsed);
+	let collapsed = $derived(initialCollapsed);
 	let showAll = $state(false);
 	let copyFeedback = $state(false);
 

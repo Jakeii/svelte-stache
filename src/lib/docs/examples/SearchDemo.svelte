@@ -59,14 +59,14 @@
 		{/if}
 	</div>
 
-	{#if results.isFetching && !isTyping}
+	{#if results.isLoading && !isTyping}
 		<div class="loading">
 			<span class="spinner"></span>
 			Searching...
 		</div>
 	{:else if results.isError}
 		<div class="error">Search failed. Please try again.</div>
-	{:else if debouncedQuery && results.data?.length === 0 && !results.isFetching}
+	{:else if debouncedQuery && results.data?.length === 0 && !results.isLoading}
 		<div class="no-results">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<circle cx="12" cy="12" r="10" />
