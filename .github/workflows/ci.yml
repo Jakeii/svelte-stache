@@ -51,6 +51,8 @@ jobs:
 
       - name: Type check
         run: pnpm check
+        env:
+          PUBLIC_API_URL: https://svelte-stache.pages.dev/api
 
   test:
     name: Unit Tests
