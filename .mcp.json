@@ -3,8 +3,12 @@
 		"svelte": {
 			"type": "stdio",
 			"command": "npx",
-			"env": {},
-			"args": ["-y", "@sveltejs/mcp"]
+			"args": ["-y", "@sveltejs/mcp"],
+			"env": {}
+		},
+		"storybook-mcp": {
+			"type": "http",
+			"url": "http://localhost:6006/mcp"
 		}
 	}
 }

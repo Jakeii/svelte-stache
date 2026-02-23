@@ -18,7 +18,9 @@
 		"docs:build:search": "node ./scripts/build-search-data.js",
 		"docs:dev": "pnpm \"/docs:dev:/\"",
 		"docs:dev:content": "velite dev --watch",
-		"docs:dev:svelte": "vite dev"
+		"docs:dev:svelte": "vite dev",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build"
 	},
 	"files": [
 		"dist",
@@ -46,6 +48,9 @@
 		"@changesets/cli": "^2.29.8",
 		"@eslint/js": "^10.0.0",
 		"@playwright/test": "^1.58.2",
+		"@storybook/addon-mcp": "^0.3.2",
+		"@storybook/addon-svelte-csf": "^5.0.11",
+		"@storybook/sveltekit": "^10.2.11",
 		"@svecodocs/kit": "^0.5.1",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/kit": "^2.52.2",
@@ -58,6 +63,7 @@
 		"@vitest/ui": "^4.0.18",
 		"eslint": "^10.0.0",
 		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-storybook": "^10.2.11",
 		"eslint-plugin-svelte": "^3.15.0",
 		"globals": "^16.5.0",
 		"husky": "^9.1.7",
@@ -70,6 +76,7 @@
 		"prettier-plugin-svelte": "^3.5.0",
 		"publint": "^0.3.17",
 		"runed": "^0.37.1",
+		"storybook": "^10.2.11",
 		"svelte": "^5.53.2",
 		"svelte-check": "^4.4.1",
 		"tailwindcss": "^4.2.0",
