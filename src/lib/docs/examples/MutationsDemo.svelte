@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PUBLIC_CF_PAGES_URL } from '$env/static/public';
+	import { PUBLIC_API_URL } from '$env/static/public';
 	import { createMutation } from '$lib/index.js';
 
 	interface CreatePostInput {
@@ -20,7 +20,7 @@
 
 	const useCreatePost = createMutation<CreatePostInput, Post>({
 		mutationFn: async (data: CreatePostInput): Promise<Post> => {
-			const response = await fetch(`${PUBLIC_CF_PAGES_URL}/api/posts`, {
+			const response = await fetch(`${PUBLIC_API_URL}/posts`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(data)
