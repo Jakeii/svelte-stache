@@ -1,7 +1,7 @@
 import type { Preview } from '@storybook/sveltekit';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import '../src/app.css';
-// Start MSW service worker with no default handlers (stories provide their own)
+
 initialize({
 	onUnhandledRequest: 'bypass'
 });
