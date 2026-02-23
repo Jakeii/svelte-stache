@@ -22,7 +22,6 @@
 			return response.json();
 		},
 		staleTime: 1000 * 5
-		// refetchOnWindowFocus: false
 	});
 
 	let inputValue = $state('');

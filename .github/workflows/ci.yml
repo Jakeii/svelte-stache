@@ -76,6 +76,8 @@ jobs:
 
       - name: Run unit tests
         run: pnpm test:run
+        env:
+          PUBLIC_API_URL: http://localhost:5173/api
 
   build:
     name: Build & Publish
