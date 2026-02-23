@@ -92,7 +92,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
+          node-version-file: .nvmrc
           cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: NPM update
+        run: npm install -g npm@11.10.1
 
       - name: Install dependencies
         run: pnpm install
