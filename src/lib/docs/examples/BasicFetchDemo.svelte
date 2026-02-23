@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createStache } from '$lib';
-	import { PUBLIC_CF_PAGES_URL } from '$env/static/public';
+	import { PUBLIC_API_URL } from '$env/static/public';
 
 	interface User {
 		id: string;
@@ -16,7 +16,7 @@
 	const { useStache: getUser } = createStache({
 		id: 'demo-user',
 		fetch: async (userId: string): Promise<User> => {
-			const response = await fetch(`${PUBLIC_CF_PAGES_URL}/api/users/${userId}`);
+			const response = await fetch(`${PUBLIC_API_URL}/users/${userId}`);
 			if (!response.ok) {
 				throw new Error('Failed to fetch user');
 			}
