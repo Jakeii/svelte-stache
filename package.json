@@ -107,10 +107,5 @@
 		"*.{json,css,scss,md}": [
 			"prettier --write"
 		]
-	},
-	"msw": {
-		"workerDirectory": [
-			"static"
-		]
 	}
 }
