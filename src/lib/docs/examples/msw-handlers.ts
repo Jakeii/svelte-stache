@@ -1,4 +1,5 @@
 import { http, HttpResponse, delay } from 'msw';
+import { generatePosts } from '../generate-posts';
 
 // ─── Mock data fixtures ───────────────────────────────────────────────────────
 
@@ -34,15 +35,7 @@ export const MOCK_USERS = [
 	}
 ] as const;
 
-export const MOCK_POSTS = Array.from({ length: 12 }, (_, i) => ({
-	id: `post-${i + 1}`,
-	title: `Post Title ${i + 1}`,
-	excerpt: `This is a short excerpt for post ${i + 1}.`,
-	author: MOCK_USERS[i % 3].name,
-	category: ['Technology', 'Design', 'Business', 'Lifestyle', 'Science'][i % 5],
-	publishedAt: new Date(Date.now() - i * 86400000).toISOString(),
-	readTime: 3 + (i % 5)
-}));
+export const allPosts = generatePosts(50);
 
 export const MOCK_DEPARTMENTS = [
 	{ name: 'Engineering', location: 'San Francisco' },
@@ -59,13 +52,13 @@ export interface HandlerOptions {
 // ─── User handlers ────────────────────────────────────────────────────────────
 
 export const userHandlers = (options: HandlerOptions = {}) => [
-	http.get('http://localhost/users/:id', async ({ params }) => {
+	http.get('http://localhost:5173/api/users/:id', async ({ params }) => {
 		if (options.delayMs) await delay(options.delayMs);
 		if (options.error) return new HttpResponse(null, { status: 500 });
 		const user = MOCK_USERS.find((u) => u.id === params.id) ?? MOCK_USERS[0];
 		return HttpResponse.json(user);
 	}),
-	http.get('http://localhost/users', async ({ request }) => {
+	http.get('http://localhost:5173/api/users', async ({ request }) => {
 		if (options.delayMs) await delay(options.delayMs);
 		if (options.error) return new HttpResponse(null, { status: 500 });
 		const url = new URL(request.url);
@@ -89,17 +82,20 @@ export const userHandlers = (options: HandlerOptions = {}) => [
 // ─── Post handlers ────────────────────────────────────────────────────────────
 
 export const postHandlers = (options: HandlerOptions = {}) => [
-	http.get('http://localhost/posts', async ({ request }) => {
+	http.get('http://localhost:5173/api/posts', async ({ request }) => {
 		if (options.delayMs) await delay(options.delayMs);
 		if (options.error) return new HttpResponse(null, { status: 500 });
 		const url = new URL(request.url);
 		const page = Number(url.searchParams.get('page') ?? 1);
 		const limit = Number(url.searchParams.get('limit') ?? 5);
 		const category = url.searchParams.get('category');
-		const filtered = category ? MOCK_POSTS.filter((p) => p.category === category) : MOCK_POSTS;
-		const start = (page - 1) * limit;
+		const filtered = category ? allPosts.filter((p) => p.category === category) : allPosts;
+		const start = page * limit;
+		const end = start + limit;
+		const paginatedPosts = filtered.slice(start, end);
+
 		return HttpResponse.json({
-			data: filtered.slice(start, start + limit),
+			data: paginatedPosts,
 			meta: {
 				total: filtered.length,
 				page,
@@ -108,7 +104,7 @@ export const postHandlers = (options: HandlerOptions = {}) => [
 			}
 		});
 	}),
-	http.post('http://localhost/posts', async ({ request }) => {
+	http.post('http://localhost:5173/api/posts', async ({ request }) => {
 		if (options.delayMs) await delay(options.delayMs);
 		if (options.error) return new HttpResponse(null, { status: 500 });
 		const body = (await request.json()) as { title: string; content: string; category: string };
@@ -130,7 +126,7 @@ export const postHandlers = (options: HandlerOptions = {}) => [
 // ─── Department handlers ──────────────────────────────────────────────────────
 
 export const departmentHandlers = (options: HandlerOptions = {}) => [
-	http.get('http://localhost/user/:id/departments', async () => {
+	http.get('http://localhost:5173/api/user/:id/departments', async () => {
 		if (options.delayMs) await delay(options.delayMs);
 		if (options.error) return new HttpResponse(null, { status: 500 });
 		return HttpResponse.json(MOCK_DEPARTMENTS);

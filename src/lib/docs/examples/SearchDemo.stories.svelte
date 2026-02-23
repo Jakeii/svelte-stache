@@ -1,14 +1,20 @@
 <script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
-	import { expect, within, userEvent } from 'storybook/test';
+	import { expect } from 'storybook/test';
 	import SearchDemo from './SearchDemo.svelte';
 	import { userHandlers } from './msw-handlers.js';
+	import { getStacheCache } from '$lib/stache/cache.svelte.js';
+
+	const globalCache = getStacheCache('demo-search');
 
 	const { Story } = defineMeta({
 		title: 'Examples/SearchDemo',
 		component: SearchDemo,
 		parameters: {
 			msw: { handlers: userHandlers() }
+		},
+		beforeEach: async () => {
+			globalCache.clear();
 		}
 	});
 </script>
@@ -16,8 +22,7 @@
 <!-- Default: empty state with suggestion chips visible -->
 <Story
 	name="Default"
-	play={async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
+	play={async ({ canvas }) => {
 		await expect(canvas.getByText('Try searching for:')).toBeInTheDocument();
 		await expect(canvas.getByRole('button', { name: 'Alice' })).toBeInTheDocument();
 	}}
@@ -27,8 +32,7 @@
 <Story
 	name="SearchResults"
 	parameters={{ msw: { handlers: userHandlers() } }}
-	play={async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
+	play={async ({ canvas, userEvent }) => {
 		const input = canvas.getByRole('searchbox');
 		await userEvent.type(input, 'Alice');
 		// Debounce is 300ms — wait for results
@@ -43,8 +47,7 @@
 <Story
 	name="NoResults"
 	parameters={{ msw: { handlers: userHandlers() } }}
-	play={async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
+	play={async ({ canvas, userEvent }) => {
 		const input = canvas.getByRole('searchbox');
 		await userEvent.type(input, 'zzznomatch');
 		await expect(

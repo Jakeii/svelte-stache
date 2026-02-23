@@ -1,6 +1,6 @@
 <script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
-	import { expect, within, userEvent } from 'storybook/test';
+	import { expect } from 'storybook/test';
 	import MutationsDemo from './MutationsDemo.svelte';
 	import { postHandlers } from './msw-handlers.js';
 
@@ -16,8 +16,7 @@
 <!-- Default: form is empty, status badge shows idle -->
 <Story
 	name="Default"
-	play={async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
+	play={async ({ canvas }) => {
 		await expect(canvas.getByLabelText('Title')).toBeInTheDocument();
 		await expect(canvas.getByLabelText('Content')).toBeInTheDocument();
 		await expect(canvas.getByText('idle')).toBeInTheDocument();
@@ -28,8 +27,7 @@
 <Story
 	name="SubmitSuccess"
 	parameters={{ msw: { handlers: postHandlers() } }}
-	play={async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
+	play={async ({ canvas, userEvent }) => {
 		await userEvent.type(canvas.getByLabelText('Title'), 'My New Post');
 		await userEvent.type(canvas.getByLabelText('Content'), 'Some interesting content here.');
 		await userEvent.click(canvas.getByRole('button', { name: /create post/i }));
@@ -44,8 +42,7 @@
 <Story
 	name="SubmitError"
 	parameters={{ msw: { handlers: postHandlers({ error: true }) } }}
-	play={async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
+	play={async ({ canvas, userEvent }) => {
 		await userEvent.type(canvas.getByLabelText('Title'), 'My New Post');
 		await userEvent.type(canvas.getByLabelText('Content'), 'Some content.');
 		await userEvent.click(canvas.getByRole('button', { name: /create post/i }));

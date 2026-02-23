@@ -30,7 +30,7 @@
 
 	let enabled = $state(true);
 
-	const user = await getUser(() => ({
+	const user = getUser(() => ({
 		params: userId,
 		enabled: enabled
 	}));
