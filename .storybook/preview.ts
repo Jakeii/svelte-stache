@@ -3,7 +3,8 @@ import { initialize, mswLoader } from 'msw-storybook-addon';
 import '../src/app.css';
 
 initialize({
-	onUnhandledRequest: 'bypass'
+	onUnhandledRequest: 'bypass',
+	quiet: import.meta.env.VITEST_STORYBOOK === 'false'
 });
 
 const preview: Preview = {
