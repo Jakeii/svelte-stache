@@ -41,6 +41,11 @@ From `src/lib/index.ts`:
 - `createPagedStache` - Create paginated query definitions
 - `createMutation` - Create mutation handlers
 
+Both `createStache` and `createPagedStache` return an `invalidate` function:
+
+- `invalidate(params)` — invalidates the cache entry for those params
+- `invalidate()` — invalidates **all** cached entries for that factory instance (all param variants)
+
 Types exported: `Mutation`, `UseStacheFn`, `CreateStacheFn`, `CreatePagedStacheFn`, `MutationFn`, `Stache`
 
 Library also exports a `./devtools` entrypoint: `StacheDevtools`, `StacheDevtoolsPanel`, `JsonViewer`, `StatusBadge`
