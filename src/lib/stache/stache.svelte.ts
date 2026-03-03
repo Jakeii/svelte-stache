@@ -167,6 +167,8 @@ const createStache = <StacheParams, FetchReturnData>(
 			});
 
 			return () => {
+				// create our own reference to the stache instance to ensure we have the correct one during cleanup, since the reactive `stache` variable may have changed after `tick()`
+				const stache = getStache<StacheParams, FetchReturnData>(cache, stacheKey);
 				if (stache) {
 					// Decrement the reference count on cleanup
 					if (stache.referenceCount > 0) {
@@ -254,7 +256,18 @@ const createStache = <StacheParams, FetchReturnData>(
 		return publicStache;
 	};
 
-	const invalidate = (args: StacheParams) => {
+	/**
+	 * Invalidates the stache with the given parameters, if it exists. If no parameters are provided, it invalidates all staches created with this `createStache` instance.
+	 *
+	 * @param args The parameters of the stache to invalidate. If undefined, all staches in this cache will be invalidated.
+	 */
+	const invalidate = (args?: StacheParams) => {
+		if (args === undefined) {
+			for (const stache of cache.values()) {
+				stache.invalidate();
+			}
+			return;
+		}
 		const stacheKey = hashKey(args);
 		cache?.get(stacheKey)?.invalidate();
 	};
