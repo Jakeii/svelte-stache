@@ -168,12 +168,17 @@ This prevents memory leaks while keeping recently-used data available.
 Force a refetch at any time:
 
 ```typescript
-// Instance method
+// Instance method — invalidates this specific stache
 user.invalidate();
 
-// Factory function
+// Factory function — invalidates a specific param variant
 invalidateUser('user-1');
+
+// Factory function — invalidates all cached variants
+invalidateUser();
 ```
+
+Calling `invalidate()` with no arguments is useful after mutations that affect all entries — for example, invalidating all posts after a bulk operation.
 
 Invalidation:
 

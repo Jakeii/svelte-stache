@@ -21,7 +21,7 @@ function createStache<Params, Result>(
 	options: CreateStacheOptions<Params, Result>
 ): {
 	useStache: UseStacheFn<Params, Result>;
-	invalidate: (params: Params) => void;
+	invalidate: (params?: Params) => void;
 };
 ```
 
@@ -165,13 +165,19 @@ const user = getUser(() => ({ params: 'user-123' }));
 
 ### `invalidate`
 
-A function to manually invalidate cached data for specific params. Forces a refetch immediately.
+A function to manually invalidate cached data. Forces a refetch immediately.
+
+- **`invalidate(params)`** — invalidates the cache entry for the given params
+- **`invalidate()`** — invalidates all cache entries for this stache (all param variants)
 
 ```typescript
 const { invalidate: invalidateUser } = createStache({ ... });
 
 // Force refetch for a specific user
 invalidateUser('user-123');
+
+// Force refetch for all cached users
+invalidateUser();
 ```
 
 ## useStache Options

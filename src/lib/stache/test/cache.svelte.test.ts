@@ -289,7 +289,7 @@ describe('createStache cache implementation', () => {
 					SvelteMap<string, CoreStache<unknown, unknown>>
 				>();
 				const fetchFn = vi.fn().mockImplementation((params) => {
-					return Promise.resolve({ data: `result-${params}` });
+					return Promise.resolve(`result-${params}`);
 				});
 				const { useStache } = createStache({
 					id: 'timeout-test',
@@ -298,7 +298,7 @@ describe('createStache cache implementation', () => {
 				});
 
 				let params = $state('param1');
-				const stache = await useStache(() => ({ params: params }));
+				const stache = useStache(() => ({ params: params }));
 
 				flushSync();
 
@@ -308,7 +308,9 @@ describe('createStache cache implementation', () => {
 				params = 'param2';
 				flushSync();
 
-				await vi.waitFor(() => stache.data === 'result-param2');
+				expect(globalCache.get('timeout-test')?.get(hashKey('param2'))).toBeDefined();
+
+				await vi.waitUntil(() => stache.data === 'result-param2');
 
 				const cache1 = globalCache.get('timeout-test')?.get(hashKey('param1'));
 				const cache2 = globalCache.get('timeout-test')?.get(hashKey('param2'));
@@ -325,12 +327,164 @@ describe('createStache cache implementation', () => {
 				flushSync();
 
 				// Old cache entry should be cleaned up
-				await vi.waitFor(
+				expect(globalCache.get('timeout-test')?.get(hashKey('param1'))?.cacheStatus === 'stale');
+				expect(globalCache.get('timeout-test')?.get(hashKey('param2'))).toBeDefined();
+
+				await vi.waitUntil(
 					() => globalCache.get('timeout-test')?.get(hashKey('param1')) === undefined
 				);
+
+				expect(globalCache.get('timeout-test')?.get(hashKey('param1'))).toBeUndefined();
 				expect(globalCache.get('timeout-test')?.get(hashKey('param2'))).toBeDefined();
 
 				vi.useRealTimers();
+			})
+		);
+	});
+
+	describe('Invalidate all staches', () => {
+		it(
+			'should invalidate all param variants when invalidate() called with no args',
+			withEffectRoot(async () => {
+				const globalCache = new SvelteMap<
+					string,
+					SvelteMap<string, CoreStache<unknown, unknown>>
+				>();
+				const fetchFn = vi
+					.fn()
+					.mockImplementation((params: { id: number }) =>
+						Promise.resolve({ data: `result-${params.id}` })
+					);
+
+				const { useStache, invalidate } = createStache({
+					id: 'invalidate-all-variants',
+					fetch: fetchFn,
+					globalCache
+				});
+
+				const params1 = $state({ id: 1 });
+				const stache1 = useStache(() => ({ params: params1 }));
+
+				const params2 = $state({ id: 2 });
+				const stache2 = useStache(() => ({ params: params2 }));
+
+				flushSync();
+
+				await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
+				expect(fetchFn).toHaveBeenCalledTimes(2);
+
+				fetchFn.mockClear();
+
+				expect(fetchFn).toHaveBeenCalledTimes(0);
+
+				invalidate();
+				flushSync();
+
+				await vi.waitUntil(() => fetchFn.mock.calls.length === 2);
+				expect(fetchFn).toHaveBeenCalledTimes(2);
+			})
+		);
+
+		it(
+			'should only invalidate the matching param variant when invalidate(args) is called',
+			withEffectRoot(async () => {
+				const globalCache = new SvelteMap<
+					string,
+					SvelteMap<string, CoreStache<unknown, unknown>>
+				>();
+				const fetchFn = vi
+					.fn()
+					.mockImplementation((params: { id: number }) =>
+						Promise.resolve({ data: `result-${params.id}` })
+					);
+
+				const { useStache, invalidate } = createStache({
+					id: 'invalidate-specific-param',
+					fetch: fetchFn,
+					globalCache
+				});
+
+				const params1 = $state({ id: 1 });
+				const stache1 = useStache(() => ({ params: params1 }));
+
+				const params2 = $state({ id: 2 });
+				const stache2 = useStache(() => ({ params: params2 }));
+
+				flushSync();
+
+				await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
+				expect(fetchFn).toHaveBeenCalledTimes(2);
+
+				fetchFn.mockClear();
+
+				invalidate({ id: 1 });
+				flushSync();
+
+				await vi.waitUntil(() => fetchFn.mock.calls.length === 1);
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+				expect(fetchFn).toHaveBeenCalledWith({ id: 1 });
+			})
+		);
+
+		it(
+			'should handle invalidate() with no args for a no-param fetch',
+			withEffectRoot(async () => {
+				const fetchFn = vi.fn().mockResolvedValue({ data: 'no-params' });
+
+				const { useStache, invalidate } = createStache({
+					id: 'invalidate-no-params',
+					fetch: fetchFn
+				});
+
+				const stache = useStache();
+				flushSync();
+
+				await vi.waitUntil(() => stache.data !== null);
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+
+				invalidate();
+				flushSync();
+
+				await vi.waitUntil(() => fetchFn.mock.calls.length === 2);
+				expect(fetchFn).toHaveBeenCalledTimes(2);
+			})
+		);
+
+		it(
+			'should not affect staches with different ids when invalidate() is called',
+			withEffectRoot(async () => {
+				const fetchFn1 = vi.fn().mockResolvedValue('data-1');
+				const fetchFn2 = vi.fn().mockResolvedValue('data-2');
+
+				const { useStache: useStache1, invalidate: invalidate1 } = createStache({
+					id: 'invalidate-all-isolation-1',
+					fetch: fetchFn1
+				});
+
+				const { useStache: useStache2 } = createStache({
+					id: 'invalidate-all-isolation-2',
+					fetch: fetchFn2
+				});
+
+				const stache1 = useStache1();
+				const stache2 = useStache2();
+				flushSync();
+
+				await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
+				expect(fetchFn1).toHaveBeenCalledTimes(1);
+				expect(fetchFn2).toHaveBeenCalledTimes(1);
+
+				fetchFn1.mockClear();
+				fetchFn2.mockClear();
+
+				invalidate1();
+				flushSync();
+
+				await vi.waitUntil(() => fetchFn1.mock.calls.length === 1);
+
+				// stache2 should not have been refetched
+				expect(fetchFn1).toHaveBeenCalledTimes(1);
+				expect(fetchFn2).toHaveBeenCalledTimes(0);
 			})
 		);
 	});

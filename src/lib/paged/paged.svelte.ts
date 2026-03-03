@@ -289,7 +289,22 @@ const createPagedStache = <
 		return pagedStache;
 	};
 
-	const invalidate = async (args: StacheParams) => {
+	/**
+	 * Invalidates the paged stache with the given parameters, if it exists. If no parameters are provided, invalidates all page staches in this `pagedStache` instance.
+	 *
+	 * @param args
+	 * @returns
+	 */
+	const invalidate = async (args?: StacheParams) => {
+		if (!args) {
+			// Invalidate all staches in the cache
+			for (const pageCache of cache.values()) {
+				for (const stache of pageCache.values()) {
+					await stache.invalidate();
+				}
+			}
+			return;
+		}
 		const stacheKey = hashKey(args);
 		for (const stache of cache?.get(stacheKey)?.values() ?? []) {
 			await stache.invalidate();
