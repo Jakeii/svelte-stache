@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { CoreStache } from '../core/stache.class.svelte';
-	import StatusBadge from './StatusBadge.svelte';
-	import JsonViewer from './JsonViewer.svelte';
+	import type { CoreStache } from '$lib/core/stache.class.svelte';
+	import StatusBadge from '$lib/devtools/StatusBadge.svelte';
+	import JsonViewer from '$lib/devtools/JsonViewer.svelte';
 
 	interface Props {
 		stache: CoreStache<unknown, unknown>;

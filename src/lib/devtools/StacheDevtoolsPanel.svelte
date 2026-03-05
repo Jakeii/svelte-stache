@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { getGlobalStacheCache, invalidateStacheById } from '../stache/cache.svelte';
-	import { getGlobalPagedStacheCache } from '../paged/paged-cache.svelte';
-	import StacheItem from './StacheItem.svelte';
-	import PagedStacheItem from './PagedStacheItem.svelte';
+	import { getGlobalStacheCache, invalidateStacheById } from '$lib/stache/cache.svelte';
+	import { getGlobalPagedStacheCache } from '$lib/paged/paged-cache.svelte';
+	import StacheItem from '$lib/devtools/StacheItem.svelte';
+	import PagedStacheItem from '$lib/devtools/PagedStacheItem.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	export type Theme = 'light' | 'dark' | 'system';

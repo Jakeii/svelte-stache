@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { PagedStacheCache } from '../paged/paged-cache.svelte';
-	import { invalidatePagedStacheById } from '../paged/paged-cache.svelte';
-	import StatusBadge from './StatusBadge.svelte';
-	import StacheItem from './StacheItem.svelte';
+	import type { PagedStacheCache } from '$lib/paged/paged-cache.svelte';
+	import { invalidatePagedStacheById } from '$lib/paged/paged-cache.svelte';
+	import StatusBadge from '$lib/devtools/StatusBadge.svelte';
+	import StacheItem from '$lib/devtools/StacheItem.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Props {

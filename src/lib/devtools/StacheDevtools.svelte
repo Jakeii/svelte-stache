@@ -1,5 +1,5 @@
 <script lang="ts">
-	import StacheDevtoolsPanel, { type Theme } from './StacheDevtoolsPanel.svelte';
+	import StacheDevtoolsPanel, { type Theme } from '$lib/devtools/StacheDevtoolsPanel.svelte';
 
 	type ButtonPosition = 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
 
