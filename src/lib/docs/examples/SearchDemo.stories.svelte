@@ -3,9 +3,9 @@
 	import { expect } from 'storybook/test';
 	import SearchDemo from './SearchDemo.svelte';
 	import { userHandlers } from './msw-handlers.js';
-	import { getStacheCache } from '$lib/stache/cache.svelte.js';
+	import { getStacheVariantMap } from '$lib/stache/cache.svelte.js';
 
-	const globalCache = getStacheCache('demo-search');
+	const globalCache = getStacheVariantMap('demo-search');
 
 	const { Story } = defineMeta({
 		title: 'Examples/SearchDemo',

@@ -1,9 +1,9 @@
 import { SvelteDate } from 'svelte/reactivity';
 import { tick, untrack } from 'svelte';
 import {
-	getPageCache,
-	getPagedStache,
-	getPagedStacheCache,
+	getPagedStacheVariant,
+	getPagedStacheVariantPage,
+	getPagedStacheVariantMap,
 	type GlobalPagedStacheCache,
 	type PagedStacheCache
 } from './paged-cache.svelte';
@@ -74,7 +74,7 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 
 	const stacheKey = hashKey(useOptions?.params);
 
-	const pageCache = getPageCache<StacheParams, PageFetchReturnData>(cache, stacheKey);
+	const pageCache = getPagedStacheVariant<StacheParams, PageFetchReturnData>(cache, stacheKey);
 
 	return Array.from({ length: pageCount }, (_, i) => i).map((i) => {
 		const pageIndex = pageOffset + i;
@@ -83,7 +83,10 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 			pageSize
 		});
 
-		let stache = getPagedStache<StacheParams, PageFetchReturnData>(pageCache, pageStacheKey);
+		let stache = getPagedStacheVariantPage<StacheParams, PageFetchReturnData>(
+			pageCache,
+			pageStacheKey
+		);
 
 		if (!stache) {
 			const fetchPageParams: FetchPageParams = {
@@ -139,7 +142,7 @@ const createPagedStache = <
 >(
 	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>
 ) => {
-	const cache = getPagedStacheCache(createOptions.id, createOptions.globalCache);
+	const cache = getPagedStacheVariantMap(createOptions.id, createOptions.globalCache);
 
 	const useStache = <T extends Exact<UsePagedStacheOptions<StacheParams, PageResult>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
@@ -182,7 +185,7 @@ const createPagedStache = <
 			return () => {
 				const stacheKey = hashKey(useOptions?.params);
 
-				const pageCache = getPageCache<StacheParams, PageResult>(cache, stacheKey);
+				const pageCache = getPagedStacheVariant<StacheParams, PageResult>(cache, stacheKey);
 				// Cleanup: Decrement reference count of page staches when effect re-runs or component unmounts
 				pages.forEach((stache, pageIndex) => {
 					const pageStacheKey = hashKey({

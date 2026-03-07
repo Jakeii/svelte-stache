@@ -3,9 +3,9 @@
 	import { expect } from 'storybook/test';
 	import PaginationDemo from './PaginationDemo.svelte';
 	import { postHandlers } from './msw-handlers.js';
-	import { getPagedStacheCache } from '$lib/paged/paged-cache.svelte.js';
+	import { getPagedStacheVariantMap } from '$lib/paged/paged-cache.svelte.js';
 
-	const globalCache = getPagedStacheCache('demo-posts');
+	const globalCache = getPagedStacheVariantMap('demo-posts');
 
 	const { Story } = defineMeta({
 		title: 'Examples/PaginationDemo',

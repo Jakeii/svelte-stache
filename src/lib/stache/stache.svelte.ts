@@ -6,9 +6,9 @@ import {
 } from '../core/stache.class.svelte';
 import {
 	getStache,
-	getStacheCache,
+	getStacheVariantMap,
 	type GlobalStacheCache,
-	type StacheCache
+	type StacheVariantMap
 } from './cache.svelte';
 import { hashKey } from '../utils';
 import { tick, untrack } from 'svelte';
@@ -75,7 +75,7 @@ type UseStacheFn<StacheParams, Result> = {
  * @returns The existing or newly created stache instance.
  */
 const getOrCreateStache = <StacheParams, FetchReturnData>(
-	cache: StacheCache,
+	cache: StacheVariantMap,
 	stacheKey: string,
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>,
 	useOptions: UseStacheOptions<StacheParams>
@@ -119,7 +119,7 @@ const getOrCreateStache = <StacheParams, FetchReturnData>(
 const createStache = <StacheParams, FetchReturnData>(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
-	const cache = getStacheCache(createOptions.id, createOptions.globalCache);
+	const cache = getStacheVariantMap(createOptions.id, createOptions.globalCache);
 
 	const useStache = <T extends Exact<UseStacheOptions<StacheParams>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
