@@ -1,5 +1,12 @@
 # svelte-stache
 
+## 0.2.0
+
+### Minor Changes
+
+- a683dce: Add onSuccess and onError callbacks to stache and paged stache
+- ffe5fc1: Provide clearAllCaches, invalidateStache.
+
 ## 0.1.0
 
 ### Minor Changes
