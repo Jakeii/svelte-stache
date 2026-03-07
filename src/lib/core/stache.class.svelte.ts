@@ -38,6 +38,8 @@ type PagedFetchFn<StacheFnParams, FetchReturnData> = (
 	pageParams: FetchPageParams
 ) => Promise<FetchReturnData> | FetchReturnData;
 
+type OnSuccessFn<Params, Result> = ({ params, result }: { params: Params; result: Result }) => void;
+
 type StacheConstructorOptions<StacheFnParams, FetchReturnData> = {
 	/**
 	 * Unique identifier for the stache type.
@@ -95,6 +97,10 @@ type StacheConstructorOptions<StacheFnParams, FetchReturnData> = {
 	 * @default false
 	 */
 	isHydratable?: boolean;
+
+	onSuccess?: OnSuccessFn<StacheFnParams, FetchReturnData>;
+
+	onError?: (error: unknown) => void;
 };
 
 type UseStacheOptions<Params> = {
@@ -230,6 +236,10 @@ class CoreStache<FetchParams, FetchReturnData> {
 	readonly refetchOnWindowFocus: boolean = true;
 	readonly refetchOnStale: boolean = false;
 
+	#onSuccess?: OnSuccessFn<FetchParams, FetchReturnData>;
+
+	#onError?: (error: unknown) => unknown;
+
 	/**
 	 * Number of active references to this stache instance.
 	 * Used to determine when to clean up the stache from the cache.
@@ -253,7 +263,9 @@ class CoreStache<FetchParams, FetchReturnData> {
 			cleanupTime,
 			refetchOnStale,
 			refetchOnWindowFocus,
-			isHydratable = false
+			isHydratable = false,
+			onSuccess,
+			onError
 		}: StacheConstructorOptions<FetchParams, FetchReturnData>,
 		{ params, enabled }: UseStacheOptions<FetchParams>,
 		fetchPageParams?: FetchPageParams
@@ -288,6 +300,8 @@ class CoreStache<FetchParams, FetchReturnData> {
 		}
 
 		this.#enabled = enabled ?? true;
+		this.#onSuccess = onSuccess;
+		this.#onError = onError;
 
 		if (globalThis?.window && this.refetchOnWindowFocus) {
 			window.addEventListener('focus', () => {
@@ -335,10 +349,10 @@ class CoreStache<FetchParams, FetchReturnData> {
 
 		// Don't use Promise.withResolvers, it's too new still
 		let resolve: () => void;
-		let reject: (reason?: unknown) => void;
-		const promise = new Promise<void>((res, rej) => {
+		// let reject: (reason?: unknown) => void;
+		const promise = new Promise<void>((res) => {
 			resolve = res;
-			reject = rej;
+			// reject = rej;
 		});
 		Promise.resolve(
 			maybeHydratable(
@@ -360,21 +374,17 @@ class CoreStache<FetchParams, FetchReturnData> {
 				this.#raw = data;
 				this.#lastFetched = new SvelteDate();
 				resolve();
+				this.#onSuccess?.({ params: this.params, result: data });
 			})
 			.catch((err) => {
 				if (err instanceof DOMException && err.name === 'AbortError') {
 					this.#fetchStatus = 'idle';
-					reject(err);
 				} else {
 					this.#error = err;
 					this.#fetchStatus = 'error';
-					// if (rejectOnError) {
-					// 	console.error('rejecting');
-					// 	// reject(err);
-					// } else {
 					resolve();
-					// }
 				}
+				this.#onError?.(err);
 			});
 		return promise;
 	}

@@ -100,7 +100,9 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 					cleanupTime: createOptions.cleanupTime,
 					refetchOnStale: createOptions.refetchOnStale,
 					refetchOnWindowFocus: createOptions.refetchOnWindowFocus,
-					globalCache: createOptions.globalCache
+					globalCache: createOptions.globalCache,
+					onSuccess: createOptions.onSuccess,
+					onError: createOptions.onError
 				};
 
 			const usePagedOptions: UsePagedStacheOptions<StacheParams, PageResult> = {
