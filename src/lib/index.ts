@@ -2,8 +2,7 @@ export { createStache } from './stache/stache.svelte';
 export { createPagedStache } from './paged/paged.svelte';
 export { createMutation } from './mutation/mutation.svelte';
 
-export { clearGlobalStacheCache, invalidateStacheById } from './stache/cache.svelte';
-export { clearGlobalPagedStacheCache, invalidatePagedStacheById } from './paged/paged-cache.svelte';
+export { clearAllCaches, invalidateStache } from './utils';
 
 export type { Mutation } from './mutation/mutation.class.svelte';
 export type { Stache } from './stache/stache.svelte';
