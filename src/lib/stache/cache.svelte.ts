@@ -71,10 +71,10 @@ const invalidateStacheById = (id: string): void => {
 };
 
 /**
- * Clears the entire global stache cache, removing all stache instances and their associated variant maps.
+ * Clears the entire global stache cache, removing all stache variants.
  */
 const clearGlobalStacheCache = (): void => {
-	globalStacheCache.clear();
+	globalStacheCache.forEach((cache) => cache.clear());
 };
 
 export {

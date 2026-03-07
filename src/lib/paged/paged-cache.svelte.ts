@@ -113,7 +113,7 @@ const invalidatePagedStacheById = (id: string): void => {
  * Clears the global paged stache cache by removing all entries from the cache.
  */
 const clearGlobalPagedStacheCache = (): void => {
-	pagedGlobalStacheCache.clear();
+	pagedGlobalStacheCache.forEach((cache) => cache.clear());
 };
 
 export {
