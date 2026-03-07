@@ -3,10 +3,10 @@
 	import { expect } from 'storybook/test';
 	import DependantQueryDemo from './DependantQueryDemo.svelte';
 	import { userHandlers, departmentHandlers } from './msw-handlers.js';
-	import { getStacheCache } from '$lib/stache/cache.svelte.js';
+	import { getStacheVariantMap } from '$lib/stache/cache.svelte.js';
 
-	const demoUserCache = getStacheCache('demo-user');
-	const demoDepartmentCache = getStacheCache('demo-user-departments');
+	const demoUserCache = getStacheVariantMap('demo-user');
+	const demoDepartmentCache = getStacheVariantMap('demo-user-departments');
 
 	const { Story } = defineMeta({
 		title: 'Examples/DependantQueryDemo',

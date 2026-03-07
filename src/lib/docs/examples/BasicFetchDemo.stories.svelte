@@ -3,9 +3,9 @@
 	import BasicFetchDemo from './BasicFetchDemo.svelte';
 	import { userHandlers } from './msw-handlers.js';
 	import { expect } from 'storybook/test';
-	import { getStacheCache } from '$lib/stache/cache.svelte.js';
+	import { getStacheVariantMap } from '$lib/stache/cache.svelte.js';
 
-	const globalCache = getStacheCache('demo-user');
+	const globalCache = getStacheVariantMap('demo-user');
 	const { Story } = defineMeta({
 		title: 'Examples/BasicFetchDemo',
 		component: BasicFetchDemo,

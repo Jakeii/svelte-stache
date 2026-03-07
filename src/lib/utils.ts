@@ -1,3 +1,6 @@
+import { clearGlobalPagedStacheCache, invalidatePagedStacheById } from './paged/paged-cache.svelte';
+import { clearGlobalStacheCache, invalidateStacheById } from './stache/cache.svelte';
+
 function isPlainObject(x: unknown) {
 	if (Object.prototype.toString.call(x) !== '[object Object]') {
 		return false;
@@ -22,4 +25,20 @@ function hashKey(queryKey?: unknown[] | unknown): string {
 	);
 }
 
-export { hashKey };
+/**
+ * Clear all stache caches, useful for testing.
+ */
+const clearAllCaches = () => {
+	clearGlobalStacheCache();
+	clearGlobalPagedStacheCache();
+};
+
+/**
+ * Invalidate a stache by its ID.
+ **/
+const invalidateStache = (id: string) => {
+	invalidateStacheById(id);
+	invalidatePagedStacheById(id);
+};
+
+export { hashKey, clearAllCaches, invalidateStache };
