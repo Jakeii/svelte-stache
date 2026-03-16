@@ -15,9 +15,9 @@ type PagedStacheGroup = Map<string, PagedStache<any, any>>;
  * A cache for staches, organized by stache ID and hashed parameters. Provides methods for retrieving, setting, and invalidating staches.
  */
 class StacheCache {
-	readonly stacheCache = new Map();
+	readonly stacheCache: Map<string, StacheGroup> = new Map();
 
-	readonly pagedStacheCache = new Map();
+	readonly pagedStacheCache: Map<string, PagedStacheGroup> = new Map();
 
 	getStache<FetchParams, FetchReturnData>(
 		id: string,
@@ -154,7 +154,12 @@ class StacheCache {
 	}
 
 	clear(): void {
+		this.stacheCache.forEach((stacheGroup) => stacheGroup.clear());
 		this.stacheCache.clear();
+		this.pagedStacheCache.forEach((stacheGroup) => {
+			stacheGroup.forEach((pageCache) => pageCache.clear());
+			stacheGroup.clear();
+		});
 		this.pagedStacheCache.clear();
 	}
 }

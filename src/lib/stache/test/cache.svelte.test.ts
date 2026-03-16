@@ -491,6 +491,66 @@ describe('createStache cache implementation', () => {
 		);
 	});
 
+	describe('clear()', () => {
+		it(
+			'should remove all stache entries from the cache',
+			withEffectRoot(async () => {
+				const globalCache = new StacheCache();
+				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
+
+				const { useStache } = createStache({
+					id: 'clear-stache-test',
+					fetch: fetchFn,
+					globalCache
+				});
+
+				const params = $state('param1');
+				const stache = useStache(() => ({ params }));
+				flushSync();
+
+				await vi.waitUntil(() => stache.data !== null);
+				expect(globalCache.stacheCache.size).toBe(1);
+
+				globalCache.clear();
+
+				expect(globalCache.stacheCache.size).toBe(0);
+				expect(globalCache.getStache('clear-stache-test', hashKey('param1'))).toBeUndefined();
+			})
+		);
+
+		it('should fetch fresh data on next use after clear', async () => {
+			const globalCache = new StacheCache();
+			const fetchFn = vi.fn().mockResolvedValueOnce('first').mockResolvedValueOnce('second');
+
+			const { useStache } = createStache({
+				id: 'clear-refetch-test',
+				fetch: fetchFn,
+				globalCache
+			});
+
+			// First use — fetches data and caches it
+			await withEffectRoot(async () => {
+				const stache = useStache(() => ({ params: 'p' }));
+				flushSync();
+				await vi.waitUntil(() => stache.data !== null);
+				expect(stache.data).toBe('first');
+			})();
+
+			expect(fetchFn).toHaveBeenCalledTimes(1);
+			globalCache.clear();
+
+			// Second use — cache is gone so it must re-fetch
+			await withEffectRoot(async () => {
+				const stache2 = useStache(() => ({ params: 'p' }));
+				flushSync();
+				await vi.waitUntil(() => stache2.data !== null);
+
+				expect(fetchFn).toHaveBeenCalledTimes(2);
+				expect(stache2.data).toBe('second');
+			})();
+		});
+	});
+
 	describe('Cache status (fresh/stale) behavior', () => {
 		it(
 			'should start with fresh cache status',

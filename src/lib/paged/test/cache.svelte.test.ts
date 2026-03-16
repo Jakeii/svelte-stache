@@ -676,3 +676,90 @@ describe('createPagedStache cache implementation', () => {
 		);
 	});
 });
+
+describe('StacheCache clear()', () => {
+	beforeEach(() => {
+		initStacheCache();
+	});
+
+	it(
+		'should remove all paged stache entries from the cache',
+		withEffectRoot(async () => {
+			const globalCache = new StacheCache();
+			const fetchFn = vi
+				.fn()
+				.mockImplementation((_params, { pageIndex, pageSize }) =>
+					Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
+				);
+
+			const { useStache } = createPagedStache({
+				id: 'clear-paged-entries-test',
+				fetch: fetchFn,
+				pageSize: 10,
+				getData: (r) => r.data,
+				getTotalCount: (r) => r.totalCount,
+				globalCache
+			});
+
+			const params = $state({ query: 'test' });
+			const stache = useStache(() => ({
+				params,
+				pageParams: { pageOffset: 0, pageCount: 2 }
+			}));
+			flushSync();
+
+			await vi.waitUntil(() => stache.data?.length === 20);
+			expect(globalCache.pagedStacheCache.size).toBe(1);
+
+			globalCache.clear();
+
+			expect(globalCache.pagedStacheCache.size).toBe(0);
+			expect(
+				globalCache.getPagedStache('clear-paged-entries-test', hashKey({ query: 'test' }))
+			).toBeUndefined();
+		})
+	);
+
+	it('should fetch fresh data on next use after clear', async () => {
+		const globalCache = new StacheCache();
+		let callCount = 0;
+		const fetchFn = vi.fn().mockImplementation((_params, { pageIndex, pageSize }) => {
+			callCount++;
+			return Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 20));
+		});
+
+		const { useStache } = createPagedStache({
+			id: 'clear-paged-refetch-test',
+			fetch: fetchFn,
+			pageSize: 10,
+			getData: (r) => r.data,
+			getTotalCount: (r) => r.totalCount,
+			globalCache
+		});
+
+		// First use
+		await withEffectRoot(async () => {
+			const stache = useStache(() => ({
+				params: { q: 'a' },
+				pageParams: { pageOffset: 0, pageCount: 1 }
+			}));
+			flushSync();
+			await vi.waitUntil(() => stache.data?.length === 10);
+		})();
+
+		expect(callCount).toBe(1);
+		globalCache.clear();
+
+		// Second use — cache gone, must re-fetch
+		await withEffectRoot(async () => {
+			const stache2 = useStache(() => ({
+				params: { q: 'a' },
+				pageParams: { pageOffset: 0, pageCount: 1 }
+			}));
+			flushSync();
+			await vi.waitUntil(() => stache2.data?.length === 10);
+
+			expect(callCount).toBe(2);
+		})();
+	});
+});
