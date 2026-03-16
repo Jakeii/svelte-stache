@@ -1,6 +1,6 @@
 import type { Preview } from '@storybook/sveltekit';
 import { initialize, mswLoader } from 'msw-storybook-addon';
-import StacheContext from '../src/lib/StacheContext.svelte';
+import { StacheProvider } from 'svelte-stache';
 import '../src/app.css';
 
 initialize({
@@ -13,7 +13,7 @@ const preview: Preview = {
 	loaders: [mswLoader],
 	decorators: [
 		() => ({
-			Component: StacheContext
+			Component: StacheProvider
 		})
 	],
 	parameters: {

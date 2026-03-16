@@ -12,18 +12,18 @@ Stache uses a smart caching system to minimize network requests and provide inst
 
 Stache stores all cache state in a `StacheCache` class instance, provided via Svelte context. This ensures each server request gets its own isolated cache, preventing data leakage between users during SSR.
 
-The `StacheContext` component at your app's root initializes this cache:
+The `StacheProvider` component at your app's root initializes this cache:
 
 ```svelte title="src/routes/+layout.svelte"
 <script lang="ts">
-	import StacheContext from 'svelte-stache/StacheContext.svelte';
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
 
 	let { children } = $props();
 </script>
 
-<StacheContext>
+<StacheProvider>
 	{@render children()}
-</StacheContext>
+</StacheProvider>
 ```
 
 The `StacheCache` class manages both regular and paged stache caches in a unified interface. Factories like `createStache` and `createPagedStache` automatically retrieve the cache from context.

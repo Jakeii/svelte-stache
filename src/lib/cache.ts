@@ -164,10 +164,30 @@ class StacheCache {
 	}
 }
 
-const [getStacheCache, setStacheCache] = createContext<StacheCache>();
+const [getStacheCacheContext, setStacheCacheContext] = createContext<StacheCache>();
 
 const initStacheCache = (): void => {
-	setStacheCache(new StacheCache());
+	setStacheCacheContext(new StacheCache());
+};
+
+const getStacheCache = (): StacheCache => {
+	try {
+		return getStacheCacheContext();
+	} catch (error) {
+		if (error instanceof Error && error.cause instanceof Error) {
+			if (error.cause.message.includes('missing_context')) {
+				throw new Error('Staches can only be used within a component wrapped by `StacheProvider`', {
+					cause: error
+				});
+			} else if (error.cause.message.includes('lifecycle_outside_component')) {
+				throw new Error(
+					'Staches can only be used during component initialisation as it depends on svelte context\nhttps://svelte.dev/e/lifecycle_outside_component',
+					{ cause: error }
+				);
+			}
+		}
+		throw error;
+	}
 };
 
 export { StacheCache, getStacheCache, initStacheCache };

@@ -97,14 +97,14 @@ Stache requires a context provider at the root of your app to initialize its cac
 
 ```svelte title="src/routes/+layout.svelte"
 <script lang="ts">
-	import StacheContext from 'svelte-stache/StacheContext.svelte';
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
 
 	let { children } = $props();
 </script>
 
-<StacheContext>
+<StacheProvider>
 	{@render children()}
-</StacheContext>
+</StacheProvider>
 ```
 
 This stores the cache in Svelte context, ensuring each server request gets its own cache instance. See [Getting Started](/docs/getting-started) for more details.

@@ -2,6 +2,8 @@ export { createStache } from './stache/stache.svelte';
 export { createPagedStache } from './paged/paged.svelte';
 export { createMutation } from './mutation/mutation.svelte';
 
+export { default as StacheProvider } from './StacheProvider.svelte';
+
 export { getStacheCache, initStacheCache } from './cache';
 
 export type { Mutation } from './mutation/mutation.class.svelte';

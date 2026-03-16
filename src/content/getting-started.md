@@ -26,18 +26,18 @@ yarn add svelte-stache
 
 ## Setup
 
-Stache stores its cache in Svelte context for SSR safety. Wrap your root layout with the `StacheContext` provider:
+Stache stores its cache in Svelte context for SSR safety. Wrap your root layout with the `StacheProvider` provider:
 
 ```svelte title="src/routes/+layout.svelte"
 <script lang="ts">
-	import StacheContext from 'svelte-stache/StacheContext.svelte';
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
 
 	let { children } = $props();
 </script>
 
-<StacheContext>
+<StacheProvider>
 	{@render children()}
-</StacheContext>
+</StacheProvider>
 ```
 
 This creates a `StacheCache` instance that all stache factories share. Without this wrapper, `createStache` and `createPagedStache` will fail to find the cache context.

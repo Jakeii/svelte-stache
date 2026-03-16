@@ -139,11 +139,10 @@ const createPagedStache = <
 >(
 	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>
 ) => {
-	const stacheCache = createOptions.globalCache ?? getStacheCache();
-
 	const useStache = <T extends Exact<UsePagedStacheOptions<StacheParams, PageResult>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
+		const stacheCache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, PageResult>;
 		const {
 			getData = (data: PageFetchReturnData) => data as unknown as PageResult,
@@ -291,6 +290,8 @@ const createPagedStache = <
 	 * @returns
 	 */
 	const invalidate = async (args?: StacheParams, pageArgs?: PageParams) => {
+		const stacheCache = createOptions.globalCache ?? getStacheCache();
+
 		if (!args) {
 			// Invalidate all staches in the cache
 			stacheCache.invalidatePagedStache(createOptions.id);

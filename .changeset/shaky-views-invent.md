@@ -6,7 +6,7 @@ Store global cache state in Svelte context for safer server-side usage.
 
 ### BREAKING CHANGES
 
-- **Context provider required**: Apps must wrap their root layout with `<StacheContext>` to initialize the cache. This uses Svelte's `createContext` to store cache state per-request instead of in module-level globals.
+- **Context provider required**: Apps must wrap their root layout with `<StacheProvider>` to initialize the cache. This uses Svelte's `createContext` to store cache state per-request instead of in module-level globals.
 
 - **Removed exports**: `clearAllCaches` and `invalidateStache` are no longer exported from the main entrypoint. Use `getStacheCache()` to access the `StacheCache` instance and call its methods directly (e.g. `getStacheCache().invalidateStache(id)`, `getStacheCache().clear()`).
 
@@ -23,12 +23,12 @@ Store global cache state in Svelte context for safer server-side usage.
 ```svelte
 <!-- +layout.svelte -->
 <script>
-	import StacheContext from 'svelte-stache/StacheContext.svelte';
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
 </script>
 
-<StacheContext>
+<StacheProvider>
 	{@render children()}
-</StacheContext>
+</StacheProvider>
 ```
 
 ```ts

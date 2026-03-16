@@ -115,11 +115,10 @@ const getOrCreateStache = <StacheParams, FetchReturnData>(
 const createStache = <StacheParams, FetchReturnData>(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
-	const stacheCache = createOptions.globalCache ?? getStacheCache();
-
 	const useStache = <T extends Exact<UseStacheOptions<StacheParams>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
+		const stacheCache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UseStacheOptions<StacheParams>;
 		const stacheKey = hashKey(useOptions?.params);
 
@@ -268,6 +267,7 @@ const createStache = <StacheParams, FetchReturnData>(
 	 * @param args The parameters of the stache to invalidate. If undefined, all staches in this cache will be invalidated.
 	 */
 	const invalidate = (args?: StacheParams) => {
+		const stacheCache = createOptions.globalCache ?? getStacheCache();
 		if (args === undefined) {
 			stacheCache.invalidateStache(createOptions.id);
 		} else {

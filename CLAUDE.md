@@ -9,7 +9,7 @@ src/lib/
 ├── index.ts                    # Main exports
 ├── utils.ts                    # Utilities (hashKey)
 ├── cache.ts                    # StacheCache class + Svelte context (unified cache)
-├── StacheContext.svelte         # Context provider component (wraps app)
+├── StacheProvider.svelte         # Context provider component (wraps app)
 ├── core/
 │   └── stache.class.svelte.ts  # CoreStache class (base fetch/cache engine)
 ├── stache/
@@ -41,7 +41,7 @@ From `src/lib/index.ts`:
 - `createPagedStache` - Create paginated query definitions
 - `createMutation` - Create mutation handlers
 - `getStacheCache` - Get the `StacheCache` instance from Svelte context
-- `initStacheCache` - Create and set a `StacheCache` in Svelte context (used by `StacheContext`)
+- `initStacheCache` - Create and set a `StacheCache` in Svelte context (used by `StacheProvider`)
 
 Both `createStache` and `createPagedStache` return an `invalidate` function:
 
@@ -58,16 +58,16 @@ Library also exports a `./devtools` entrypoint: `StacheDevtools`, `StacheDevtool
 
 ### Context Provider
 
-The library stores cache state in Svelte context for SSR safety. Apps must wrap their root layout with `StacheContext`:
+The library stores cache state in Svelte context for SSR safety. Apps must wrap their root layout with `StacheProvider`:
 
 ```svelte
 <script>
-	import StacheContext from 'svelte-stache/StacheContext.svelte';
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
 </script>
 
-<StacheContext>
+<StacheProvider>
 	{@render children()}
-</StacheContext>
+</StacheProvider>
 ```
 
 This calls `initStacheCache()` which uses Svelte's `createContext` to provide a `StacheCache` instance to all descendants. Factories (`createStache`, `createPagedStache`) retrieve it via `getStacheCache()`.
