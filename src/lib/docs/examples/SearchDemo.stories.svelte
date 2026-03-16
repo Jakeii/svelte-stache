@@ -3,18 +3,12 @@
 	import { expect } from 'storybook/test';
 	import SearchDemo from './SearchDemo.svelte';
 	import { userHandlers } from './msw-handlers.js';
-	import { getStacheVariantMap } from '$lib/stache/cache.svelte.js';
-
-	const globalCache = getStacheVariantMap('demo-search');
 
 	const { Story } = defineMeta({
 		title: 'Examples/SearchDemo',
 		component: SearchDemo,
 		parameters: {
 			msw: { handlers: userHandlers() }
-		},
-		beforeEach: async () => {
-			globalCache.clear();
 		}
 	});
 </script>

@@ -6,7 +6,7 @@ import {
 	getPagedStacheVariantMap,
 	type GlobalPagedStacheCache,
 	type PagedStacheCache
-} from './paged-cache.svelte';
+} from './paged-cache';
 import {
 	CoreStache,
 	type StacheConstructorOptions,
@@ -156,7 +156,7 @@ const createPagedStache = <
 		} = createOptions;
 
 		let effectHasRun = $state(false);
-		let pages = $state(
+		let pages = $state.raw(
 			getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData>(
 				cache,
 				createOptions,

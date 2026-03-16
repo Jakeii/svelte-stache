@@ -3,18 +3,12 @@
 	import { expect } from 'storybook/test';
 	import PaginationDemo from './PaginationDemo.svelte';
 	import { postHandlers } from './msw-handlers.js';
-	import { getPagedStacheVariantMap } from '$lib/paged/paged-cache.svelte.js';
-
-	const globalCache = getPagedStacheVariantMap('demo-posts');
 
 	const { Story } = defineMeta({
 		title: 'Examples/PaginationDemo',
 		component: PaginationDemo,
 		parameters: {
 			msw: { handlers: postHandlers() }
-		},
-		beforeEach: async () => {
-			globalCache.clear();
 		}
 	});
 </script>

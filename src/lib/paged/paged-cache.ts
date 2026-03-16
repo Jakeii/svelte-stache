@@ -1,4 +1,4 @@
-import { SvelteMap } from 'svelte/reactivity';
+import { createContext } from 'svelte';
 import type { CoreStache } from '../core/stache.class.svelte';
 
 /**
@@ -15,7 +15,7 @@ type StacheId = string;
 /**
  * The pages of a paged stache stored in a map, where the key is the page key and the value is the corresponding CoreStache instance for that page.
  */
-type PagedStache<FetchParams, FetchReturnData> = SvelteMap<
+type PagedStache<FetchParams, FetchReturnData> = Map<
 	PageKey,
 	CoreStache<FetchParams, FetchReturnData>
 >;
@@ -24,17 +24,23 @@ type PagedStache<FetchParams, FetchReturnData> = SvelteMap<
  * A map of paged stache variants, where the key is the hashed parameters of the stache and the value is the corresponding PagedStache instance containing the pages for that stache variant.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PagedStacheVariantMap = SvelteMap<StacheParamsKey, PagedStache<any, any>>;
+type PagedStacheVariantMap = Map<StacheParamsKey, PagedStache<any, any>>;
 
 /**
  * A map of paged stache caches, where the key is the stache ID and the value is a PagedStacheVariantMap containing the paged stache variants for that stache ID.
  */
-type GlobalPagedStacheCache = SvelteMap<StacheId, PagedStacheVariantMap>;
+type GlobalPagedStacheCache = Map<StacheId, PagedStacheVariantMap>;
 
 /**
- * A global cache for paged stache instances.
+ * Creates a Svelte context for the global paged stache cache, allowing components to access and manipulate the cache throughout the application. The context provides a getter and setter for the global paged stache cache, enabling components to retrieve and update the cache as needed.
  */
-const pagedGlobalStacheCache: GlobalPagedStacheCache = new SvelteMap();
+const [getGlobalPagedStacheCache, setGlobalPagedStacheCache] =
+	createContext<GlobalPagedStacheCache>();
+
+const initializeGlobalPagedStacheCache = (): void => {
+	 
+	setGlobalPagedStacheCache(new Map<string, PagedStacheVariantMap>());
+};
 
 /**
  * Retrieves the paged stache variant map for a given stache ID from the global paged stache cache. If the paged stache variant map does not exist, it creates a new one and stores it in the global paged stache cache before returning it.
@@ -46,10 +52,11 @@ const getPagedStacheVariantMap = <FetchParams, FetchReturnData>(
 	id: string,
 	globalCache?: GlobalPagedStacheCache
 ): PagedStacheVariantMap => {
-	const pagedStacheCache: GlobalPagedStacheCache = globalCache ?? pagedGlobalStacheCache;
+	const pagedStacheCache: GlobalPagedStacheCache = globalCache ?? getGlobalPagedStacheCache();
 	let cache = pagedStacheCache.get(id);
 	if (!cache) {
-		cache = new SvelteMap<string, SvelteMap<PageKey, CoreStache<FetchParams, FetchReturnData>>>();
+		 
+		cache = new Map<string, Map<PageKey, CoreStache<FetchParams, FetchReturnData>>>();
 		pagedStacheCache.set(id, cache);
 	}
 	return cache;
@@ -68,7 +75,8 @@ const getPagedStacheVariant = <FetchParams, FetchReturnData>(
 ): PagedStache<FetchParams, FetchReturnData> => {
 	let cache = pagedStacheCache.get(stacheKey);
 	if (!cache) {
-		cache = new SvelteMap<PageKey, CoreStache<FetchParams, FetchReturnData>>();
+		 
+		cache = new Map<PageKey, CoreStache<FetchParams, FetchReturnData>>();
 		pagedStacheCache.set(stacheKey, cache);
 	}
 	return cache;
@@ -81,17 +89,11 @@ const getPagedStacheVariant = <FetchParams, FetchReturnData>(
  * @returns
  */
 const getPagedStacheVariantPage = <FetchParams, FetchReturnData>(
-	pageCache: SvelteMap<string, CoreStache<FetchParams, FetchReturnData>>,
+	pageCache: Map<string, CoreStache<FetchParams, FetchReturnData>>,
 	pageKey: string
 ): CoreStache<FetchParams, FetchReturnData> | undefined => {
 	return pageCache?.get(pageKey) as CoreStache<FetchParams, FetchReturnData> | undefined;
 };
-
-/**
- * Retrieves the global paged stache cache, which is a map of paged stache caches where the key is the stache ID and the value is a PagedStacheVariantMap containing the paged stache variants for that stache ID.
- * @returns
- */
-const getGlobalPagedStacheCache = (): GlobalPagedStacheCache => pagedGlobalStacheCache;
 
 /**
  * Invalidates all stache instances associated with a specific stache ID by calling the invalidate method on each stache instance in the corresponding paged stache variant map.
@@ -99,7 +101,7 @@ const getGlobalPagedStacheCache = (): GlobalPagedStacheCache => pagedGlobalStach
  * @param id The stache ID for which to invalidate the stache instances.
  */
 const invalidatePagedStacheById = (id: string): void => {
-	const cache = pagedGlobalStacheCache.get(id);
+	const cache = getGlobalPagedStacheCache().get(id);
 	if (cache) {
 		for (const pageCache of cache.values()) {
 			for (const stache of pageCache.values()) {
@@ -113,7 +115,7 @@ const invalidatePagedStacheById = (id: string): void => {
  * Clears the global paged stache cache by removing all entries from the cache.
  */
 const clearGlobalPagedStacheCache = (): void => {
-	pagedGlobalStacheCache.clear();
+	getGlobalPagedStacheCache().clear();
 };
 
 export {
@@ -121,6 +123,7 @@ export {
 	getPagedStacheVariant,
 	getPagedStacheVariantPage,
 	getGlobalPagedStacheCache,
+	initializeGlobalPagedStacheCache,
 	invalidatePagedStacheById,
 	clearGlobalPagedStacheCache
 };

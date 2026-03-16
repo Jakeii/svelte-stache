@@ -1,5 +1,5 @@
-import { clearGlobalPagedStacheCache, invalidatePagedStacheById } from './paged/paged-cache.svelte';
-import { clearGlobalStacheCache, invalidateStacheById } from './stache/cache.svelte';
+import { clearGlobalPagedStacheCache, invalidatePagedStacheById } from './paged/paged-cache';
+import { clearGlobalStacheCache, invalidateStacheById } from './stache/cache';
 
 function isPlainObject(x: unknown) {
 	if (Object.prototype.toString.call(x) !== '[object Object]') {

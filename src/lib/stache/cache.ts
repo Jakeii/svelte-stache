@@ -1,21 +1,26 @@
-import { SvelteMap } from 'svelte/reactivity';
 import type { CoreStache } from '../core/stache.class.svelte';
+import { createContext } from 'svelte';
 
 /**
  * A map of stache variants, where the key is the hashed parameters of the stache and the value is the corresponding CoreStache instance.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type StacheVariantMap = SvelteMap<string, CoreStache<any, any>>;
+type StacheVariantMap = Map<string, CoreStache<any, any>>;
 
 /**
  * A map of stache caches, where the key is the stache ID and the value is a StacheVariants map.
  */
-type GlobalStacheCache = SvelteMap<string, StacheVariantMap>;
+type GlobalStacheCache = Map<string, StacheVariantMap>;
 
 /**
- * A global cache for stache instances, where the key is the stache ID and the value is a StacheVariants map.
+ * Creates a Svelte context for the global stache cache, allowing components to access and manipulate the cache throughout the application. The context provides a getter and setter for the global stache cache, enabling components to retrieve and update the cache as needed.
  */
-const globalStacheCache: GlobalStacheCache = new SvelteMap();
+const [getGlobalStacheCache, setGlobalStacheCache] = createContext<GlobalStacheCache>();
+
+const initializeGlobalStacheCache = (): void => {
+	 
+	setGlobalStacheCache(new Map<string, StacheVariantMap>());
+};
 
 /**
  * Retrieves the stache variant map for a given stache ID from the global cache. If the stache variant map does not exist, it creates a new one and stores it in the global cache before returning it.
@@ -27,10 +32,11 @@ const getStacheVariantMap = <FetchParams, FetchReturnData>(
 	id: string,
 	globalCache?: GlobalStacheCache
 ): StacheVariantMap => {
-	const stacheCache: GlobalStacheCache = globalCache ?? globalStacheCache;
+	const stacheCache: GlobalStacheCache = globalCache ?? getGlobalStacheCache();
 	let cache = stacheCache.get(id);
 	if (!cache) {
-		cache = new SvelteMap<string, CoreStache<FetchParams, FetchReturnData>>();
+		 
+		cache = new Map<string, CoreStache<FetchParams, FetchReturnData>>();
 		stacheCache.set(id, cache);
 	}
 	return cache;
@@ -50,19 +56,12 @@ const getStache = <FetchParams, FetchReturnData>(
 };
 
 /**
- * Retrieves the global stache cache, which is a map of stache caches where the key is the stache ID and the value is a StacheVariants map.
- *
- * @returns The global stache cache.
- */
-const getGlobalStacheCache = (): GlobalStacheCache => globalStacheCache;
-
-/**
  * Invalidates all stache instances associated with a specific stache ID by calling the invalidate method on each stache instance in the corresponding stache variant map.
  *
  * @param id The stache ID for which to invalidate the stache instances.
  */
 const invalidateStacheById = (id: string): void => {
-	const cache = globalStacheCache.get(id);
+	const cache = getGlobalStacheCache().get(id);
 	if (cache) {
 		for (const stache of cache.values()) {
 			stache.invalidate();
@@ -74,13 +73,14 @@ const invalidateStacheById = (id: string): void => {
  * Clears the entire global stache cache, removing all stache instances and their associated variant maps.
  */
 const clearGlobalStacheCache = (): void => {
-	globalStacheCache.clear();
+	getGlobalStacheCache().clear();
 };
 
 export {
 	getStacheVariantMap,
 	getStache,
 	getGlobalStacheCache,
+	initializeGlobalStacheCache,
 	invalidateStacheById,
 	clearGlobalStacheCache
 };

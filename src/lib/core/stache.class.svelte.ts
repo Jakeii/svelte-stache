@@ -1,6 +1,6 @@
 import { hashKey } from '../utils';
-import type { GlobalStacheCache } from '../stache/cache.svelte';
-import type { GlobalPagedStacheCache } from '../paged/paged-cache.svelte';
+import type { GlobalStacheCache } from '../stache/cache';
+import type { GlobalPagedStacheCache } from '../paged/paged-cache';
 import { SvelteDate } from 'svelte/reactivity';
 import { hydratable } from 'svelte';
 import { browser } from '$app/environment';

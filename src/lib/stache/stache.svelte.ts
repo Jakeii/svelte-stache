@@ -9,7 +9,7 @@ import {
 	getStacheVariantMap,
 	type GlobalStacheCache,
 	type StacheVariantMap
-} from './cache.svelte';
+} from './cache';
 import { hashKey } from '../utils';
 import { tick, untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';
@@ -129,7 +129,7 @@ const createStache = <StacheParams, FetchReturnData>(
 
 		let effectHasRun = false;
 		// why not a derived? because state is mutated in the stache instance which isn't allowed in a derived.
-		let stache: CoreStache<StacheParams, FetchReturnData> = $state(
+		let stache: CoreStache<StacheParams, FetchReturnData> = $state.raw(
 			getOrCreateStache<StacheParams, FetchReturnData>(cache, stacheKey, createOptions, useOptions)
 		);
 

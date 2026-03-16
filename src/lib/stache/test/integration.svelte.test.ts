@@ -3,6 +3,7 @@ import { flushSync } from 'svelte';
 import { createStache } from '../stache.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { hashKey } from '../../utils';
+import { initializeGlobalStacheCache } from '../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -19,13 +20,24 @@ vi.mock('svelte', async () => {
 	const svelte = await vi.importActual('svelte');
 	return {
 		...svelte,
-		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher())
+		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher()),
+		createContext: <T>() => {
+			let context: T;
+			const getContext = (): T => {
+				return context;
+			};
+			const setContext = (): void => {
+				context = new Map() as unknown as T; // Cast to Map type since we know that's what we're using, but keep it generic for the function signature
+			};
+			return [getContext, setContext] as const;
+		}
 	};
 });
 
 describe('createStache cache implementation', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
+		initializeGlobalStacheCache();
 	});
 	afterEach(() => {
 		vi.restoreAllMocks();
