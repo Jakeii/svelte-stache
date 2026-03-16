@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache } from '../stache.svelte';
-import { SvelteMap } from 'svelte/reactivity';
 import { hashKey } from '../../utils';
-import { initializeGlobalStacheCache } from '../cache';
+import { createStacheCache, StacheCache } from '../../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -26,8 +25,8 @@ vi.mock('svelte', async () => {
 			const getContext = (): T => {
 				return context;
 			};
-			const setContext = (): void => {
-				context = new Map() as unknown as T; // Cast to Map type since we know that's what we're using, but keep it generic for the function signature
+			const setContext = (value: T): void => {
+				context = value;
 			};
 			return [getContext, setContext] as const;
 		}
@@ -37,7 +36,7 @@ vi.mock('svelte', async () => {
 describe('createStache cache implementation', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
-		initializeGlobalStacheCache();
+		createStacheCache();
 	});
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -45,8 +44,7 @@ describe('createStache cache implementation', () => {
 
 	describe('Advanced configuration combinations', () => {
 		it('should handle custom cleanupTime configuration', async () => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
+			const globalCache = new StacheCache();
 			const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 			const { useStache } = createStache({
 				id: 'custom-cleanup-test',
@@ -67,8 +65,10 @@ describe('createStache cache implementation', () => {
 			vi.advanceTimersToNextTimer();
 
 			// Cache should exist and have 0 references after effect cleanup
-			expect(globalCache.get('custom-cleanup-test')?.get(hashKey('param'))).toBeDefined();
-			expect(globalCache.get('custom-cleanup-test')?.get(hashKey('param'))?.referenceCount).toBe(0);
+			expect(globalCache.getStache('custom-cleanup-test', hashKey('param'))).toBeDefined();
+			expect(globalCache.getStache('custom-cleanup-test', hashKey('param'))?.referenceCount).toBe(
+				0
+			);
 
 			// Advance time by custom cleanup time
 			vi.advanceTimersToNextTimer();
@@ -76,7 +76,7 @@ describe('createStache cache implementation', () => {
 
 			// Cache should be cleaned up
 			await vi.waitFor(
-				() => globalCache.get('custom-cleanup-test')?.get(hashKey('param')) === undefined
+				() => globalCache.getStache('custom-cleanup-test', hashKey('param')) === undefined
 			);
 		});
 
@@ -176,8 +176,7 @@ describe('createStache cache implementation', () => {
 		it(
 			'should handle stale data with multiple components sharing same stache',
 			withEffectRoot(async () => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
+				const globalCache = new StacheCache();
 				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
 					id: 'shared-stale-test',
@@ -202,8 +201,8 @@ describe('createStache cache implementation', () => {
 				const stache2 = await stache2Thenable;
 				const stache3 = await stache3Thenable;
 
-				expect(globalCache.get('shared-stale-test')?.get(hashKey('shared-param'))).toBeDefined();
-				expect(globalCache.get('shared-stale-test')?.size).toBe(1);
+				expect(globalCache.getStache('shared-stale-test', hashKey('shared-param'))).toBeDefined();
+				expect(globalCache.getStacheGroup('shared-stale-test')?.size).toBe(1);
 
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 				expect(stache1.cacheStatus).toBe('fresh');
@@ -229,8 +228,7 @@ describe('createStache cache implementation', () => {
 		);
 
 		it('should handle cache cleanup interaction with stale status', async () => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
+			const globalCache = new StacheCache();
 			const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 			const { useStache } = createStache({
 				id: 'cleanup-stale-test',
@@ -252,17 +250,17 @@ describe('createStache cache implementation', () => {
 			})();
 
 			// Should be stale with 0 references
-			expect(globalCache.get('cleanup-stale-test')?.get(hashKey('param')).cacheStatus).toBe(
+			expect(globalCache.getStache('cleanup-stale-test', hashKey('param'))?.cacheStatus).toBe(
 				'stale'
 			);
-			expect(globalCache.get('cleanup-stale-test')?.get(hashKey('param')).referenceCount).toBe(0);
+			expect(globalCache.getStache('cleanup-stale-test', hashKey('param'))?.referenceCount).toBe(0);
 
 			// Advance cleanup time
 			vi.advanceTimersToNextTimer();
 
 			// Cache should be cleaned up regardless of stale status
 			await vi.waitFor(
-				() => globalCache.get('cleanup-stale-test')?.get(hashKey('param')) === undefined
+				() => globalCache.getStache('cleanup-stale-test', hashKey('param')) === undefined
 			);
 
 			vi.useRealTimers();

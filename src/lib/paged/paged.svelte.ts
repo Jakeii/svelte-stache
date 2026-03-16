@@ -1,21 +1,17 @@
 import { SvelteDate } from 'svelte/reactivity';
 import { tick, untrack } from 'svelte';
-import {
-	getPagedStacheVariant,
-	getPagedStacheVariantPage,
-	getPagedStacheVariantMap,
-	type GlobalPagedStacheCache,
-	type PagedStacheCache
-} from './paged-cache';
+import { getStacheCache, StacheCache } from '../cache';
 import {
 	CoreStache,
 	type StacheConstructorOptions,
 	type PagedFetchFn,
 	type UsePagedStacheOptions,
-	type FetchPageParams
+	type FetchPageParams,
+	type PageParams
 } from '../core/stache.class.svelte';
 import type { UseStacheFn } from '../stache/stache.svelte';
 import { hashKey } from '../utils';
+
 import type { Exact, Merge } from 'type-fest';
 
 type CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData> = Merge<
@@ -25,7 +21,7 @@ type CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData> = M
 		pageSize: number;
 		getData?: (data: PageFetchReturnData) => PageResult;
 		getTotalCount?: (data: PageFetchReturnData) => number;
-		globalCache?: GlobalPagedStacheCache;
+		globalCache?: StacheCache;
 	}
 >;
 
@@ -65,7 +61,7 @@ type PagedStache<Params, Result, PageResult = Result[], PageFetchReturnData = un
 
 // Helper function to create/retrieve page staches
 const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
-	cache: PagedStacheCache,
+	stacheCache: StacheCache,
 	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>,
 	useOptions: UsePagedStacheOptions<StacheParams, PageResult>
 ): Array<CoreStache<StacheParams, PageFetchReturnData>> => {
@@ -74,8 +70,6 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 
 	const stacheKey = hashKey(useOptions?.params);
 
-	const pageCache = getPagedStacheVariant<StacheParams, PageFetchReturnData>(cache, stacheKey);
-
 	return Array.from({ length: pageCount }, (_, i) => i).map((i) => {
 		const pageIndex = pageOffset + i;
 		const pageStacheKey = hashKey({
@@ -83,8 +77,9 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 			pageSize
 		});
 
-		let stache = getPagedStacheVariantPage<StacheParams, PageFetchReturnData>(
-			pageCache,
+		let stache = stacheCache.getPagedStachePage<StacheParams, PageFetchReturnData>(
+			createOptions.id,
+			stacheKey,
 			pageStacheKey
 		);
 
@@ -119,7 +114,7 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 				fetchPageParams
 			);
 
-			pageCache.set(pageStacheKey, stache);
+			stacheCache.setPagedStachePage(createOptions.id, stacheKey, pageStacheKey, stache);
 		} else {
 			stache.referenceCount++;
 		}
@@ -144,7 +139,7 @@ const createPagedStache = <
 >(
 	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>
 ) => {
-	const cache = getPagedStacheVariantMap(createOptions.id, createOptions.globalCache);
+	const stacheCache = createOptions.globalCache ?? getStacheCache();
 
 	const useStache = <T extends Exact<UsePagedStacheOptions<StacheParams, PageResult>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
@@ -158,7 +153,7 @@ const createPagedStache = <
 		let effectHasRun = $state(false);
 		let pages = $state.raw(
 			getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData>(
-				cache,
+				stacheCache,
 				createOptions,
 				useOptions
 			)
@@ -178,7 +173,7 @@ const createPagedStache = <
 				}
 				// Get new pages based on updated pageParams
 				pages = getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData>(
-					cache,
+					stacheCache,
 					createOptions,
 					useOptions
 				);
@@ -187,7 +182,6 @@ const createPagedStache = <
 			return () => {
 				const stacheKey = hashKey(useOptions?.params);
 
-				const pageCache = getPagedStacheVariant<StacheParams, PageResult>(cache, stacheKey);
 				// Cleanup: Decrement reference count of page staches when effect re-runs or component unmounts
 				pages.forEach((stache, pageIndex) => {
 					const pageStacheKey = hashKey({
@@ -203,11 +197,7 @@ const createPagedStache = <
 							if (stache.referenceCount <= 0) {
 								stache.cleanupTimeout = setTimeout(() => {
 									if (stache.referenceCount <= 0) {
-										pageCache.delete(pageStacheKey);
-
-										if (pageCache.size === 0) {
-											cache.delete(stacheKey);
-										}
+										stacheCache.deletePagedStachePage(createOptions.id, stacheKey, pageStacheKey);
 									}
 									stache.cleanupTimeout = null;
 								}, stache.cleanupTime);
@@ -300,19 +290,14 @@ const createPagedStache = <
 	 * @param args
 	 * @returns
 	 */
-	const invalidate = async (args?: StacheParams) => {
+	const invalidate = async (args?: StacheParams, pageArgs?: PageParams) => {
 		if (!args) {
 			// Invalidate all staches in the cache
-			for (const pageCache of cache.values()) {
-				for (const stache of pageCache.values()) {
-					await stache.invalidate();
-				}
-			}
-			return;
-		}
-		const stacheKey = hashKey(args);
-		for (const stache of cache?.get(stacheKey)?.values() ?? []) {
-			await stache.invalidate();
+			stacheCache.invalidatePagedStache(createOptions.id);
+		} else {
+			const stacheKey = hashKey(args);
+			const pageKey = pageArgs ? hashKey(pageArgs) : undefined;
+			stacheCache.invalidatePagedStache(createOptions.id, stacheKey, pageKey);
 		}
 	};
 

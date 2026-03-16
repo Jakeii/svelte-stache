@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { PagedStacheCache } from '../paged/paged-cache';
-	import { invalidatePagedStacheById } from '../paged/paged-cache';
+	import type { PagedStacheVariantMap as PagedStacheCache } from '../cache';
+	import { getStacheCache } from '../cache';
 	import StatusBadge from './StatusBadge.svelte';
 	import StacheItem from './StacheItem.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -89,7 +89,7 @@
 	});
 
 	const handleInvalidateAll = () => {
-		invalidatePagedStacheById(id);
+		getStacheCache().invalidatePagedById(id);
 	};
 </script>
 

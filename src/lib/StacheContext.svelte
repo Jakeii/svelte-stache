@@ -1,12 +1,9 @@
 <script lang="ts">
-	import { initializeGlobalPagedStacheCache } from './paged/paged-cache';
-	import { initializeGlobalStacheCache } from './stache/cache';
+	import { createStacheCache } from './cache';
 
 	let { children } = $props();
 
-	initializeGlobalStacheCache();
-	initializeGlobalPagedStacheCache();
+	createStacheCache();
 </script>
 
-test
 {@render children()}

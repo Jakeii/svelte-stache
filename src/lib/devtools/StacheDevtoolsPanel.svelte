@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { getGlobalStacheCache, invalidateStacheById } from '../stache/cache';
-	import { getGlobalPagedStacheCache } from '../paged/paged-cache';
+	import { getStacheCache } from '../cache';
 	import StacheItem from './StacheItem.svelte';
 	import PagedStacheItem from './PagedStacheItem.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -43,8 +42,9 @@
 		onthemechange?.(nextTheme);
 	};
 
-	const globalCache = getGlobalStacheCache();
-	const pagedGlobalCache = getGlobalPagedStacheCache();
+	const stacheCache = getStacheCache();
+	const globalCache = stacheCache.stacheCache;
+	const pagedGlobalCache = stacheCache.pagedStacheCache;
 
 	let activeTab = $state<'staches' | 'paged'>('staches');
 	let searchFilter = $state('');
@@ -81,7 +81,7 @@
 	);
 
 	const handleInvalidateId = (id: string) => {
-		invalidateStacheById(id);
+		stacheCache.invalidateById(id);
 	};
 
 	const handleKeydown = (e: KeyboardEvent) => {

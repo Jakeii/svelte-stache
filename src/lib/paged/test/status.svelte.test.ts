@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createPagedStache } from '../paged.svelte';
-import { initializeGlobalPagedStacheCache } from '../paged-cache';
+import { createStacheCache } from '../../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -24,8 +24,8 @@ vi.mock('svelte', async () => {
 			const getContext = (): T => {
 				return context;
 			};
-			const setContext = (): void => {
-				context = new Map() as unknown as T; // Cast to Map type since we know that's what we're using, but keep it generic for the function signature
+			const setContext = (value: T): void => {
+				context = value;
 			};
 			return [getContext, setContext] as const;
 		}
@@ -49,7 +49,7 @@ describe('createPagedStache cache implementation', () => {
 	let cleanupFns: Array<() => void> = [];
 
 	beforeEach(() => {
-		initializeGlobalPagedStacheCache();
+		createStacheCache();
 	});
 
 	afterEach(() => {

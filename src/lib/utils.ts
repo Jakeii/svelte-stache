@@ -1,6 +1,3 @@
-import { clearGlobalPagedStacheCache, invalidatePagedStacheById } from './paged/paged-cache';
-import { clearGlobalStacheCache, invalidateStacheById } from './stache/cache';
-
 function isPlainObject(x: unknown) {
 	if (Object.prototype.toString.call(x) !== '[object Object]') {
 		return false;
@@ -25,20 +22,4 @@ function hashKey(queryKey?: unknown[] | unknown): string {
 	);
 }
 
-/**
- * Clear all stache caches, useful for testing.
- */
-const clearAllCaches = () => {
-	clearGlobalStacheCache();
-	clearGlobalPagedStacheCache();
-};
-
-/**
- * Invalidate a stache by its ID.
- **/
-const invalidateStache = (id: string) => {
-	invalidateStacheById(id);
-	invalidatePagedStacheById(id);
-};
-
-export { hashKey, clearAllCaches, invalidateStache };
+export { hashKey };
