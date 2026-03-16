@@ -8,15 +8,15 @@ A state management library for Svelte 5 inspired by TanStack Query, using Svelte
 src/lib/
 ├── index.ts                    # Main exports
 ├── utils.ts                    # Utilities (hashKey)
+├── cache.ts                    # StacheCache class + Svelte context (unified cache)
+├── StacheContext.svelte         # Context provider component (wraps app)
 ├── core/
 │   └── stache.class.svelte.ts  # CoreStache class (base fetch/cache engine)
 ├── stache/
 │   ├── stache.svelte.ts        # Query factory (createStache)
-│   ├── cache.svelte.ts         # Global stache cache (SvelteMap)
 │   └── test/                   # Stache unit tests
 ├── paged/
 │   ├── paged.svelte.ts         # Pagination factory (createPagedStache)
-│   ├── paged-cache.svelte.ts   # Global paged stache cache (3-level SvelteMap)
 │   └── test/                   # Paged stache unit tests
 ├── mutation/
 │   ├── mutation.svelte.ts      # Mutation factory (createMutation)
@@ -40,11 +40,15 @@ From `src/lib/index.ts`:
 - `createStache` - Create cacheable query definitions
 - `createPagedStache` - Create paginated query definitions
 - `createMutation` - Create mutation handlers
+- `getStacheCache` - Get the `StacheCache` instance from Svelte context
+- `initStacheCache` - Create and set a `StacheCache` in Svelte context (used by `StacheContext`)
 
 Both `createStache` and `createPagedStache` return an `invalidate` function:
 
 - `invalidate(params)` — invalidates the cache entry for those params
 - `invalidate()` — invalidates **all** cached entries for that factory instance (all param variants)
+
+`createPagedStache`'s `invalidate` also accepts an optional second `pageArgs` parameter to target a specific page.
 
 Types exported: `Mutation`, `UseStacheFn`, `CreateStacheFn`, `CreatePagedStacheFn`, `MutationFn`, `Stache`
 
@@ -52,12 +56,32 @@ Library also exports a `./devtools` entrypoint: `StacheDevtools`, `StacheDevtool
 
 ## Key Concepts
 
+### Context Provider
+
+The library stores cache state in Svelte context for SSR safety. Apps must wrap their root layout with `StacheContext`:
+
+```svelte
+<script>
+	import StacheContext from 'svelte-stache/StacheContext.svelte';
+</script>
+
+<StacheContext>
+	{@render children()}
+</StacheContext>
+```
+
+This calls `initStacheCache()` which uses Svelte's `createContext` to provide a `StacheCache` instance to all descendants. Factories (`createStache`, `createPagedStache`) retrieve it via `getStacheCache()`.
+
+A custom `StacheCache` can still be injected per-factory via the `globalCache` option (e.g. for testing).
+
 ### Caching
 
-- Global cache keyed by stache `id` + hashed params (`hashKey`)
+- Cache managed by the `StacheCache` class (`src/lib/cache.ts`), stored in Svelte context
+- `StacheCache` unifies both stache and paged stache caches (previously separate modules)
+- Keyed by stache `id` + hashed params (`hashKey`)
 - Reference counting for automatic cleanup after `cleanupTime`
 - Cache status: `'fresh'` (within staleTime), `'stale'`, or `'empty'`
-- Custom `globalCache` can be injected (e.g. for localStorage persistence)
+- `StacheCache` provides methods: `getStache`, `setStache`, `deleteStache`, `invalidateStache`, and paged equivalents
 
 ### Stache States
 
@@ -91,10 +115,11 @@ pnpm build        # Build library
 
 ## Development Notes
 
-- Uses Svelte 5 runes (`$state`, `$derived`, `$effect`, `$effect.pre`)
-- Uses `SvelteMap` from `svelte/reactivity` for reactive caching
+- Uses Svelte 5 runes (`$state`, `$state.raw`, `$derived`, `$effect`, `$effect.pre`)
+- Uses Svelte's `createContext` for SSR-safe cache storage (no module-level global state)
 - Uses `SvelteDate` for reactive timestamp tracking
 - Tests use `@vitest/browser` and run in a real browser environment
+- Tests provide a `StacheCache` instance via the `globalCache` option (bypasses context requirement)
 - Params are hashed with sorted object keys via `hashKey()` for consistent cache lookup
 - `$effect.pre()` is used (not `$effect`) for stache lifecycle to run before DOM updates
 - `untrack()` wraps mutations inside effects to avoid reactive loops

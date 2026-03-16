@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createPagedStache } from '../paged.svelte';
 import { hashKey } from '../../utils';
-import { createStacheCache, StacheCache } from '../../cache';
+import { initStacheCache, StacheCache } from '../../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -48,7 +48,7 @@ function createMockPagedResponse(pageIndex: number, pageSize: number, totalCount
 
 describe('createPagedStache cache implementation', () => {
 	beforeEach(() => {
-		createStacheCache();
+		initStacheCache();
 	});
 	describe('createPagedStache function', () => {
 		it(

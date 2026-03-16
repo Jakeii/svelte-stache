@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache } from '../stache.svelte';
 import { hashKey } from '../../utils';
-import { createStacheCache, StacheCache } from '../../cache';
+import { initStacheCache, StacheCache } from '../../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -36,7 +36,7 @@ vi.mock('svelte', async () => {
 describe('createStache cache implementation', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
-		createStacheCache();
+		initStacheCache();
 	});
 	afterEach(() => {
 		vi.restoreAllMocks();

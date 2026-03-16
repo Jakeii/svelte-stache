@@ -8,6 +8,43 @@ section: Guides
 
 Stache uses a smart caching system to minimize network requests and provide instant data when possible. This guide explains how it works.
 
+## Cache Architecture
+
+Stache stores all cache state in a `StacheCache` class instance, provided via Svelte context. This ensures each server request gets its own isolated cache, preventing data leakage between users during SSR.
+
+The `StacheContext` component at your app's root initializes this cache:
+
+```svelte title="src/routes/+layout.svelte"
+<script lang="ts">
+	import StacheContext from 'svelte-stache/StacheContext.svelte';
+
+	let { children } = $props();
+</script>
+
+<StacheContext>
+	{@render children()}
+</StacheContext>
+```
+
+The `StacheCache` class manages both regular and paged stache caches in a unified interface. Factories like `createStache` and `createPagedStache` automatically retrieve the cache from context.
+
+You can also access the cache directly for advanced operations:
+
+```typescript
+import { getStacheCache } from 'svelte-stache';
+
+const cache = getStacheCache();
+
+// Invalidate a specific stache
+cache.invalidateStache('user', hashedParamsKey);
+
+// Invalidate all variants of a stache
+cache.invalidateStache('user');
+
+// Clear all caches
+cache.clear();
+```
+
 ## How Caching Works
 
 ### Cache Keys

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache } from '../stache.svelte';
-import { createStacheCache } from '../../cache';
+import { initStacheCache } from '../../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -34,7 +34,7 @@ vi.mock('svelte', async () => {
 
 describe('createStache callbacks', () => {
 	beforeEach(() => {
-		createStacheCache();
+		initStacheCache();
 	});
 	describe('onSuccess', () => {
 		it(

@@ -24,6 +24,24 @@ pnpm add svelte-stache
 yarn add svelte-stache
 ```
 
+## Setup
+
+Stache stores its cache in Svelte context for SSR safety. Wrap your root layout with the `StacheContext` provider:
+
+```svelte title="src/routes/+layout.svelte"
+<script lang="ts">
+	import StacheContext from 'svelte-stache/StacheContext.svelte';
+
+	let { children } = $props();
+</script>
+
+<StacheContext>
+	{@render children()}
+</StacheContext>
+```
+
+This creates a `StacheCache` instance that all stache factories share. Without this wrapper, `createStache` and `createPagedStache` will fail to find the cache context.
+
 ## Your First Query
 
 Let's create a simple query that fetches user data from an API.

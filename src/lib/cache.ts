@@ -161,9 +161,9 @@ class StacheCache {
 
 const [getStacheCache, setStacheCache] = createContext<StacheCache>();
 
-const createStacheCache = (): void => {
+const initStacheCache = (): void => {
 	setStacheCache(new StacheCache());
 };
 
-export { StacheCache, getStacheCache, createStacheCache };
+export { StacheCache, getStacheCache, initStacheCache };
 export type { StacheGroup, PagedStacheGroup as PagedStacheStacheGroup, PagedStache };

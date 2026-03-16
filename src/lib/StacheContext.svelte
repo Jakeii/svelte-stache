@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { createStacheCache } from './cache';
+	import { initStacheCache } from './cache';
 
 	let { children } = $props();
 
-	createStacheCache();
+	initStacheCache();
 </script>
 
 {@render children()}
