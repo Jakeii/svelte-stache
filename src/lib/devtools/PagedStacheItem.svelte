@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PagedStacheVariantMap as PagedStacheCache } from '../cache';
+	import type { PagedStacheGroup } from '../cache';
 	import { getStacheCache } from '../cache';
 	import StatusBadge from './StatusBadge.svelte';
 	import StacheItem from './StacheItem.svelte';
@@ -7,7 +7,7 @@
 
 	interface Props {
 		id: string;
-		pagedCache: PagedStacheCache;
+		pagedCache: PagedStacheGroup;
 	}
 
 	let { id, pagedCache }: Props = $props();
@@ -89,7 +89,7 @@
 	});
 
 	const handleInvalidateAll = () => {
-		getStacheCache().invalidatePagedById(id);
+		getStacheCache().invalidatePagedStache(id);
 	};
 </script>
 

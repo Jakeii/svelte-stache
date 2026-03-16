@@ -166,4 +166,4 @@ const initStacheCache = (): void => {
 };
 
 export { StacheCache, getStacheCache, initStacheCache };
-export type { StacheGroup, PagedStacheGroup as PagedStacheStacheGroup, PagedStache };
+export type { StacheGroup, PagedStacheGroup, PagedStache };

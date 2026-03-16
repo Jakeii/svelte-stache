@@ -81,7 +81,7 @@
 	);
 
 	const handleInvalidateId = (id: string) => {
-		stacheCache.invalidateById(id);
+		stacheCache.invalidateStache(id);
 	};
 
 	const handleKeydown = (e: KeyboardEvent) => {
