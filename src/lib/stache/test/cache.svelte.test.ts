@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache, type Stache } from '../stache.svelte';
-import { SvelteMap } from 'svelte/reactivity';
-import type { CoreStache } from '../../core/stache.class.svelte';
 import { hashKey } from '../../utils';
+import { initStacheCache, StacheCache } from '../../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -20,13 +19,24 @@ vi.mock('svelte', async () => {
 	const svelte = await vi.importActual('svelte');
 	return {
 		...svelte,
-		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher())
+		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher()),
+		createContext: <T>() => {
+			let context: T;
+			const getContext = (): T => {
+				return context;
+			};
+			const setContext = (value: T): void => {
+				context = value;
+			};
+			return [getContext, setContext] as const;
+		}
 	};
 });
 
 describe('createStache cache implementation', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
+		initStacheCache();
 	});
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -34,8 +44,7 @@ describe('createStache cache implementation', () => {
 
 	describe('Reference counting and cleanup behavior', () => {
 		it('should only delete cache when ALL components are unmounted and timeout expires', async () => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
+			const globalCache = new StacheCache();
 			const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 			const { useStache } = createStache({
 				id: 'cleanup-test',
@@ -46,8 +55,6 @@ describe('createStache cache implementation', () => {
 			let stache1: Stache<unknown, unknown>;
 
 			await withEffectRoot(async () => {
-				expect(globalCache.has('cleanup-test')).toBe(true);
-
 				// Create three stache instances with same params — all synchronously
 				// to stay within the $effect.root context
 				const params1 = $state('param1');
@@ -64,38 +71,37 @@ describe('createStache cache implementation', () => {
 				// Now await after all staches are created
 				stache1 = await stache1Thenable;
 
-				expect(globalCache.get('cleanup-test')?.get(hashKey('param1')).referenceCount).toBe(3);
+				expect(globalCache.getStache('cleanup-test', hashKey('param1'))?.referenceCount).toBe(3);
 
-				expect(globalCache.get('cleanup-test')?.size).toBe(1);
+				expect(globalCache.getStacheGroup('cleanup-test')?.size).toBe(1);
 
 				expect(fetchFn).toHaveBeenCalledTimes(1);
 			})();
 
 			await withEffectRoot(async () => {
-				const cachedStache = globalCache.get('cleanup-test')?.get(hashKey('param1'));
+				const cachedStache = globalCache.getStache('cleanup-test', hashKey('param1'));
 				expect(cachedStache).toBeDefined();
-				expect(cachedStache.referenceCount).toBe(0);
+				expect(cachedStache?.referenceCount).toBe(0);
 
-				expect(cachedStache.cleanupTimeout).not.toBeNull();
+				expect(cachedStache?.cleanupTimeout).not.toBeNull();
 
 				// Fast-forward time to trigger cleanup
 				vi.advanceTimersToNextTimer();
 
 				// Now cache should be cleaned up
 				await vi.waitUntil(
-					() => globalCache.get('cleanup-test')?.get(hashKey('param1')) === undefined
+					() => globalCache.getStache('cleanup-test', hashKey('param1')) === undefined
 				);
 
 				flushSync();
 
-				expect(globalCache.get('cleanup-test')?.get(hashKey('param1'))).toBeUndefined();
+				expect(globalCache.getStache('cleanup-test', hashKey('param1'))).toBeUndefined();
 			})();
 		});
 	});
 
 	it('should not delete cache if a new reference is added before cleanup timeout expires', async () => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const globalCache = new SvelteMap<string, SvelteMap<string, any>>();
+		const globalCache = new StacheCache();
 		const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 		const { useStache } = createStache({
 			id: 'ref-count-test',
@@ -111,14 +117,14 @@ describe('createStache cache implementation', () => {
 			flushSync();
 			await vi.waitUntil(() => stache1.data !== null);
 			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(globalCache.get('ref-count-test')?.get(hashKey('param1')).referenceCount).toBe(1);
+			expect(globalCache.getStache('ref-count-test', hashKey('param1'))?.referenceCount).toBe(1);
 		})();
 
 		await withEffectRoot(async () => {
-			const cachedStache = globalCache.get('ref-count-test')?.get(hashKey('param1'));
+			const cachedStache = globalCache.getStache('ref-count-test', hashKey('param1'));
 			expect(cachedStache).toBeDefined();
-			expect(cachedStache.referenceCount).toBe(0);
-			expect(cachedStache.cleanupTimeout).not.toBeNull();
+			expect(cachedStache?.referenceCount).toBe(0);
+			expect(cachedStache?.cleanupTimeout).not.toBeNull();
 
 			vi.advanceTimersByTime(500);
 
@@ -134,14 +140,14 @@ describe('createStache cache implementation', () => {
 			expect(cachedStache?.cleanupTimeout).toBeNull();
 
 			// Cache should NOT be deleted since reference was added before timeout
-			expect(globalCache.get('ref-count-test')?.get(hashKey('param1'))).toBeDefined();
-			expect(globalCache.get('ref-count-test')?.get(hashKey('param1'))?.referenceCount).toBe(1);
+			expect(globalCache.getStache('ref-count-test', hashKey('param1'))).toBeDefined();
+			expect(globalCache.getStache('ref-count-test', hashKey('param1'))?.referenceCount).toBe(1);
 		})();
 	});
 
 	it('should only refetch referenced staches', async () => {
 		const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
-		const globalCache = new SvelteMap<string, SvelteMap<string, CoreStache<unknown, unknown>>>();
+		const globalCache = new StacheCache();
 		const { useStache } = createStache({
 			id: 'invalidate-test',
 			fetch: fetchFn,
@@ -166,13 +172,13 @@ describe('createStache cache implementation', () => {
 			await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
 			expect(fetchFn).toHaveBeenCalledTimes(2);
 
-			expect(globalCache.get('invalidate-test')?.get(hashKey('param1'))?.referenceCount).toBe(1);
-			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.referenceCount).toBe(1);
+			expect(globalCache.getStache('invalidate-test', hashKey('param1'))?.referenceCount).toBe(1);
+			expect(globalCache.getStache('invalidate-test', hashKey('param2'))?.referenceCount).toBe(1);
 		})();
 
 		await withEffectRoot(async () => {
-			expect(globalCache.get('invalidate-test')?.get(hashKey('param1'))?.referenceCount).toBe(0);
-			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.referenceCount).toBe(0);
+			expect(globalCache.getStache('invalidate-test', hashKey('param1'))?.referenceCount).toBe(0);
+			expect(globalCache.getStache('invalidate-test', hashKey('param2'))?.referenceCount).toBe(0);
 
 			// Reference stache1 again
 			const params1copy = $state('param1');
@@ -180,8 +186,8 @@ describe('createStache cache implementation', () => {
 			flushSync();
 			await vi.waitUntil(() => stache1copy.data !== null);
 
-			expect(globalCache.get('invalidate-test')?.get(hashKey('param1'))?.referenceCount).toBe(1);
-			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.referenceCount).toBe(0);
+			expect(globalCache.getStache('invalidate-test', hashKey('param1'))?.referenceCount).toBe(1);
+			expect(globalCache.getStache('invalidate-test', hashKey('param2'))?.referenceCount).toBe(0);
 
 			fetchFn.mockClear();
 
@@ -190,8 +196,12 @@ describe('createStache cache implementation', () => {
 
 			await vi.waitUntil(() => fetchFn.mock.calls.length > 0);
 
-			expect(globalCache.get('invalidate-test')?.get(hashKey('param1'))?.cacheStatus).toBe('fresh');
-			expect(globalCache.get('invalidate-test')?.get(hashKey('param2'))?.cacheStatus).toBe('stale');
+			expect(globalCache.getStache('invalidate-test', hashKey('param1'))?.cacheStatus).toBe(
+				'fresh'
+			);
+			expect(globalCache.getStache('invalidate-test', hashKey('param2'))?.cacheStatus).toBe(
+				'stale'
+			);
 		})();
 	});
 
@@ -239,10 +249,8 @@ describe('createStache cache implementation', () => {
 		it(
 			'should maintain separate caches for different params',
 			withEffectRoot(async () => {
-				const globalCache = new SvelteMap<
-					string,
-					SvelteMap<string, CoreStache<unknown, unknown>>
-				>();
+				const globalCache = new StacheCache();
+
 				const fetchFn = vi.fn().mockImplementation((params) => {
 					return Promise.resolve({ data: `result-${params.id}` });
 				});
@@ -269,7 +277,7 @@ describe('createStache cache implementation', () => {
 				const stache2 = await stache2Thenable;
 				await stache3Thenable;
 
-				expect(globalCache.get('param-test')?.size).toBe(2);
+				expect(globalCache.getStacheGroup('param-test')?.size).toBe(2);
 
 				// Wait for automatic stache execution
 				await vi.waitUntil(() => stache1.data !== null && stache2.data !== null);
@@ -284,10 +292,8 @@ describe('createStache cache implementation', () => {
 		it(
 			'old cache entries from previous params should be cleaned up after timeout',
 			withEffectRoot(async () => {
-				const globalCache = new SvelteMap<
-					string,
-					SvelteMap<string, CoreStache<unknown, unknown>>
-				>();
+				const globalCache = new StacheCache();
+
 				const fetchFn = vi.fn().mockImplementation((params) => {
 					return Promise.resolve(`result-${params}`);
 				});
@@ -302,18 +308,18 @@ describe('createStache cache implementation', () => {
 
 				flushSync();
 
-				expect(globalCache.get('timeout-test')?.get(hashKey('param1'))).toBeDefined();
+				expect(globalCache.getStache('timeout-test', hashKey('param1'))).toBeDefined();
 
 				// Change params to create new cache entry
 				params = 'param2';
 				flushSync();
 
-				expect(globalCache.get('timeout-test')?.get(hashKey('param2'))).toBeDefined();
+				expect(globalCache.getStache('timeout-test', hashKey('param2'))).toBeDefined();
 
 				await vi.waitUntil(() => stache.data === 'result-param2');
 
-				const cache1 = globalCache.get('timeout-test')?.get(hashKey('param1'));
-				const cache2 = globalCache.get('timeout-test')?.get(hashKey('param2'));
+				const cache1 = globalCache.getStache('timeout-test', hashKey('param1'));
+				const cache2 = globalCache.getStache('timeout-test', hashKey('param2'));
 				expect(cache1).toBeDefined();
 				expect(cache2).toBeDefined();
 
@@ -327,15 +333,15 @@ describe('createStache cache implementation', () => {
 				flushSync();
 
 				// Old cache entry should be cleaned up
-				expect(globalCache.get('timeout-test')?.get(hashKey('param1'))?.cacheStatus === 'stale');
-				expect(globalCache.get('timeout-test')?.get(hashKey('param2'))).toBeDefined();
+				expect(globalCache.getStache('timeout-test', hashKey('param1'))?.cacheStatus === 'stale');
+				expect(globalCache.getStache('timeout-test', hashKey('param2'))).toBeDefined();
 
 				await vi.waitUntil(
-					() => globalCache.get('timeout-test')?.get(hashKey('param1')) === undefined
+					() => globalCache.getStache('timeout-test', hashKey('param1')) === undefined
 				);
 
-				expect(globalCache.get('timeout-test')?.get(hashKey('param1'))).toBeUndefined();
-				expect(globalCache.get('timeout-test')?.get(hashKey('param2'))).toBeDefined();
+				expect(globalCache.getStache('timeout-test', hashKey('param1'))).toBeUndefined();
+				expect(globalCache.getStache('timeout-test', hashKey('param2'))).toBeDefined();
 
 				vi.useRealTimers();
 			})
@@ -346,10 +352,8 @@ describe('createStache cache implementation', () => {
 		it(
 			'should invalidate all param variants when invalidate() called with no args',
 			withEffectRoot(async () => {
-				const globalCache = new SvelteMap<
-					string,
-					SvelteMap<string, CoreStache<unknown, unknown>>
-				>();
+				const globalCache = new StacheCache();
+
 				const fetchFn = vi
 					.fn()
 					.mockImplementation((params: { id: number }) =>
@@ -388,10 +392,8 @@ describe('createStache cache implementation', () => {
 		it(
 			'should only invalidate the matching param variant when invalidate(args) is called',
 			withEffectRoot(async () => {
-				const globalCache = new SvelteMap<
-					string,
-					SvelteMap<string, CoreStache<unknown, unknown>>
-				>();
+				const globalCache = new StacheCache();
+
 				const fetchFn = vi
 					.fn()
 					.mockImplementation((params: { id: number }) =>
@@ -489,6 +491,66 @@ describe('createStache cache implementation', () => {
 		);
 	});
 
+	describe('clear()', () => {
+		it(
+			'should remove all stache entries from the cache',
+			withEffectRoot(async () => {
+				const globalCache = new StacheCache();
+				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
+
+				const { useStache } = createStache({
+					id: 'clear-stache-test',
+					fetch: fetchFn,
+					globalCache
+				});
+
+				const params = $state('param1');
+				const stache = useStache(() => ({ params }));
+				flushSync();
+
+				await vi.waitUntil(() => stache.data !== null);
+				expect(globalCache.stacheCache.size).toBe(1);
+
+				globalCache.clear();
+
+				expect(globalCache.stacheCache.size).toBe(0);
+				expect(globalCache.getStache('clear-stache-test', hashKey('param1'))).toBeUndefined();
+			})
+		);
+
+		it('should fetch fresh data on next use after clear', async () => {
+			const globalCache = new StacheCache();
+			const fetchFn = vi.fn().mockResolvedValueOnce('first').mockResolvedValueOnce('second');
+
+			const { useStache } = createStache({
+				id: 'clear-refetch-test',
+				fetch: fetchFn,
+				globalCache
+			});
+
+			// First use — fetches data and caches it
+			await withEffectRoot(async () => {
+				const stache = useStache(() => ({ params: 'p' }));
+				flushSync();
+				await vi.waitUntil(() => stache.data !== null);
+				expect(stache.data).toBe('first');
+			})();
+
+			expect(fetchFn).toHaveBeenCalledTimes(1);
+			globalCache.clear();
+
+			// Second use — cache is gone so it must re-fetch
+			await withEffectRoot(async () => {
+				const stache2 = useStache(() => ({ params: 'p' }));
+				flushSync();
+				await vi.waitUntil(() => stache2.data !== null);
+
+				expect(fetchFn).toHaveBeenCalledTimes(2);
+				expect(stache2.data).toBe('second');
+			})();
+		});
+	});
+
 	describe('Cache status (fresh/stale) behavior', () => {
 		it(
 			'should start with fresh cache status',
@@ -542,12 +604,13 @@ describe('createStache cache implementation', () => {
 		it(
 			'should support custom staleTime configurations',
 			withEffectRoot(async () => {
+				const globalCache = new StacheCache();
 				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
 				const { useStache } = createStache({
 					id: 'custom-stale-time-test',
 					fetch: fetchFn,
 					staleTime: 1000, // Very short stale time
-					globalCache: new SvelteMap()
+					globalCache
 				});
 
 				const params = $state('param');

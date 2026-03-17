@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache } from '../stache.svelte';
+import { initStacheCache } from '../../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -17,13 +18,24 @@ vi.mock('svelte', async () => {
 	const svelte = await vi.importActual('svelte');
 	return {
 		...svelte,
-		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher())
+		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher()),
+		createContext: <T>() => {
+			let context: T;
+			const getContext = (): T => {
+				return context;
+			};
+			const setContext = (value: T): void => {
+				context = value;
+			};
+			return [getContext, setContext] as const;
+		}
 	};
 });
 
 describe('createStache cache implementation', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
+		initStacheCache();
 	});
 	afterEach(() => {
 		vi.restoreAllMocks();

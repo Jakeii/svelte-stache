@@ -1,5 +1,6 @@
 import type { Preview } from '@storybook/sveltekit';
 import { initialize, mswLoader } from 'msw-storybook-addon';
+import StacheProvider from '../src/lib/StacheProvider.svelte';
 import '../src/app.css';
 
 initialize({
@@ -10,6 +11,11 @@ initialize({
 const preview: Preview = {
 	initialGlobals: {},
 	loaders: [mswLoader],
+	decorators: [
+		() => ({
+			Component: StacheProvider
+		})
+	],
 	parameters: {
 		controls: {
 			matchers: {

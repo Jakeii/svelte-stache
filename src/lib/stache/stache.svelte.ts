@@ -4,12 +4,7 @@ import {
 	type StacheConstructorOptions,
 	type UseStacheOptions
 } from '../core/stache.class.svelte';
-import {
-	getStache,
-	getStacheVariantMap,
-	type GlobalStacheCache,
-	type StacheVariantMap
-} from './cache.svelte';
+import { getStacheCache, StacheCache } from '../cache';
 import { hashKey } from '../utils';
 import { tick, untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';
@@ -19,7 +14,7 @@ type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 	StacheConstructorOptions<StacheFnParams, FetchReturnData>,
 	{
 		fetch: FetchFn<StacheFnParams, FetchReturnData>;
-		globalCache?: GlobalStacheCache;
+		globalCache?: StacheCache;
 	}
 >;
 
@@ -75,15 +70,16 @@ type UseStacheFn<StacheParams, Result> = {
  * @returns The existing or newly created stache instance.
  */
 const getOrCreateStache = <StacheParams, FetchReturnData>(
-	cache: StacheVariantMap,
+	stacheCache: StacheCache,
+	id: string,
 	stacheKey: string,
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>,
 	useOptions: UseStacheOptions<StacheParams>
 ): CoreStache<StacheParams, FetchReturnData> => {
-	let stache = getStache<StacheParams, FetchReturnData>(cache, stacheKey);
+	let stache = stacheCache.getStache<StacheParams, FetchReturnData>(id, stacheKey);
 	if (!stache) {
 		stache = new CoreStache<StacheParams, FetchReturnData>(createOptions, useOptions);
-		cache.set(stacheKey, stache);
+		stacheCache.setStache(id, stacheKey, stache);
 	} else {
 		stache.referenceCount++;
 		if (stache.cleanupTimeout) {
@@ -119,18 +115,25 @@ const getOrCreateStache = <StacheParams, FetchReturnData>(
 const createStache = <StacheParams, FetchReturnData>(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
-	const cache = getStacheVariantMap(createOptions.id, createOptions.globalCache);
-
+	// We initialize stacheCache as null and assign it later in useStache function as it may rely on the global cache which utilizes svelte's context which is only available during component initialization. This allows createStache to be used outside of a component as it doesn't immediately access the global cache.
+	let stacheCache: StacheCache | null = null;
 	const useStache = <T extends Exact<UseStacheOptions<StacheParams>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
+		stacheCache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UseStacheOptions<StacheParams>;
 		const stacheKey = hashKey(useOptions?.params);
 
 		let effectHasRun = false;
 		// why not a derived? because state is mutated in the stache instance which isn't allowed in a derived.
-		let stache: CoreStache<StacheParams, FetchReturnData> = $state(
-			getOrCreateStache<StacheParams, FetchReturnData>(cache, stacheKey, createOptions, useOptions)
+		let stache: CoreStache<StacheParams, FetchReturnData> = $state.raw(
+			getOrCreateStache<StacheParams, FetchReturnData>(
+				stacheCache,
+				createOptions.id,
+				stacheKey,
+				createOptions,
+				useOptions
+			)
 		);
 
 		// Reactive effect to handle parameter changes and stache lifecycle
@@ -140,6 +143,9 @@ const createStache = <StacheParams, FetchReturnData>(
 			const stacheKey = hashKey(useOptions?.params);
 
 			untrack(() => {
+				if (!stacheCache) {
+					stacheCache = createOptions.globalCache ?? getStacheCache();
+				}
 				// If this is the first run, we don't need to do anything
 				// The stache was already created or retrieved outside the effect
 				if (!effectHasRun || (useOptions.params === undefined && createOptions.fetch.length > 0)) {
@@ -148,11 +154,12 @@ const createStache = <StacheParams, FetchReturnData>(
 				}
 
 				// Check if an existing stache is in the cache, used to determine if we need to update options later
-				const hasExistingStache = cache.has(stacheKey);
+				const hasExistingStache = stacheCache.hasStache(createOptions.id, stacheKey);
 
 				// Get or create the stache instance based on the updated parameters
 				const nextStache = getOrCreateStache<StacheParams, FetchReturnData>(
-					cache,
+					stacheCache,
+					createOptions.id,
 					stacheKey,
 					createOptions,
 					useOptions
@@ -168,7 +175,10 @@ const createStache = <StacheParams, FetchReturnData>(
 
 			return () => {
 				// create our own reference to the stache instance to ensure we have the correct one during cleanup, since the reactive `stache` variable may have changed after `tick()`
-				const stache = getStache<StacheParams, FetchReturnData>(cache, stacheKey);
+				const stache = stacheCache?.getStache<StacheParams, FetchReturnData>(
+					createOptions.id,
+					stacheKey
+				);
 				if (stache) {
 					// Decrement the reference count on cleanup
 					if (stache.referenceCount > 0) {
@@ -180,7 +190,7 @@ const createStache = <StacheParams, FetchReturnData>(
 							stache.cleanupTimeout = setTimeout(() => {
 								// Double-check reference count before deleting from cache
 								if (stache.referenceCount <= 0) {
-									cache.delete(hashKey(stache.params));
+									stacheCache?.deleteStache(createOptions.id, stacheKey);
 								}
 								stache.cleanupTimeout = null;
 							}, stache.cleanupTime);
@@ -263,13 +273,11 @@ const createStache = <StacheParams, FetchReturnData>(
 	 */
 	const invalidate = (args?: StacheParams) => {
 		if (args === undefined) {
-			for (const stache of cache.values()) {
-				stache.invalidate();
-			}
-			return;
+			stacheCache?.invalidateStache(createOptions.id);
+		} else {
+			const stacheKey = hashKey(args);
+			stacheCache?.invalidateStache(createOptions.id, stacheKey);
 		}
-		const stacheKey = hashKey(args);
-		cache?.get(stacheKey)?.invalidate();
 	};
 
 	return {

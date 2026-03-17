@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { PagedStacheCache } from '../paged/paged-cache.svelte';
-	import { invalidatePagedStacheById } from '../paged/paged-cache.svelte';
+	import type { PagedStacheGroup } from '../cache';
+	import { getStacheCache } from '../cache';
 	import StatusBadge from './StatusBadge.svelte';
 	import StacheItem from './StacheItem.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Props {
 		id: string;
-		pagedCache: PagedStacheCache;
+		pagedCache: PagedStacheGroup;
 	}
 
 	let { id, pagedCache }: Props = $props();
@@ -89,7 +89,7 @@
 	});
 
 	const handleInvalidateAll = () => {
-		invalidatePagedStacheById(id);
+		getStacheCache().invalidatePagedStache(id);
 	};
 </script>
 

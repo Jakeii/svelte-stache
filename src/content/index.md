@@ -91,6 +91,24 @@ Stache provides three main functions:
 {/if}
 ```
 
+## Setup
+
+Stache requires a context provider at the root of your app to initialize its cache:
+
+```svelte title="src/routes/+layout.svelte"
+<script lang="ts">
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
+
+	let { children } = $props();
+</script>
+
+<StacheProvider>
+	{@render children()}
+</StacheProvider>
+```
+
+This stores the cache in Svelte context, ensuring each server request gets its own cache instance. See [Getting Started](/docs/getting-started) for more details.
+
 ## Requirements
 
 - Svelte 5.0.0 or higher

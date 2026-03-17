@@ -1,9 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createPagedStache } from '../paged.svelte';
-import { SvelteMap } from 'svelte/reactivity';
-import type { CoreStache } from '../../core/stache.class.svelte';
 import { hashKey } from '../../utils';
+import { initStacheCache, StacheCache } from '../../cache';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -20,7 +19,17 @@ vi.mock('svelte', async () => {
 	const svelte = await vi.importActual('svelte');
 	return {
 		...svelte,
-		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher())
+		hydratable: <T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher()),
+		createContext: <T>() => {
+			let context: T;
+			const getContext = (): T => {
+				return context;
+			};
+			const setContext = (value: T): void => {
+				context = value;
+			};
+			return [getContext, setContext] as const;
+		}
 	};
 });
 
@@ -38,6 +47,9 @@ function createMockPagedResponse(pageIndex: number, pageSize: number, totalCount
 }
 
 describe('createPagedStache cache implementation', () => {
+	beforeEach(() => {
+		initStacheCache();
+	});
 	describe('createPagedStache function', () => {
 		it(
 			'should create paged stache instances with pageSize and pageParams',
@@ -82,11 +94,7 @@ describe('createPagedStache cache implementation', () => {
 						Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
 					);
 
-				const globalCache = new SvelteMap<
-					string,
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
-				>();
+				const globalCache = new StacheCache();
 
 				const { useStache } = createPagedStache({
 					id: 'multi-page-test',
@@ -111,9 +119,10 @@ describe('createPagedStache cache implementation', () => {
 				expect(fetchFn).toHaveBeenCalledWith({ query: 'test' }, { pageIndex: 1, pageSize: 10 });
 				expect(fetchFn).toHaveBeenCalledWith({ query: 'test' }, { pageIndex: 2, pageSize: 10 });
 
-				expect(globalCache.size).toBe(1); // One params key
-
-				const pagesCache = globalCache.get('multi-page-test')!.get(hashKey({ query: 'test' }))!;
+				const pagesCache = globalCache.getPagedStache(
+					'multi-page-test',
+					hashKey({ query: 'test' })
+				)!;
 
 				expect(pagesCache.size).toBe(3); // Three page indices
 			})
@@ -302,11 +311,7 @@ describe('createPagedStache cache implementation', () => {
 		it(
 			'should share page instances between components with same params',
 			withEffectRoot(async () => {
-				const globalCache = new SvelteMap<
-					string,
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					SvelteMap<string, SvelteMap<string, CoreStache<any, any>>>
-				>();
+				const globalCache = new StacheCache();
 				const fetchFn = vi
 					.fn()
 					.mockImplementation((params, { pageIndex, pageSize }) =>

@@ -18,18 +18,20 @@ import { StacheDevtools } from 'svelte-stache/devtools';
 
 ## Basic Usage
 
-Add the DevTools component to your app's root layout:
+Add the DevTools component to your app's root layout, inside the `StacheProvider` provider:
 
 ```svelte
 <script lang="ts">
 	import { StacheDevtools } from 'svelte-stache/devtools';
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
 
 	let { children } = $props();
 </script>
 
-{@render children()}
-
-<StacheDevtools />
+<StacheProvider>
+	{@render children()}
+	<StacheDevtools />
+</StacheProvider>
 ```
 
 A floating button will appear in the corner of your screen. Click it to open the DevTools panel.
@@ -42,15 +44,18 @@ To exclude DevTools from production builds, conditionally render based on enviro
 <script lang="ts">
 	import { dev } from '$app/environment';
 	import { StacheDevtools } from 'svelte-stache/devtools';
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
 
 	let { children } = $props();
 </script>
 
-{@render children()}
+<StacheProvider>
+	{@render children()}
 
-{#if dev}
-	<StacheDevtools />
-{/if}
+	{#if dev}
+		<StacheDevtools />
+	{/if}
+</StacheProvider>
 ```
 
 The bundler will tree-shake the DevTools import in production when wrapped in this condition.

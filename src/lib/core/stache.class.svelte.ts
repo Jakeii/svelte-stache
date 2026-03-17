@@ -1,6 +1,5 @@
 import { hashKey } from '../utils';
-import type { GlobalStacheCache } from '../stache/cache.svelte';
-import type { GlobalPagedStacheCache } from '../paged/paged-cache.svelte';
+import type { StacheCache } from '../cache';
 import { SvelteDate } from 'svelte/reactivity';
 import { hydratable } from 'svelte';
 import { browser } from '$app/environment';
@@ -63,7 +62,7 @@ type StacheConstructorOptions<StacheFnParams, FetchReturnData> = {
 	 *
 	 * You could provide a custom cache and automatically persist it to localStorage or IndexedDB, for example.
 	 */
-	globalCache?: GlobalStacheCache | GlobalPagedStacheCache;
+	globalCache?: StacheCache;
 	/**
 	 * Stache will be considered stale after this time (in milliseconds) has passed since it was last fetched.
 	 * Default is 5 minutes (300000 ms).

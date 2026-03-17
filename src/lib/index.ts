@@ -2,10 +2,15 @@ export { createStache } from './stache/stache.svelte';
 export { createPagedStache } from './paged/paged.svelte';
 export { createMutation } from './mutation/mutation.svelte';
 
-export { clearAllCaches, invalidateStache } from './utils';
+export { default as StacheProvider } from './StacheProvider.svelte';
+
+export { getStacheCache, initStacheCache } from './cache';
 
 export type { Mutation } from './mutation/mutation.class.svelte';
 export type { Stache } from './stache/stache.svelte';
+export type { PagedStache } from './paged/paged.svelte';
+
+export type { StacheCache } from './cache';
 
 export type { UseStacheFn } from './stache/stache.svelte';
 export type { CreateStacheFn } from './stache/stache.svelte';

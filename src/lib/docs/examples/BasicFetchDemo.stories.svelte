@@ -3,17 +3,12 @@
 	import BasicFetchDemo from './BasicFetchDemo.svelte';
 	import { userHandlers } from './msw-handlers.js';
 	import { expect } from 'storybook/test';
-	import { getStacheVariantMap } from '$lib/stache/cache.svelte.js';
 
-	const globalCache = getStacheVariantMap('demo-user');
 	const { Story } = defineMeta({
 		title: 'Examples/BasicFetchDemo',
 		component: BasicFetchDemo,
 		parameters: {
 			msw: { handlers: userHandlers() }
-		},
-		beforeEach: async () => {
-			globalCache.clear();
 		}
 	});
 </script>

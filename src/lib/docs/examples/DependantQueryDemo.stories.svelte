@@ -3,20 +3,12 @@
 	import { expect } from 'storybook/test';
 	import DependantQueryDemo from './DependantQueryDemo.svelte';
 	import { userHandlers, departmentHandlers } from './msw-handlers.js';
-	import { getStacheVariantMap } from '$lib/stache/cache.svelte.js';
-
-	const demoUserCache = getStacheVariantMap('demo-user');
-	const demoDepartmentCache = getStacheVariantMap('demo-user-departments');
 
 	const { Story } = defineMeta({
 		title: 'Examples/DependantQueryDemo',
 		component: DependantQueryDemo,
 		parameters: {
 			msw: { handlers: [...userHandlers(), ...departmentHandlers()] }
-		},
-		beforeEach: async () => {
-			demoUserCache.clear();
-			demoDepartmentCache.clear();
 		}
 	});
 </script>

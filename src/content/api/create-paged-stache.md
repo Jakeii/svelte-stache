@@ -21,7 +21,10 @@ function createPagedStache<Params, PageResult, PageFetchReturn>(
 	options: CreatePagedStacheOptions<Params, PageResult, PageFetchReturn>
 ): {
 	useStache: UsePagedStacheFn<Params, PageResult>;
-	invalidate: (params?: Params) => Promise<void>;
+	invalidate: (
+		params?: Params,
+		pageArgs?: { pageIndex: number; pageSize: number }
+	) => Promise<void>;
 };
 ```
 
@@ -108,8 +111,9 @@ A function to use the paginated query in a component.
 
 A function to manually invalidate cached pages. Returns a `Promise<void>` that resolves when all invalidated fetches complete.
 
-- **`invalidate(params)`** — invalidates all pages for the given params
 - **`invalidate()`** — invalidates all pages across every cached param variant
+- **`invalidate(params)`** — invalidates all pages for the given params
+- **`invalidate(params, pageArgs)`** — invalidates a specific page for the given params, where `pageArgs` is `{ pageIndex: number; pageSize: number }`
 
 ## useStache Options
 
