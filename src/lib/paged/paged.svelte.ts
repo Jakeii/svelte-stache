@@ -139,10 +139,12 @@ const createPagedStache = <
 >(
 	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>
 ) => {
+	// We initialize stacheCache as null and assign it later in useStache function as it may rely on the global cache which utilizes svelte's context which is only available during component initialization. This allows createStache to be used outside of a component as it doesn't immediately access the global cache.
+	let stacheCache: StacheCache | null = null;
 	const useStache = <T extends Exact<UsePagedStacheOptions<StacheParams, PageResult>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
-		const stacheCache = createOptions.globalCache ?? getStacheCache();
+		stacheCache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, PageResult>;
 		const {
 			getData = (data: PageFetchReturnData) => data as unknown as PageResult,
@@ -166,6 +168,9 @@ const createPagedStache = <
 
 			// Use untrack to avoid infinite loops when updating pages
 			untrack(() => {
+				if (!stacheCache) {
+					stacheCache = createOptions.globalCache ?? getStacheCache();
+				}
 				if (!effectHasRun) {
 					effectHasRun = true;
 					return;
@@ -196,7 +201,7 @@ const createPagedStache = <
 							if (stache.referenceCount <= 0) {
 								stache.cleanupTimeout = setTimeout(() => {
 									if (stache.referenceCount <= 0) {
-										stacheCache.deletePagedStachePage(createOptions.id, stacheKey, pageStacheKey);
+										stacheCache?.deletePagedStachePage(createOptions.id, stacheKey, pageStacheKey);
 									}
 									stache.cleanupTimeout = null;
 								}, stache.cleanupTime);
@@ -290,15 +295,13 @@ const createPagedStache = <
 	 * @returns
 	 */
 	const invalidate = async (args?: StacheParams, pageArgs?: PageParams) => {
-		const stacheCache = createOptions.globalCache ?? getStacheCache();
-
 		if (!args) {
 			// Invalidate all staches in the cache
-			stacheCache.invalidatePagedStache(createOptions.id);
+			stacheCache?.invalidatePagedStache(createOptions.id);
 		} else {
 			const stacheKey = hashKey(args);
 			const pageKey = pageArgs ? hashKey(pageArgs) : undefined;
-			stacheCache.invalidatePagedStache(createOptions.id, stacheKey, pageKey);
+			stacheCache?.invalidatePagedStache(createOptions.id, stacheKey, pageKey);
 		}
 	};
 

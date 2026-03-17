@@ -174,12 +174,12 @@ const getStacheCache = (): StacheCache => {
 	try {
 		return getStacheCacheContext();
 	} catch (error) {
-		if (error instanceof Error && error.cause instanceof Error) {
-			if (error.cause.message.includes('missing_context')) {
+		if (error instanceof Error) {
+			if (error.message.includes('missing_context')) {
 				throw new Error('Staches can only be used within a component wrapped by `StacheProvider`', {
 					cause: error
 				});
-			} else if (error.cause.message.includes('lifecycle_outside_component')) {
+			} else if (error.message.includes('lifecycle_outside_component')) {
 				throw new Error(
 					'Staches can only be used during component initialisation as it depends on svelte context\nhttps://svelte.dev/e/lifecycle_outside_component',
 					{ cause: error }

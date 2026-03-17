@@ -115,10 +115,12 @@ const getOrCreateStache = <StacheParams, FetchReturnData>(
 const createStache = <StacheParams, FetchReturnData>(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
+	// We initialize stacheCache as null and assign it later in useStache function as it may rely on the global cache which utilizes svelte's context which is only available during component initialization. This allows createStache to be used outside of a component as it doesn't immediately access the global cache.
+	let stacheCache: StacheCache | null = null;
 	const useStache = <T extends Exact<UseStacheOptions<StacheParams>, T>>(
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
-		const stacheCache = createOptions.globalCache ?? getStacheCache();
+		stacheCache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UseStacheOptions<StacheParams>;
 		const stacheKey = hashKey(useOptions?.params);
 
@@ -141,6 +143,9 @@ const createStache = <StacheParams, FetchReturnData>(
 			const stacheKey = hashKey(useOptions?.params);
 
 			untrack(() => {
+				if (!stacheCache) {
+					stacheCache = createOptions.globalCache ?? getStacheCache();
+				}
 				// If this is the first run, we don't need to do anything
 				// The stache was already created or retrieved outside the effect
 				if (!effectHasRun || (useOptions.params === undefined && createOptions.fetch.length > 0)) {
@@ -170,7 +175,7 @@ const createStache = <StacheParams, FetchReturnData>(
 
 			return () => {
 				// create our own reference to the stache instance to ensure we have the correct one during cleanup, since the reactive `stache` variable may have changed after `tick()`
-				const stache = stacheCache.getStache<StacheParams, FetchReturnData>(
+				const stache = stacheCache?.getStache<StacheParams, FetchReturnData>(
 					createOptions.id,
 					stacheKey
 				);
@@ -185,7 +190,7 @@ const createStache = <StacheParams, FetchReturnData>(
 							stache.cleanupTimeout = setTimeout(() => {
 								// Double-check reference count before deleting from cache
 								if (stache.referenceCount <= 0) {
-									stacheCache.deleteStache(createOptions.id, stacheKey);
+									stacheCache?.deleteStache(createOptions.id, stacheKey);
 								}
 								stache.cleanupTimeout = null;
 							}, stache.cleanupTime);
@@ -267,12 +272,11 @@ const createStache = <StacheParams, FetchReturnData>(
 	 * @param args The parameters of the stache to invalidate. If undefined, all staches in this cache will be invalidated.
 	 */
 	const invalidate = (args?: StacheParams) => {
-		const stacheCache = createOptions.globalCache ?? getStacheCache();
 		if (args === undefined) {
-			stacheCache.invalidateStache(createOptions.id);
+			stacheCache?.invalidateStache(createOptions.id);
 		} else {
 			const stacheKey = hashKey(args);
-			stacheCache.invalidateStache(createOptions.id, stacheKey);
+			stacheCache?.invalidateStache(createOptions.id, stacheKey);
 		}
 	};
 

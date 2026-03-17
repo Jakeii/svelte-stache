@@ -1,6 +1,6 @@
 import type { Preview } from '@storybook/sveltekit';
 import { initialize, mswLoader } from 'msw-storybook-addon';
-import { StacheProvider } from 'svelte-stache';
+import StacheProvider from '../src/lib/StacheProvider.svelte';
 import '../src/app.css';
 
 initialize({
