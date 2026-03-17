@@ -2,7 +2,6 @@ import { hashKey } from '../utils';
 import type { StacheCache } from '../cache';
 import { SvelteDate } from 'svelte/reactivity';
 import { hydratable } from 'svelte';
-import { browser } from '$app/environment';
 
 // type BaseStacheParams = unknown;
 
@@ -389,7 +388,7 @@ class CoreStache<FetchParams, FetchReturnData> {
 	}
 
 	#scheduleCacheStatusUpdate() {
-		if (browser) {
+		if (globalThis?.window) {
 			if (this.#scheduleCacheStatusCheckTimeout) {
 				clearTimeout(this.#scheduleCacheStatusCheckTimeout);
 			}

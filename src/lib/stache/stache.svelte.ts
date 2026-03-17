@@ -8,7 +8,6 @@ import { getStacheCache, StacheCache } from '../cache';
 import { hashKey } from '../utils';
 import { tick, untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';
-import { browser } from '$app/environment';
 
 type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 	StacheConstructorOptions<StacheFnParams, FetchReturnData>,
@@ -186,7 +185,7 @@ const createStache = <StacheParams, FetchReturnData>(
 					}
 					void tick().then(() => {
 						// If reference count reaches zero, schedule cleanup
-						if (stache.referenceCount === 0 && browser) {
+						if (stache.referenceCount === 0 && globalThis?.window) {
 							stache.cleanupTimeout = setTimeout(() => {
 								// Double-check reference count before deleting from cache
 								if (stache.referenceCount <= 0) {
