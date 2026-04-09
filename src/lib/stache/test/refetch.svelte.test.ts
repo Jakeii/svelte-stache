@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache } from '../stache.svelte';
-import { initStacheCache } from '../../cache';
+import { initStacheCache, StacheCache } from '../../cache';
+import { hashKey } from '../../utils';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -303,6 +304,74 @@ describe('createStache cache implementation', () => {
 				// Should be fresh again after refetch
 				await vi.waitUntil(() => stache.cacheStatus === 'fresh');
 				expect(stache.cacheStatus).toBe('fresh');
+			})
+		);
+
+		it(
+			'should not trigger refetch when invalidated but referenceCount is 0 (no active subscribers)',
+			withEffectRoot(async () => {
+				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
+				const globalCache = new StacheCache();
+				const { useStache, invalidate } = createStache({
+					id: 'invalidate-no-subscribers-test',
+					fetch: fetchFn,
+					globalCache
+				});
+
+				const params = $state('param');
+				const stache = await useStache(() => ({ params }));
+
+				flushSync();
+
+				await vi.waitUntil(() => stache.data !== null);
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+
+				// Simulate no active subscribers by setting referenceCount to 0
+				const cachedStache = globalCache.getStache(
+					'invalidate-no-subscribers-test',
+					hashKey('param')
+				);
+				cachedStache!.referenceCount = 0;
+
+				invalidate('param');
+				flushSync();
+
+				vi.advanceTimersToNextTimer();
+
+				// Should NOT trigger another fetch — invalidate must respect referenceCount guard
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+			})
+		);
+
+		it(
+			'should mark cache as stale when invalidated with no active subscribers, so re-mounting triggers a fetch',
+			withEffectRoot(async () => {
+				const fetchFn = vi.fn().mockResolvedValue({ data: 'test' });
+				const globalCache = new StacheCache();
+				const { useStache, invalidate } = createStache({
+					id: 'invalidate-remount-test',
+					fetch: fetchFn,
+					globalCache
+				});
+
+				// Initial mount and fetch
+				const params = $state('param');
+				const stache = await useStache(() => ({ params }));
+				flushSync();
+				await vi.waitUntil(() => stache.data !== null);
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+				expect(stache.cacheStatus).toBe('fresh');
+
+				// Simulate unmount (referenceCount = 0)
+				const cachedStache = globalCache.getStache('invalidate-remount-test', hashKey('param'));
+				cachedStache!.referenceCount = 0;
+
+				// Invalidate while unmounted — should not fetch but should mark as stale
+				invalidate('param');
+				flushSync();
+				vi.advanceTimersToNextTimer();
+				expect(fetchFn).toHaveBeenCalledTimes(1);
+				expect(cachedStache!.cacheStatus).toBe('stale');
 			})
 		);
 
