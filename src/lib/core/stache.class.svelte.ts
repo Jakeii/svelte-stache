@@ -334,12 +334,8 @@ class CoreStache<FetchParams, FetchReturnData> {
 	 * @param params Parameters to pass to the stache function.
 	 * @param previousQuery Existing data from a previous fetch to be used when fetching new data.
 	 */
-	#run({
-		invalidated = false
-	}: {
-		invalidated?: boolean;
-	} = {}): Promise<void> {
-		if ((!invalidated && !this.canRun(this.params)) || this.#fetchStatus === 'loading') {
+	#run(): Promise<void> {
+		if (!this.canRun(this.params) || this.#fetchStatus === 'loading') {
 			return Promise.resolve();
 		}
 		this.#fetchStatus = 'loading';
@@ -404,11 +400,11 @@ class CoreStache<FetchParams, FetchReturnData> {
 
 	/**
 	 * Invalidates the stache, forcing it to refetch its data.
+	 * Always marks the cache as stale so that re-mounting will trigger a fetch even if referenceCount is currently 0.
 	 */
 	invalidate() {
-		this.#promise = this.#run({
-			invalidated: true
-		});
+		this.#cacheStatus = 'stale';
+		this.#promise = this.#run();
 	}
 
 	get enabled() {
