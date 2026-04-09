@@ -1,5 +1,11 @@
 # svelte-stache
 
+## 1.1.0
+
+### Minor Changes
+
+- a0e4f7e: Fix bug where invalidate bypasses certain run checks that it shouldn't
+
 ## 1.0.0
 
 ### Major Changes
