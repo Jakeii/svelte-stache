@@ -6,13 +6,14 @@ import {
 	type StacheConstructorOptions,
 	type PagedFetchFn,
 	type UsePagedStacheOptions,
+	type UseStacheOptions,
 	type FetchPageParams,
 	type PageParams
 } from '../core/stache.class.svelte';
 import type { UseStacheFn } from '../stache/stache.svelte';
 import { hashKey } from '../utils';
 
-import type { Exact, Merge } from 'type-fest';
+import type { Merge } from 'type-fest';
 
 type CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData> = Merge<
 	StacheConstructorOptions<StacheParams, PageFetchReturnData>,
@@ -60,11 +61,16 @@ type PagedStache<Params, Result, PageResult = Result[], PageFetchReturnData = un
 >;
 
 // Helper function to create/retrieve page staches
-const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
+const getOrCreatePageStaches = <
+	StacheParams,
+	PageResult,
+	PageFetchReturnData,
+	InitialData = PageFetchReturnData
+>(
 	stacheCache: StacheCache,
 	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>,
-	useOptions: UsePagedStacheOptions<StacheParams, PageResult>
-): Array<CoreStache<StacheParams, PageFetchReturnData>> => {
+	useOptions: UsePagedStacheOptions<StacheParams, PageFetchReturnData, InitialData>
+): Array<CoreStache<StacheParams, PageFetchReturnData, InitialData>> => {
 	const { pageOffset = 0, pageCount = 1 } = useOptions.pageParams || {};
 	const { pageSize = 10 } = createOptions;
 
@@ -81,7 +87,7 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 			createOptions.id,
 			stacheKey,
 			pageStacheKey
-		);
+		) as CoreStache<StacheParams, PageFetchReturnData, InitialData> | undefined;
 
 		if (!stache) {
 			const fetchPageParams: FetchPageParams = {
@@ -103,18 +109,25 @@ const getOrCreatePageStaches = <StacheParams, PageResult, PageFetchReturnData>(
 					onError: createOptions.onError
 				};
 
-			const usePagedOptions: UsePagedStacheOptions<StacheParams, PageResult> = {
+			const usePagedOptions: UseStacheOptions<StacheParams, PageFetchReturnData, InitialData> = {
 				params: useOptions.params as StacheParams,
-				enabled: useOptions.enabled
+				enabled: useOptions.enabled,
+				initialData: useOptions.initialData?.[i],
+				initialDataFetched: useOptions.initialDataFetched
 			};
 
-			stache = new CoreStache<StacheParams, PageFetchReturnData>(
+			stache = new CoreStache<StacheParams, PageFetchReturnData, InitialData>(
 				stacheConstructorOptions,
 				usePagedOptions,
 				fetchPageParams
 			);
 
-			stacheCache.setPagedStachePage(createOptions.id, stacheKey, pageStacheKey, stache);
+			stacheCache.setPagedStachePage(
+				createOptions.id,
+				stacheKey,
+				pageStacheKey,
+				stache as unknown as CoreStache<StacheParams, PageFetchReturnData>
+			);
 		} else {
 			stache.referenceCount++;
 		}
@@ -141,11 +154,19 @@ const createPagedStache = <
 ) => {
 	// We initialize stacheCache as null and assign it later in useStache function as it may rely on the global cache which utilizes svelte's context which is only available during component initialization. This allows createStache to be used outside of a component as it doesn't immediately access the global cache.
 	let stacheCache: StacheCache | null = null;
-	const useStache = <T extends Exact<UsePagedStacheOptions<StacheParams, PageResult>, T>>(
-		useOptionsFn: () => T = () => ({}) as T
+	const useStache = <InitialData = PageFetchReturnData>(
+		useOptionsFn: () => UsePagedStacheOptions<
+			StacheParams,
+			PageFetchReturnData,
+			InitialData
+		> = () => ({}) as UsePagedStacheOptions<StacheParams, PageFetchReturnData, InitialData>
 	) => {
 		stacheCache = createOptions.globalCache ?? getStacheCache();
-		const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, PageResult>;
+		const useOptions = useOptionsFn() as UsePagedStacheOptions<
+			StacheParams,
+			PageFetchReturnData,
+			InitialData
+		>;
 		const {
 			getData = (data: PageFetchReturnData) => data as unknown as PageResult,
 			getTotalCount
@@ -153,7 +174,7 @@ const createPagedStache = <
 
 		let effectHasRun = $state(false);
 		let pages = $state.raw(
-			getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData>(
+			getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData, InitialData>(
 				stacheCache,
 				createOptions,
 				useOptions
@@ -164,7 +185,11 @@ const createPagedStache = <
 
 		// Effect to reactively update pages when pageParams change
 		$effect.pre(() => {
-			const useOptions = useOptionsFn() as UsePagedStacheOptions<StacheParams, PageResult>;
+			const useOptions = useOptionsFn() as UsePagedStacheOptions<
+				StacheParams,
+				PageFetchReturnData,
+				InitialData
+			>;
 
 			// Use untrack to avoid infinite loops when updating pages
 			untrack(() => {
@@ -176,7 +201,7 @@ const createPagedStache = <
 					return;
 				}
 				// Get new pages based on updated pageParams
-				pages = getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData>(
+				pages = getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData, InitialData>(
 					stacheCache,
 					createOptions,
 					useOptions
@@ -223,7 +248,9 @@ const createPagedStache = <
 				return pagesData;
 			},
 			get pages() {
-				return pages.map((stache) => (stache.data ? getData(stache.data) : null));
+				return pages.map((stache) =>
+					stache.data ? getData(stache.data as PageFetchReturnData) : null
+				);
 			},
 
 			get enabled() {
