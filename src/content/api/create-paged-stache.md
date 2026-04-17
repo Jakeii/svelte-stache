@@ -159,6 +159,61 @@ pageParams: { pageOffset: 5, pageCount: 2 }
 
 Same as `createStache` - controls whether fetching is enabled.
 
+### `initialData`
+
+**Type:** `PageFetchReturn[]`
+**Default:** `undefined`
+
+Pre-populate the stache with data before any fetch runs. The data is available immediately on mount — no loading state, no network request. Useful for handing off server-fetched data to the client without a redundant round-trip.
+
+Ignored if a cache entry for these params already exists (i.e. a previous `useStache` call with the same params already populated the cache).
+
+```svelte
+<!-- +page.server.ts loads the first two pages, component uses them immediately -->
+<script lang="ts">
+	let { data } = $props(); // { pages: ApiResponse[], fetchedAt: string }
+
+	const posts = getPosts(() => ({
+		params: null,
+		pageParams: { pageOffset: 0, pageCount: 3 },
+		initialData: data.pages, // pre-populate pages 0 and 1; page 2 fetches normally
+		initialDataFetched: new Date(data.fetchedAt)
+	}));
+</script>
+
+<!-- posts.pages[0] and posts.pages[1] are available immediately -->
+{#each posts.data ?? [] as post}
+	<article>{post.title}</article>
+{/each}
+```
+
+### `initialDataFetched`
+
+**Type:** `Date`
+**Default:** `new Date()` (when `initialData` is provided)
+
+The timestamp to associate with all pages in `initialData`. Applied uniformly — all pre-populated pages share the same freshness timestamp.
+
+Stache compares this against `staleTime` to decide whether the initial data is still fresh or already stale.
+
+- If the timestamp is within `staleTime`, `cacheStatus` is `'fresh'` and no fetch is triggered for pre-populated pages.
+- If the timestamp is older than `staleTime`, `cacheStatus` is `'stale'` and a fetch runs for all pre-populated pages.
+
+```svelte
+<script lang="ts">
+	let { data } = $props(); // { pages: ApiResponse[], fetchedAt: string }
+
+	const posts = getPosts(() => ({
+		params: null,
+		pageParams: { pageOffset: 0, pageCount: 2 },
+		initialData: data.pages,
+		// Pass the server's fetch time — if the page was cached for >5 min,
+		// the client will refetch automatically
+		initialDataFetched: new Date(data.fetchedAt)
+	}));
+</script>
+```
+
 ## Paged Stache Object
 
 Returns all base stache properties, plus pagination-specific ones:
