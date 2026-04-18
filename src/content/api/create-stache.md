@@ -217,6 +217,74 @@ const user = getUser(() => ({
 }));
 ```
 
+### `initialData`
+
+**Type:** `Result`
+**Default:** `undefined`
+
+Pre-populate the stache with data before any fetch runs. The data is available immediately on mount — no loading state, no network request. Useful for handing off server-fetched data to the client without a redundant round-trip.
+
+Ignored if a cache entry for these params already exists (i.e. a previous `useStache` call with the same params already populated the cache).
+
+```svelte
+<!-- +page.server.ts loads the user, component uses it immediately -->
+<script lang="ts">
+	let { data } = $props(); // { user: User, fetchedAt: string }
+
+	const user = getUser(() => ({
+		params: data.user.id,
+		initialData: data.user,
+		initialDataFetchedAt: new Date(data.fetchedAt)
+	}));
+</script>
+
+<!-- user.data is available immediately — no loading flicker --><h1>{user.data?.name}</h1>
+```
+
+### `initialDataFetchedAt`
+
+**Type:** `Date`
+**Default:** `new Date()` (when `initialData` is provided)
+
+The timestamp to associate with `initialData`. Stache compares this against `staleTime` to decide whether the initial data is still fresh or already stale.
+
+- If the timestamp is within `staleTime`, `cacheStatus` is `'fresh'` and no fetch is triggered.
+- If the timestamp is older than `staleTime`, `cacheStatus` is `'stale'` and a fetch runs immediately on mount.
+- If not provided, defaults to the 1 Jan 1970 (epoch) — effectively always stale.
+
+```svelte
+<script lang="ts">
+	let { data } = $props(); // { user: User, fetchedAt: string }
+
+	const user = getUser(() => ({
+		params: data.user.id,
+		initialData: data.user,
+		// Pass the server's fetch time — if the page was cached for >5 min,
+		// the client will refetch automatically
+		initialDataFetchedAt: new Date(data.fetchedAt)
+	}));
+</script>
+```
+
+## initialDataRefetchOnStale
+
+**Type:** `boolean`
+**Default:** `true`
+
+When `true`, if `initialData` is stale on mount, Stache will trigger a refetch immediately even if `refetchOnState` is `false`. If `false`, the stale data will be returned without refetching until the next refetch trigger (e.g. window focus, manual invalidate).
+
+```svelte<script lang="ts">
+	let { data } = $props(); // { user: User, fetchedAt: string }
+
+	const user = getUser(() => ({
+		params: data.user.id,
+		initialData: data.user,
+		initialDataFetchedAt: new Date(data.fetchedAt),
+		initialDataRefetchOnStale: false // Disable immediate refetch on stale initial data
+	}));
+</script>
+```
+
 ## Stache Object
 
 The object returned by `useStache` with reactive properties:

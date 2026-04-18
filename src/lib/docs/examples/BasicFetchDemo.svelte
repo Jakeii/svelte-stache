@@ -48,7 +48,7 @@
 		</select>
 	</div>
 
-	{#if user.isLoading}
+	{#if !user.data && user.isLoading}
 		<div class="loading">
 			<span class="spinner"></span>
 			Loading user...
@@ -64,10 +64,10 @@
 				<h3>{user.data.name} {user.data.id}</h3>
 				<p class="role">{user.data.role}</p>
 				<p class="email">{user.data.email}</p>
-				{#if user.data.bio}
+				{#if 'bio' in user.data && user.data.bio}
 					<p class="bio">{user.data.bio}</p>
 				{/if}
-				{#if user.data.location}
+				{#if 'location' in user.data && user.data.location}
 					<p class="location">{user.data.location}</p>
 				{/if}
 			</div>

@@ -101,7 +101,7 @@ type StacheConstructorOptions<StacheFnParams, FetchReturnData> = {
 	onError?: (error: unknown) => void;
 };
 
-type UseStacheOptions<Params> = {
+type UseStacheOptions<Params, FetchReturnData, InitialData = FetchReturnData> = {
 	/**
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
@@ -112,9 +112,29 @@ type UseStacheOptions<Params> = {
 	 * Default is true.
 	 */
 	enabled?: boolean;
+
+	/**
+	 * Initial data to pre-populate the stache with before fetching.
+	 * Will only be used if there is no cached data for the given parameters.
+	 * Useful for handing off server-fetched data to the client without a redundant round-trip.
+	 */
+	initialData?: InitialData;
+
+	/**
+	 * The timestamp to associate with `initialData`.
+	 * Used with `staleTime` to determine whether the initial data is still fresh or already stale.
+	 * Defaults to `new Date()` (treated as just-fetched) if not provided.
+	 */
+	initialDataFetchedAt?: Date;
+
+	/**
+	 * Whether to refetch the stache automatically when it becomes stale.
+	 * Default is true.
+	 */
+	initialDataRefetchOnStale?: boolean;
 };
 
-type UsePagedStacheOptions<Params, Result> = {
+type UsePagedStacheOptions<Params, FetchReturnData, InitialData = FetchReturnData> = {
 	/**
 	 * Parameters used to fetch the stache data.
 	 * Changing this will trigger a refetch.
@@ -122,11 +142,26 @@ type UsePagedStacheOptions<Params, Result> = {
 	params?: Params;
 	pageParams?: PageParams;
 	/**
-	 * Initial data to populate the stache with before fetching.
-	 * Useful for server-side rendering or optimistic UI.
-	 * Will only be used if there is no cached data for the given parameters.
+	 * Initial data to pre-populate each page with before fetching.
+	 * One entry per page, ordered by page index starting from `pageOffset`.
+	 * Pages beyond the array length will fetch normally.
+	 * Will only be used if there is no cached data for the given page.
 	 */
-	initialData?: Result;
+	initialData?: InitialData[];
+
+	/**
+	 * The timestamp to associate with `initialData`.
+	 * Used with `staleTime` to determine whether the initial data is still fresh or already stale.
+	 * Defaults to `new Date()` (treated as just-fetched) if not provided.
+	 */
+	initialDataFetchedAt?: Date;
+
+	/**
+	 * Whether to refetch the stache automatically when it becomes stale.
+	 * Default is true.
+	 */
+	initialDataRefetchOnStale?: boolean;
+
 	/**
 	 * Whether the stache is enabled. Disabling will stop automatic fetching.
 	 * Default is true.
@@ -167,7 +202,7 @@ const maybeHydratable = <T>(
  * Queries are automatically cleaned up from the cache after a period of inactivity (no references).
  *
  */
-class CoreStache<FetchParams, FetchReturnData> {
+class CoreStache<FetchParams, FetchReturnData, InitialData = FetchReturnData> {
 	#scheduleCacheStatusCheckTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	/**
@@ -212,7 +247,7 @@ class CoreStache<FetchParams, FetchReturnData> {
 	#cacheStatus: 'fresh' | 'stale' | 'empty' = $state('empty');
 	#promise: Promise<void>;
 
-	#raw: FetchReturnData | null = $state.raw(null);
+	#raw: FetchReturnData | InitialData | null = $state.raw(null);
 
 	#data = $derived.by(() => this.#raw);
 
@@ -265,7 +300,15 @@ class CoreStache<FetchParams, FetchReturnData> {
 			onSuccess,
 			onError
 		}: StacheConstructorOptions<FetchParams, FetchReturnData>,
-		{ params, enabled }: UseStacheOptions<FetchParams>,
+		{
+			params,
+			enabled,
+			initialData,
+			initialDataFetchedAt,
+			initialDataRefetchOnStale = true
+		}:
+			| UseStacheOptions<FetchParams, FetchReturnData, InitialData>
+			| UsePagedStacheOptions<FetchParams, FetchReturnData, InitialData>,
 		fetchPageParams?: FetchPageParams
 	) {
 		this.id = id;
@@ -307,6 +350,20 @@ class CoreStache<FetchParams, FetchReturnData> {
 			});
 		}
 
+		if (initialData) {
+			this.#raw = initialData as InitialData;
+			this.#lastFetched = initialDataFetchedAt
+				? new SvelteDate(initialDataFetchedAt)
+				: new SvelteDate(-1);
+
+			if (this.#lastFetched?.getTime() + this.staleTime < new SvelteDate().getTime()) {
+				this.#cacheStatus = 'stale';
+			} else {
+				this.#cacheStatus = 'fresh';
+				this.#scheduleCacheStatusUpdate({ initialDataRefetchOnStale });
+			}
+		}
+
 		this.#promise = this.#run();
 	}
 
@@ -317,8 +374,10 @@ class CoreStache<FetchParams, FetchReturnData> {
 	 * @param previousQuery Existing data from a previous fetch to be used when fetching new data.
 	 *
 	 * Updates the stache instance with the provided options and triggers a refetch if necessary.
+	 *
+	 * InitialData is not applicable on update — only set at construction time
 	 */
-	setOptions({ enabled }: Partial<UseStacheOptions<FetchParams>>) {
+	setOptions({ enabled }: Partial<UseStacheOptions<FetchParams, FetchReturnData>>) {
 		if (enabled !== undefined) {
 			this.#enabled = enabled;
 		}
@@ -383,14 +442,14 @@ class CoreStache<FetchParams, FetchReturnData> {
 		return promise;
 	}
 
-	#scheduleCacheStatusUpdate() {
+	#scheduleCacheStatusUpdate({ initialDataRefetchOnStale } = { initialDataRefetchOnStale: false }) {
 		if (globalThis?.window) {
 			if (this.#scheduleCacheStatusCheckTimeout) {
 				clearTimeout(this.#scheduleCacheStatusCheckTimeout);
 			}
 			this.#scheduleCacheStatusCheckTimeout = setTimeout(() => {
 				this.#cacheStatus = 'stale';
-				if (this.refetchOnStale) {
+				if (this.refetchOnStale || initialDataRefetchOnStale) {
 					this.#promise = this.#run();
 				}
 				this.#scheduleCacheStatusCheckTimeout = null;
@@ -419,7 +478,7 @@ class CoreStache<FetchParams, FetchReturnData> {
 		return this.#cacheStatus;
 	}
 
-	get data() {
+	get data(): FetchReturnData | InitialData | null {
 		return this.#data;
 	}
 

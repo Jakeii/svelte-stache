@@ -105,12 +105,11 @@ A custom `StacheCache` can still be injected per-factory via the `globalCache` o
 ## Commands
 
 ```bash
-pnpm dev          # Start dev server
-pnpm test         # Run all tests
-pnpm test:browser # Run browser tests (vitest browser config)
-pnpm check        # Type checking (svelte-check)
-pnpm lint         # Lint and format check
-pnpm build        # Build library
+pnpm dev                                    # Start dev server
+NO_COLOR=true pnpm test --reporter=agent    # Run all tests
+pnpm check                                  # Type checking (svelte-check)
+pnpm lint                                   # Lint and format check
+pnpm build                                  # Build library
 ```
 
 ## Development Notes
