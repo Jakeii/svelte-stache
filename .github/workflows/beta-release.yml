@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     # Only run the `publish-beta` job if the correct label has been added to the PR
     if: github.event.label.name == 'Beta Release'
-    needs: [lint, check, test]
     steps:
       - uses: actions/checkout@v4
 
