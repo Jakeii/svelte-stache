@@ -1,0 +1,5 @@
+---
+'svelte-stache': minor
+---
+
+Test
