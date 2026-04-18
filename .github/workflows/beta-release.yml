@@ -49,7 +49,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Comment on PR
-        uses: actions/github-script
+        uses: actions/github-script@v7
         if: steps.changeset.outputs.published == 'true'
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
@@ -78,7 +78,7 @@ jobs:
             })
 
       - name: Remove label
-        uses: actions/github-script
+        uses: actions/github-script@v7
         if: always()
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
