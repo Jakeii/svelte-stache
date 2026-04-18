@@ -129,7 +129,7 @@ type UseStacheOptions<Params, FetchReturnData, InitialData = FetchReturnData> = 
 
 	/**
 	 * Whether to refetch the stache automatically when it becomes stale.
-	 * Default is false.
+	 * Default is true.
 	 */
 	initialDataRefetchOnStale?: boolean;
 };
@@ -158,7 +158,7 @@ type UsePagedStacheOptions<Params, FetchReturnData, InitialData = FetchReturnDat
 
 	/**
 	 * Whether to refetch the stache automatically when it becomes stale.
-	 * Default is false.
+	 * Default is true.
 	 */
 	initialDataRefetchOnStale?: boolean;
 

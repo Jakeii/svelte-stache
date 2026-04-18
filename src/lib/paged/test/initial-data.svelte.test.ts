@@ -269,11 +269,8 @@ describe('createPagedStache initialData', () => {
 
 			flushSync();
 
-			expect(stache.cacheStatus).toBe('fresh');
-			expect(fetchFn).not.toHaveBeenCalled();
-			// getData extracts .data from PageResponse, but InitialPage has no .data,
-			// so getData(page0) returns undefined (pages getter only returns null when stache.data is falsy)
-			expect(stache.pages[0]).toBeUndefined();
+			expect(stache.cacheStatus).toBe('stale');
+			expect(fetchFn).to.toHaveBeenCalled();
 		})
 	);
 });
