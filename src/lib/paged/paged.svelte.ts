@@ -13,7 +13,17 @@ import {
 import type { UseStacheFn } from '../stache/stache.svelte';
 import { hashKey } from '../utils';
 
-import type { Merge } from 'type-fest';
+import type { Exact, Merge } from 'type-fest';
+
+// Extracts the InitialData type from a useStache options object type.
+// Falls back to PageFetchReturnData when initialData is absent or undefined.
+type ExtractInitialData<T, PageFetchReturnData> = T extends {
+	initialData?: Array<infer I> | undefined;
+}
+	? [Exclude<I, undefined>] extends [never]
+		? PageFetchReturnData
+		: Exclude<I, undefined>
+	: PageFetchReturnData;
 
 type CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData> = Merge<
 	StacheConstructorOptions<StacheParams, PageFetchReturnData>,
@@ -154,13 +164,19 @@ const createPagedStache = <
 ) => {
 	// We initialize stacheCache as null and assign it later in useStache function as it may rely on the global cache which utilizes svelte's context which is only available during component initialization. This allows createStache to be used outside of a component as it doesn't immediately access the global cache.
 	let stacheCache: StacheCache | null = null;
-	const useStache = <InitialData = PageFetchReturnData>(
-		useOptionsFn: () => UsePagedStacheOptions<
-			StacheParams,
-			PageFetchReturnData,
-			InitialData
-		> = () => ({}) as UsePagedStacheOptions<StacheParams, PageFetchReturnData, InitialData>
+	const useStache = <
+		T extends Exact<
+			UsePagedStacheOptions<
+				StacheParams,
+				PageFetchReturnData,
+				ExtractInitialData<T, PageFetchReturnData>
+			>,
+			T
+		>
+	>(
+		useOptionsFn: () => T = () => ({}) as T
 	) => {
+		type InitialData = ExtractInitialData<T, PageFetchReturnData>;
 		stacheCache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UsePagedStacheOptions<
 			StacheParams,

@@ -7,7 +7,15 @@ import {
 import { getStacheCache, StacheCache } from '../cache';
 import { hashKey } from '../utils';
 import { tick, untrack } from 'svelte';
-import type { Merge } from 'type-fest';
+import type { Exact, Merge } from 'type-fest';
+
+// Extracts the InitialData type from a useStache options object type.
+// Falls back to FetchReturnData when initialData is absent or undefined.
+type ExtractInitialData<T, FetchReturnData> = T extends { initialData?: infer I }
+	? [Exclude<I, undefined>] extends [never]
+		? FetchReturnData
+		: Exclude<I, undefined>
+	: FetchReturnData;
 
 type CreateStacheOptions<StacheFnParams, FetchReturnData = unknown> = Merge<
 	StacheConstructorOptions<StacheFnParams, FetchReturnData>,
@@ -124,10 +132,15 @@ const createStache = <StacheParams, FetchReturnData>(
 ) => {
 	// We initialize stacheCache as null and assign it later in useStache function as it may rely on the global cache which utilizes svelte's context which is only available during component initialization. This allows createStache to be used outside of a component as it doesn't immediately access the global cache.
 	let stacheCache: StacheCache | null = null;
-	const useStache = <InitialData = FetchReturnData>(
-		useOptionsFn: () => UseStacheOptions<StacheParams, FetchReturnData, InitialData> = () =>
-			({}) as UseStacheOptions<StacheParams, FetchReturnData, InitialData>
+	const useStache = <
+		T extends Exact<
+			UseStacheOptions<StacheParams, FetchReturnData, ExtractInitialData<T, FetchReturnData>>,
+			T
+		>
+	>(
+		useOptionsFn: () => T = () => ({}) as T
 	) => {
+		type InitialData = ExtractInitialData<T, FetchReturnData>;
 		stacheCache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UseStacheOptions<
 			StacheParams,
