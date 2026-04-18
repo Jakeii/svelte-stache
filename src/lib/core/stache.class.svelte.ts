@@ -125,7 +125,13 @@ type UseStacheOptions<Params, FetchReturnData, InitialData = FetchReturnData> = 
 	 * Used with `staleTime` to determine whether the initial data is still fresh or already stale.
 	 * Defaults to `new Date()` (treated as just-fetched) if not provided.
 	 */
-	initialDataFetched?: Date;
+	initialDataFetchedAt?: Date;
+
+	/**
+	 * Whether to refetch the stache automatically when it becomes stale.
+	 * Default is false.
+	 */
+	initialDataRefetchOnStale?: boolean;
 };
 
 type UsePagedStacheOptions<Params, FetchReturnData, InitialData = FetchReturnData> = {
@@ -143,7 +149,19 @@ type UsePagedStacheOptions<Params, FetchReturnData, InitialData = FetchReturnDat
 	 */
 	initialData?: InitialData[];
 
-	initialDataFetched?: Date;
+	/**
+	 * The timestamp to associate with `initialData`.
+	 * Used with `staleTime` to determine whether the initial data is still fresh or already stale.
+	 * Defaults to `new Date()` (treated as just-fetched) if not provided.
+	 */
+	initialDataFetchedAt?: Date;
+
+	/**
+	 * Whether to refetch the stache automatically when it becomes stale.
+	 * Default is false.
+	 */
+	initialDataRefetchOnStale?: boolean;
+
 	/**
 	 * Whether the stache is enabled. Disabling will stop automatic fetching.
 	 * Default is true.
@@ -286,7 +304,8 @@ class CoreStache<FetchParams, FetchReturnData, InitialData = FetchReturnData> {
 			params,
 			enabled,
 			initialData,
-			initialDataFetched
+			initialDataFetchedAt,
+			initialDataRefetchOnStale = true
 		}:
 			| UseStacheOptions<FetchParams, FetchReturnData, InitialData>
 			| UsePagedStacheOptions<FetchParams, FetchReturnData, InitialData>,
@@ -333,14 +352,15 @@ class CoreStache<FetchParams, FetchReturnData, InitialData = FetchReturnData> {
 
 		if (initialData) {
 			this.#raw = initialData as InitialData;
-			this.#lastFetched = initialDataFetched
-				? new SvelteDate(initialDataFetched)
-				: new SvelteDate();
+			this.#lastFetched = initialDataFetchedAt
+				? new SvelteDate(initialDataFetchedAt)
+				: new SvelteDate(-1);
 
 			if (this.#lastFetched?.getTime() + this.staleTime < new SvelteDate().getTime()) {
 				this.#cacheStatus = 'stale';
 			} else {
 				this.#cacheStatus = 'fresh';
+				this.#scheduleCacheStatusUpdate({ initialDataRefetchOnStale });
 			}
 		}
 
@@ -422,14 +442,14 @@ class CoreStache<FetchParams, FetchReturnData, InitialData = FetchReturnData> {
 		return promise;
 	}
 
-	#scheduleCacheStatusUpdate() {
+	#scheduleCacheStatusUpdate({ initialDataRefetchOnStale } = { initialDataRefetchOnStale: false }) {
 		if (globalThis?.window) {
 			if (this.#scheduleCacheStatusCheckTimeout) {
 				clearTimeout(this.#scheduleCacheStatusCheckTimeout);
 			}
 			this.#scheduleCacheStatusCheckTimeout = setTimeout(() => {
 				this.#cacheStatus = 'stale';
-				if (this.refetchOnStale) {
+				if (this.refetchOnStale || initialDataRefetchOnStale) {
 					this.#promise = this.#run();
 				}
 				this.#scheduleCacheStatusCheckTimeout = null;

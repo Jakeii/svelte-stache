@@ -177,7 +177,7 @@ Ignored if a cache entry for these params already exists (i.e. a previous `useSt
 		params: null,
 		pageParams: { pageOffset: 0, pageCount: 3 },
 		initialData: data.pages, // pre-populate pages 0 and 1; page 2 fetches normally
-		initialDataFetched: new Date(data.fetchedAt)
+		initialDataFetchedAt: new Date(data.fetchedAt)
 	}));
 </script>
 
@@ -187,7 +187,7 @@ Ignored if a cache entry for these params already exists (i.e. a previous `useSt
 {/each}
 ```
 
-### `initialDataFetched`
+### `initialDataFetchedAt`
 
 **Type:** `Date`
 **Default:** `new Date()` (when `initialData` is provided)
@@ -198,6 +198,7 @@ Stache compares this against `staleTime` to decide whether the initial data is s
 
 - If the timestamp is within `staleTime`, `cacheStatus` is `'fresh'` and no fetch is triggered for pre-populated pages.
 - If the timestamp is older than `staleTime`, `cacheStatus` is `'stale'` and a fetch runs for all pre-populated pages.
+- If not provided, defaults to the 1 Jan 1970 (epoch) — effectively always stale.
 
 ```svelte
 <script lang="ts">
@@ -209,7 +210,29 @@ Stache compares this against `staleTime` to decide whether the initial data is s
 		initialData: data.pages,
 		// Pass the server's fetch time — if the page was cached for >5 min,
 		// the client will refetch automatically
-		initialDataFetched: new Date(data.fetchedAt)
+		initialDataFetchedAt: new Date(data.fetchedAt)
+	}));
+</script>
+```
+
+## initialDataRefetchOnStale
+
+**Type:** `boolean`
+**Default:** `true`
+
+When `true`, if `initialData` is stale on mount, Stache will trigger a refetch immediately even if `refetchOnState` is `false`. If `false`, the stale data will be returned without refetching until the next refetch trigger (e.g. window focus, manual invalidate).
+
+```svelte<script lang="ts">
+	let { data } = $props(); // { user: User, fetchedAt: string }
+
+	const posts = getPosts(() => ({
+		params: null,
+		pageParams: { pageOffset: 0, pageCount: 2 },
+		initialData: data.pages,
+		// Pass the server's fetch time — if the page was cached for >5 min,
+		// the client will refetch automatically
+		initialDataFetchedAt: new Date(data.fetchedAt),
+		initialDataRefetchOnStale: false // Disable immediate refetch on stale initial data
 	}));
 </script>
 ```

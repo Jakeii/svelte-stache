@@ -76,7 +76,7 @@ describe('createPagedStache initialData', () => {
 				params,
 				pageParams: { pageOffset: 0, pageCount: 2 },
 				initialData: [page0, page1],
-				initialDataFetched: new Date()
+				initialDataFetchedAt: new Date()
 			}));
 
 			flushSync();
@@ -89,7 +89,7 @@ describe('createPagedStache initialData', () => {
 	);
 
 	it(
-		'should treat all pages as fresh when initialDataFetched is recent',
+		'should treat all pages as fresh when initialDataFetchedAt is recent',
 		withEffectRoot(async () => {
 			const globalCache = new StacheCache();
 			const fetchFn = vi.fn();
@@ -112,7 +112,7 @@ describe('createPagedStache initialData', () => {
 				params,
 				pageParams: { pageOffset: 0, pageCount: 2 },
 				initialData: [page0, page1],
-				initialDataFetched: new Date()
+				initialDataFetchedAt: new Date()
 			}));
 
 			flushSync();
@@ -123,7 +123,7 @@ describe('createPagedStache initialData', () => {
 	);
 
 	it(
-		'should trigger fetch for all pages when initialDataFetched is stale',
+		'should trigger fetch for all pages when initialDataFetchedAt is stale',
 		withEffectRoot(async () => {
 			const globalCache = new StacheCache();
 			const fetchFn = vi
@@ -151,7 +151,7 @@ describe('createPagedStache initialData', () => {
 				params,
 				pageParams: { pageOffset: 0, pageCount: 2 },
 				initialData: [page0, page1],
-				initialDataFetched: staleDate
+				initialDataFetchedAt: staleDate
 			}));
 
 			flushSync();
@@ -191,7 +191,7 @@ describe('createPagedStache initialData', () => {
 				params,
 				pageParams: { pageOffset: 0, pageCount: 3 },
 				initialData: [page0],
-				initialDataFetched: new Date()
+				initialDataFetchedAt: new Date()
 			}));
 
 			flushSync();

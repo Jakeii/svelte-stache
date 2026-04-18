@@ -123,7 +123,8 @@ const getOrCreatePageStaches = <
 				params: useOptions.params as StacheParams,
 				enabled: useOptions.enabled,
 				initialData: useOptions.initialData?.[i],
-				initialDataFetched: useOptions.initialDataFetched
+				initialDataFetchedAt: useOptions.initialDataFetchedAt,
+				initialDataRefetchOnStale: useOptions.initialDataRefetchOnStale
 			};
 
 			stache = new CoreStache<StacheParams, PageFetchReturnData, InitialData>(

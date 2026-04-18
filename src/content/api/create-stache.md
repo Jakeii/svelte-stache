@@ -234,14 +234,14 @@ Ignored if a cache entry for these params already exists (i.e. a previous `useSt
 	const user = getUser(() => ({
 		params: data.user.id,
 		initialData: data.user,
-		initialDataFetched: new Date(data.fetchedAt)
+		initialDataFetchedAt: new Date(data.fetchedAt)
 	}));
 </script>
 
 <!-- user.data is available immediately — no loading flicker --><h1>{user.data?.name}</h1>
 ```
 
-### `initialDataFetched`
+### `initialDataFetchedAt`
 
 **Type:** `Date`
 **Default:** `new Date()` (when `initialData` is provided)
@@ -250,6 +250,7 @@ The timestamp to associate with `initialData`. Stache compares this against `sta
 
 - If the timestamp is within `staleTime`, `cacheStatus` is `'fresh'` and no fetch is triggered.
 - If the timestamp is older than `staleTime`, `cacheStatus` is `'stale'` and a fetch runs immediately on mount.
+- If not provided, defaults to the 1 Jan 1970 (epoch) — effectively always stale.
 
 ```svelte
 <script lang="ts">
@@ -260,7 +261,26 @@ The timestamp to associate with `initialData`. Stache compares this against `sta
 		initialData: data.user,
 		// Pass the server's fetch time — if the page was cached for >5 min,
 		// the client will refetch automatically
-		initialDataFetched: new Date(data.fetchedAt)
+		initialDataFetchedAt: new Date(data.fetchedAt)
+	}));
+</script>
+```
+
+## initialDataRefetchOnStale
+
+**Type:** `boolean`
+**Default:** `true`
+
+When `true`, if `initialData` is stale on mount, Stache will trigger a refetch immediately even if `refetchOnState` is `false`. If `false`, the stale data will be returned without refetching until the next refetch trigger (e.g. window focus, manual invalidate).
+
+```svelte<script lang="ts">
+	let { data } = $props(); // { user: User, fetchedAt: string }
+
+	const user = getUser(() => ({
+		params: data.user.id,
+		initialData: data.user,
+		initialDataFetchedAt: new Date(data.fetchedAt),
+		initialDataRefetchOnStale: false // Disable immediate refetch on stale initial data
 	}));
 </script>
 ```
