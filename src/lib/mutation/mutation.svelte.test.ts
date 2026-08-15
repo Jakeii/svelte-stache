@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createMutation } from './mutation.svelte';
 
@@ -777,6 +777,345 @@ describe('createMutation', () => {
 				await mutation.mutate({ id: 1 });
 
 				expect(defineOnSuccess).toHaveBeenCalled();
+			})
+		);
+	});
+
+	describe('retries', () => {
+		it(
+			'should not retry by default (retries: 0)',
+			withEffectRoot(async () => {
+				const error = new Error('Mutation failed');
+				const mutationFn = vi.fn().mockRejectedValue(error);
+
+				const useMutation = createMutation({
+					mutationFn
+				});
+
+				const mutation = useMutation();
+				await mutation.mutate({ id: 1 });
+
+				expect(mutationFn).toHaveBeenCalledTimes(1);
+				expect(mutation.isError).toBe(true);
+				expect(mutation.error).toBe(error);
+			})
+		);
+
+		it(
+			'should retry and succeed on the second attempt',
+			withEffectRoot(async () => {
+				const statusHistory: string[] = [];
+				let callCount = 0;
+				const mutationFn = vi.fn().mockImplementation(() => {
+					callCount++;
+					if (callCount === 1) {
+						return Promise.reject(new Error('First attempt failed'));
+					}
+					return Promise.resolve({ success: true });
+				});
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 3,
+					retryDelay: 0
+				});
+
+				const mutation = useMutation();
+				const resultPromise = mutation.mutate({ id: 1 });
+				flushSync();
+				statusHistory.push(mutation.status);
+
+				await vi.waitUntil(() => mutation.status === 'retrying');
+				statusHistory.push(mutation.status);
+
+				const result = await resultPromise;
+				flushSync();
+
+				expect(mutationFn).toHaveBeenCalledTimes(2);
+				expect(result).toEqual({ success: true });
+				expect(mutation.status).toBe('success');
+				expect(statusHistory).toEqual(['loading', 'retrying']);
+			})
+		);
+
+		it(
+			'should exhaust all retries and end in error',
+			withEffectRoot(async () => {
+				const error = new Error('Always fails');
+				const mutationFn = vi.fn().mockRejectedValue(error);
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 2,
+					retryDelay: 0
+				});
+
+				const mutation = useMutation();
+				const result = await mutation.mutate({ id: 1 });
+
+				expect(mutationFn).toHaveBeenCalledTimes(3);
+				expect(result).toBe(null);
+				expect(mutation.status).toBe('error');
+				expect(mutation.error).toBe(error);
+			})
+		);
+
+		it(
+			'should stop retrying early when shouldRetry returns false',
+			withEffectRoot(async () => {
+				const error = new Error('Not retryable');
+				const mutationFn = vi.fn().mockRejectedValue(error);
+				const shouldRetry = vi.fn().mockReturnValue(false);
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 3,
+					retryDelay: 0,
+					shouldRetry
+				});
+
+				const mutation = useMutation();
+				await mutation.mutate({ id: 1 });
+
+				expect(mutationFn).toHaveBeenCalledTimes(1);
+				expect(shouldRetry).toHaveBeenCalledWith({ error, attempt: 0, params: { id: 1 } });
+				expect(mutation.status).toBe('error');
+			})
+		);
+
+		it(
+			'should call shouldRetry with the 0-indexed attempt number of the failed attempt',
+			withEffectRoot(async () => {
+				const error = new Error('fails');
+				const mutationFn = vi.fn().mockRejectedValue(error);
+				const shouldRetry = vi.fn().mockReturnValue(true);
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 2,
+					retryDelay: 0,
+					shouldRetry
+				});
+
+				const mutation = useMutation();
+				await mutation.mutate({ id: 1 });
+
+				expect(shouldRetry.mock.calls[0][0]).toEqual({ error, attempt: 0, params: { id: 1 } });
+				expect(shouldRetry.mock.calls[1][0]).toEqual({ error, attempt: 1, params: { id: 1 } });
+			})
+		);
+
+		it(
+			'isRetrying should be true only while status is retrying',
+			withEffectRoot(async () => {
+				let callCount = 0;
+				const mutationFn = vi.fn().mockImplementation(() => {
+					callCount++;
+					if (callCount === 1) {
+						return Promise.reject(new Error('First attempt failed'));
+					}
+					return Promise.resolve({ success: true });
+				});
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 3,
+					retryDelay: 0
+				});
+
+				const mutation = useMutation();
+				expect(mutation.isRetrying).toBe(false);
+
+				const resultPromise = mutation.mutate({ id: 1 });
+				flushSync();
+				expect(mutation.isRetrying).toBe(false);
+
+				await vi.waitUntil(() => mutation.isRetrying);
+				expect(mutation.isRetrying).toBe(true);
+
+				await resultPromise;
+				flushSync();
+				expect(mutation.isRetrying).toBe(false);
+			})
+		);
+
+		it(
+			'beforeMutate should be called exactly once across all attempts',
+			withEffectRoot(async () => {
+				const beforeMutate = vi.fn();
+				const mutationFn = vi.fn().mockRejectedValue(new Error('fails'));
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 2,
+					retryDelay: 0,
+					beforeMutate
+				});
+
+				const mutation = useMutation();
+				await mutation.mutate({ id: 1 });
+
+				expect(beforeMutate).toHaveBeenCalledTimes(1);
+			})
+		);
+
+		it(
+			'afterMutate should be called exactly once after all attempts complete',
+			withEffectRoot(async () => {
+				const afterMutate = vi.fn();
+				const mutationFn = vi.fn().mockRejectedValue(new Error('fails'));
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 2,
+					retryDelay: 0,
+					afterMutate
+				});
+
+				const mutation = useMutation();
+				await mutation.mutate({ id: 1 });
+
+				expect(afterMutate).toHaveBeenCalledTimes(1);
+			})
+		);
+	});
+
+	describe('retryDelay', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it(
+			'should default to a 300ms delay between attempts when retryDelay is not specified',
+			withEffectRoot(async () => {
+				let callCount = 0;
+				const mutationFn = vi.fn().mockImplementation(() => {
+					callCount++;
+					if (callCount === 1) {
+						return Promise.reject(new Error('First attempt failed'));
+					}
+					return Promise.resolve({ success: true });
+				});
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 1
+				});
+
+				const mutation = useMutation();
+				const resultPromise = mutation.mutate({ id: 1 });
+
+				await vi.waitUntil(() => mutation.status === 'retrying');
+				expect(mutationFn).toHaveBeenCalledTimes(1);
+
+				await vi.advanceTimersByTimeAsync(299);
+				expect(mutationFn).toHaveBeenCalledTimes(1);
+
+				await vi.advanceTimersByTimeAsync(1);
+				const result = await resultPromise;
+
+				expect(mutationFn).toHaveBeenCalledTimes(2);
+				expect(result).toEqual({ success: true });
+			})
+		);
+
+		it(
+			'should wait for a fixed numeric retryDelay before each retry',
+			withEffectRoot(async () => {
+				let callCount = 0;
+				const mutationFn = vi.fn().mockImplementation(() => {
+					callCount++;
+					if (callCount === 1) {
+						return Promise.reject(new Error('First attempt failed'));
+					}
+					return Promise.resolve({ success: true });
+				});
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 1,
+					retryDelay: 1000
+				});
+
+				const mutation = useMutation();
+				const resultPromise = mutation.mutate({ id: 1 });
+
+				await vi.waitUntil(() => mutation.status === 'retrying');
+				expect(mutationFn).toHaveBeenCalledTimes(1);
+
+				await vi.advanceTimersByTimeAsync(999);
+				expect(mutationFn).toHaveBeenCalledTimes(1);
+
+				await vi.advanceTimersByTimeAsync(1);
+				const result = await resultPromise;
+
+				expect(mutationFn).toHaveBeenCalledTimes(2);
+				expect(result).toEqual({ success: true });
+			})
+		);
+
+		it(
+			'should call a RetryDelayFn with error, attempt, and params, and use its return value as the wait',
+			withEffectRoot(async () => {
+				const error = new Error('First attempt failed');
+				let callCount = 0;
+				const mutationFn = vi.fn().mockImplementation(() => {
+					callCount++;
+					if (callCount === 1) {
+						return Promise.reject(error);
+					}
+					return Promise.resolve({ success: true });
+				});
+				const retryDelay = vi.fn().mockReturnValue(500);
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 1,
+					retryDelay
+				});
+
+				const mutation = useMutation();
+				const resultPromise = mutation.mutate({ id: 1 });
+
+				await vi.waitUntil(() => mutation.status === 'retrying');
+				expect(retryDelay).toHaveBeenCalledTimes(1);
+				expect(retryDelay).toHaveBeenCalledWith({ error, attempt: 0, params: { id: 1 } });
+
+				await vi.advanceTimersByTimeAsync(500);
+				await resultPromise;
+
+				expect(mutationFn).toHaveBeenCalledTimes(2);
+			})
+		);
+
+		it(
+			'should not evaluate retryDelay on the final failed attempt',
+			withEffectRoot(async () => {
+				const mutationFn = vi.fn().mockRejectedValue(new Error('always fails'));
+				const retryDelay = vi.fn().mockReturnValue(100);
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 1,
+					retryDelay
+				});
+
+				const mutation = useMutation();
+				const resultPromise = mutation.mutate({ id: 1 });
+
+				await vi.waitUntil(() => mutation.status === 'retrying');
+				expect(retryDelay).toHaveBeenCalledTimes(1);
+
+				await vi.advanceTimersByTimeAsync(100);
+				await resultPromise;
+
+				expect(mutationFn).toHaveBeenCalledTimes(2);
+				expect(retryDelay).toHaveBeenCalledTimes(1);
+				expect(mutation.status).toBe('error');
 			})
 		);
 	});

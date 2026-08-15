@@ -24,19 +24,39 @@ type MutationFn<StacheFnParams extends BaseMutationParams, Result = unknown> = (
 
 type OnSuccessFn<Params, Result> = ({ params, result }: { params: Params; result: Result }) => void;
 
+type ShouldRetryFn<Params> = (context: {
+	error: unknown;
+	attempt: number;
+	params: Params;
+}) => boolean;
+
+type RetryDelayFn<Params> = (context: {
+	error: unknown;
+	attempt: number;
+	params: Params;
+}) => number;
+
+const DEFAULT_RETRY_DELAY_MS = 300;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 class Mutation<Params extends BaseMutationParams, Result = unknown> {
 	mutationFn: MutationFn<Params, Result>;
 	beforeMutate?: ((args: Params) => unknown | Promise<unknown>)[];
 	afterMutate?: ((args: Params) => unknown | Promise<unknown>)[];
 	invalidatesQueries: InvalidatesQueries<Params, Result> = [];
-	status = $state<'idle' | 'loading' | 'error' | 'success'>('idle');
+	status = $state<'idle' | 'loading' | 'retrying' | 'error' | 'success'>('idle');
 	isLoading = $derived(this.status === 'loading');
+	isRetrying = $derived(this.status === 'retrying');
 	isError = $derived(this.status === 'error');
 	isSuccess = $derived(this.status === 'success');
 	data: Result | null = $state(null);
 	error: unknown = $state(null);
 	onSuccess?: OnSuccessFn<Params, Result>[];
 	onError?: ((error: unknown) => unknown)[];
+	retries: number;
+	shouldRetry?: ShouldRetryFn<Params>;
+	retryDelay: number | RetryDelayFn<Params>;
 
 	constructor({
 		mutationFn,
@@ -44,7 +64,10 @@ class Mutation<Params extends BaseMutationParams, Result = unknown> {
 		afterMutate,
 		invalidatesQueries,
 		onSuccess,
-		onError
+		onError,
+		retries,
+		shouldRetry,
+		retryDelay
 	}: {
 		mutationFn: MutationFn<Params, Result>;
 		beforeMutate?: ((args: Params) => unknown | Promise<unknown>)[];
@@ -52,12 +75,18 @@ class Mutation<Params extends BaseMutationParams, Result = unknown> {
 		invalidatesQueries?: InvalidatesQueries<Params, Result>;
 		onSuccess?: OnSuccessFn<Params, Result>[];
 		onError?: ((error: unknown) => void)[];
+		retries?: number;
+		shouldRetry?: ShouldRetryFn<Params>;
+		retryDelay?: number | RetryDelayFn<Params>;
 	}) {
 		this.mutationFn = mutationFn;
 		this.beforeMutate = beforeMutate;
 		this.afterMutate = afterMutate;
 		this.onSuccess = onSuccess;
 		this.onError = onError;
+		this.retries = retries ?? 0;
+		this.shouldRetry = shouldRetry;
+		this.retryDelay = retryDelay ?? DEFAULT_RETRY_DELAY_MS;
 		if (invalidatesQueries) {
 			this.invalidatesQueries = invalidatesQueries;
 		}
@@ -68,17 +97,35 @@ class Mutation<Params extends BaseMutationParams, Result = unknown> {
 		this.error = null;
 		try {
 			this._beforeMutate(params);
-			const result = await this.mutationFn(params);
-			this.data = result;
-			this._onSuccess({ params: params, result: result });
-			return result;
-		} catch (err) {
-			this.error = err;
-			this._onError(err);
-			return null;
+			let attempt = 0;
+			for (;;) {
+				try {
+					const result = await this.mutationFn(params);
+					this.data = result;
+					this._onSuccess({ params: params, result: result });
+					return result;
+				} catch (err) {
+					const canRetry =
+						attempt < this.retries &&
+						(this.shouldRetry ? this.shouldRetry({ error: err, attempt, params }) !== false : true);
+					if (!canRetry) {
+						this.error = err;
+						this._onError(err);
+						return null;
+					}
+					this.status = 'retrying';
+					const delay = this._resolveRetryDelay({ error: err, attempt, params });
+					await sleep(delay);
+					attempt++;
+				}
+			}
 		} finally {
 			this._afterMutate(params);
 		}
+	}
+
+	private _resolveRetryDelay(context: { error: unknown; attempt: number; params: Params }) {
+		return typeof this.retryDelay === 'function' ? this.retryDelay(context) : this.retryDelay;
 	}
 
 	private _beforeMutate(args: Params) {
@@ -109,4 +156,12 @@ class Mutation<Params extends BaseMutationParams, Result = unknown> {
 }
 
 export { Mutation };
-export type { MutationFn, InvalidatesQueries, InvalidateStache, OnSuccessFn, BaseMutationParams };
+export type {
+	MutationFn,
+	InvalidatesQueries,
+	InvalidateStache,
+	OnSuccessFn,
+	BaseMutationParams,
+	ShouldRetryFn,
+	RetryDelayFn
+};
