@@ -2,7 +2,9 @@ import {
 	Mutation,
 	type BaseMutationParams,
 	type MutationFn,
-	type OnSuccessFn
+	type OnSuccessFn,
+	type ShouldRetryFn,
+	type RetryDelayFn
 } from './mutation.class.svelte';
 
 const createMutation =
@@ -11,13 +13,19 @@ const createMutation =
 		beforeMutate: defineBeforeMutate,
 		afterMutate: defineAfterMutate,
 		onSuccess: defineOnSuccess,
-		onError: defineOnError
+		onError: defineOnError,
+		retries,
+		shouldRetry,
+		retryDelay
 	}: {
 		mutationFn: MutationFn<Params, Result>;
 		beforeMutate?: (args: Params) => unknown | Promise<unknown>;
 		afterMutate?: (args: Params) => unknown | Promise<unknown>;
 		onSuccess?: OnSuccessFn<Params, Result>;
 		onError?: (error: unknown) => unknown;
+		retries?: number;
+		shouldRetry?: ShouldRetryFn<Params>;
+		retryDelay?: number | RetryDelayFn<Params>;
 	}) =>
 	({
 		onSuccess: useOnSuccess,
@@ -45,9 +53,12 @@ const createMutation =
 			beforeMutate,
 			afterMutate,
 			onSuccess,
-			onError
+			onError,
+			retries,
+			shouldRetry,
+			retryDelay
 		});
 	};
 
 export { createMutation };
-export type { Mutation, BaseMutationParams, MutationFn, OnSuccessFn };
+export type { Mutation, BaseMutationParams, MutationFn, OnSuccessFn, ShouldRetryFn, RetryDelayFn };
