@@ -113,6 +113,7 @@ class Mutation<Params extends BaseMutationParams, Result = unknown> {
 						this._onError(err);
 						return null;
 					}
+					this.error = err;
 					this.status = 'retrying';
 					const delay = this._resolveRetryDelay({ error: err, attempt, params });
 					await sleep(delay);

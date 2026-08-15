@@ -189,15 +189,15 @@ The mutation instance with reactive properties and methods:
 
 ### Properties
 
-| Property     | Type                                                        | Description                          |
-| ------------ | ----------------------------------------------------------- | ------------------------------------ |
-| `status`     | `'idle' \| 'loading' \| 'retrying' \| 'error' \| 'success'` | Current mutation status              |
-| `isLoading`  | `boolean`                                                   | True while mutation is executing     |
-| `isRetrying` | `boolean`                                                   | True while waiting on/making a retry |
-| `isError`    | `boolean`                                                   | True if mutation failed              |
-| `isSuccess`  | `boolean`                                                   | True if mutation succeeded           |
-| `data`       | `Result \| null`                                            | The mutation result                  |
-| `error`      | `unknown`                                                   | Error if mutation failed             |
+| Property     | Type                                                        | Description                                                                                   |
+| ------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `status`     | `'idle' \| 'loading' \| 'retrying' \| 'error' \| 'success'` | Current mutation status                                                                       |
+| `isLoading`  | `boolean`                                                   | True while mutation is executing                                                              |
+| `isRetrying` | `boolean`                                                   | True while waiting on/making a retry                                                          |
+| `isError`    | `boolean`                                                   | True if mutation failed                                                                       |
+| `isSuccess`  | `boolean`                                                   | True if mutation succeeded                                                                    |
+| `data`       | `Result \| null`                                            | The mutation result                                                                           |
+| `error`      | `unknown`                                                   | Error from the last failed attempt (set while retrying and if the mutation ultimately failed) |
 
 ### Methods
 
