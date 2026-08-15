@@ -110,6 +110,51 @@ createMutation({
 });
 ```
 
+#### `retries`
+
+**Type:** `number`
+
+**Default:** `0`
+
+Maximum number of retry attempts after the initial failure.
+
+```typescript
+createMutation({
+	mutationFn: createPost,
+	retries: 3
+});
+```
+
+#### `shouldRetry`
+
+**Type:** `(context: { error: unknown; attempt: number; params: Params }) => boolean`
+
+Called before each retry to decide whether to continue. Return `false` to stop retrying early. `attempt` is 0-indexed (`0` on the first failure, `1` on the second, etc.). If omitted, always retries up to `retries`.
+
+```typescript
+createMutation({
+	mutationFn: createPost,
+	retries: 3,
+	shouldRetry: ({ error }) => error instanceof NetworkError
+});
+```
+
+#### `retryDelay`
+
+**Type:** `number | ((context: { error: unknown; attempt: number; params: Params }) => number)`
+
+**Default:** `300` (ms)
+
+Delay before each retry attempt. Accepts a fixed number of milliseconds, or a function for custom logic such as exponential backoff. Only evaluated when a retry is actually going to happen.
+
+```typescript
+createMutation({
+	mutationFn: createPost,
+	retries: 3,
+	retryDelay: ({ attempt }) => 2 ** attempt * 100 // exponential backoff
+});
+```
+
 ## Return Value
 
 `createMutation` returns a factory function. Call it to create a mutation instance:
@@ -144,14 +189,15 @@ The mutation instance with reactive properties and methods:
 
 ### Properties
 
-| Property    | Type                                          | Description                      |
-| ----------- | --------------------------------------------- | -------------------------------- |
-| `status`    | `'idle' \| 'loading' \| 'error' \| 'success'` | Current mutation status          |
-| `isLoading` | `boolean`                                     | True while mutation is executing |
-| `isError`   | `boolean`                                     | True if mutation failed          |
-| `isSuccess` | `boolean`                                     | True if mutation succeeded       |
-| `data`      | `Result \| null`                              | The mutation result              |
-| `error`     | `unknown`                                     | Error if mutation failed         |
+| Property     | Type                                                        | Description                          |
+| ------------ | ----------------------------------------------------------- | ------------------------------------ |
+| `status`     | `'idle' \| 'loading' \| 'retrying' \| 'error' \| 'success'` | Current mutation status              |
+| `isLoading`  | `boolean`                                                   | True while mutation is executing     |
+| `isRetrying` | `boolean`                                                   | True while waiting on/making a retry |
+| `isError`    | `boolean`                                                   | True if mutation failed              |
+| `isSuccess`  | `boolean`                                                   | True if mutation succeeded           |
+| `data`       | `Result \| null`                                            | The mutation result                  |
+| `error`      | `unknown`                                                   | Error if mutation failed             |
 
 ### Methods
 
@@ -325,6 +371,31 @@ const useToggleLike = createMutation({
 		showToast('Failed to like post');
 	}
 });
+```
+
+### Retrying on Failure
+
+```typescript
+const useCreatePost = createMutation({
+	mutationFn: async (data: CreatePostInput): Promise<Post> => {
+		const res = await fetch('/api/posts', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(data)
+		});
+		if (!res.ok) throw new Error('Failed to create post');
+		return res.json();
+	},
+	retries: 3,
+	shouldRetry: ({ error }) => error instanceof NetworkError,
+	retryDelay: ({ attempt }) => 2 ** attempt * 100 // 100ms, 200ms, 400ms
+});
+```
+
+```svelte
+{#if mutation.isRetrying}
+	<span class="status">Retrying...</span>
+{/if}
 ```
 
 ### Multiple Mutations in One Component
