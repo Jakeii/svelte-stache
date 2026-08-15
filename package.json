@@ -87,7 +87,7 @@
 		"svelte": "^5.55.7",
 		"svelte-check": "^4.4.5",
 		"tailwindcss": "^4.3.3",
-		"type-fest": "^5.4.4",
+		"type-fest": "^5.8.0",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.57.0",
 		"velite": "^0.3.1",
