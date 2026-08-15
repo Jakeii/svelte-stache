@@ -954,6 +954,39 @@ describe('createMutation', () => {
 		);
 
 		it(
+			'should set error to the failed attempt while retrying',
+			withEffectRoot(async () => {
+				const error = new Error('First attempt failed');
+				let callCount = 0;
+				const mutationFn = vi.fn().mockImplementation(() => {
+					callCount++;
+					if (callCount === 1) {
+						return Promise.reject(error);
+					}
+					return Promise.resolve({ success: true });
+				});
+
+				const useMutation = createMutation({
+					mutationFn,
+					retries: 3,
+					retryDelay: 10
+				});
+
+				const mutation = useMutation();
+				const resultPromise = mutation.mutate({ id: 1 });
+
+				await vi.waitUntil(() => mutation.status === 'retrying');
+				expect(mutation.error).toBe(error);
+
+				await vi.advanceTimersByTimeAsync(10);
+				await resultPromise;
+				flushSync();
+
+				expect(mutation.status).toBe('success');
+			})
+		);
+
+		it(
 			'beforeMutate should be called exactly once across all attempts',
 			withEffectRoot(async () => {
 				const beforeMutate = vi.fn();

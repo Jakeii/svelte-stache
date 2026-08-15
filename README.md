@@ -225,7 +225,7 @@ const mutation = useMutation({
 ```typescript
 {
   data: T | undefined,     // Mutation result
-  error: unknown,          // Error if mutation failed
+  error: unknown,          // Error from the last failed attempt (set while retrying, too)
   status: 'idle' | 'loading' | 'retrying' | 'error' | 'success',
   isLoading: boolean,
   isRetrying: boolean,
