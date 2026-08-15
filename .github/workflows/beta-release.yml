@@ -40,7 +40,7 @@ jobs:
 
       - name: Changesets Publish
         id: changeset
-        uses: changesets/action@v1.7.0
+        uses: changesets/action@v2.0.0
         with:
           publish: pnpm changeset publish --tag beta
           title: 🦋 Release package updates
