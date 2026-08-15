@@ -128,6 +128,7 @@
 			class="status-value"
 			class:idle={mutation.status === 'idle'}
 			class:loading={mutation.status === 'loading'}
+			class:retrying={mutation.status === 'retrying'}
 			class:success={mutation.status === 'success'}
 			class:error={mutation.status === 'error'}
 		>
@@ -289,6 +290,11 @@
 	.status-value.loading {
 		background: #dbeafe;
 		color: #2563eb;
+	}
+
+	.status-value.retrying {
+		background: #fef3c7;
+		color: #d97706;
 	}
 
 	.status-value.success {
