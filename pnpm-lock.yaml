@@ -84,8 +84,8 @@ importers:
         specifier: ^3.15.2
         version: 3.15.2(eslint@10.0.3(jiti@2.6.1))(svelte@5.55.7(@typescript-eslint/types@8.57.0))
       globals:
-        specifier: ^16.5.0
-        version: 16.5.0
+        specifier: ^17.10.0
+        version: 17.10.0
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -2603,6 +2603,10 @@ packages:
 
   globals@16.5.0:
     resolution: {integrity: sha512-c/c15i26VrJ4IRt5Z89DnIzCGDn9EcebibhAOjw5ibqEHsE1wLUgkPn9RDmNcUKyU87GeaL633nyJ+pplFR2ZQ==}
+    engines: {node: '>=18'}
+
+  globals@17.10.0:
+    resolution: {integrity: sha512-V0kztuWST2k8A/VbxAY8+L+7+Rgo3fyA24IHRLrZp7HOzJjV0gHSaZUjK9lpP/IrBSNite2tZ1prhRkinRu1CA==}
     engines: {node: '>=18'}
 
   globby@11.1.0:
@@ -6523,6 +6527,8 @@ snapshots:
       is-glob: 4.0.3
 
   globals@16.5.0: {}
+
+  globals@17.10.0: {}
 
   globby@11.1.0:
     dependencies:
