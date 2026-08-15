@@ -54,6 +54,14 @@ Types exported: `Mutation`, `UseStacheFn`, `CreateStacheFn`, `CreatePagedStacheF
 
 Library also exports a `./devtools` entrypoint: `StacheDevtools`, `StacheDevtoolsPanel`, `JsonViewer`, `StatusBadge`
 
+## Keeping Docs in Sync
+
+When changing the public API of `createStache`, `createPagedStache`, or `createMutation` (new options, changed defaults, new return properties/status values), update all three doc surfaces in the same change:
+
+- `README.md` — quick reference API blocks (options + return value)
+- `src/content/api/*.md` — full docs site pages (e.g. `create-mutation.md`), including the Options sections, Properties table, and an example if the change is significant
+- `src/lib/docs/examples/*.svelte` — interactive demo components, if the change affects visible state (e.g. a new status value should get its own `class:` binding, matching the existing pattern for `idle`/`loading`/`error`/`success`)
+
 ## Key Concepts
 
 ### Context Provider
