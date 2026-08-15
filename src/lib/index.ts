@@ -15,4 +15,4 @@ export type { StacheCache } from './cache';
 export type { UseStacheFn } from './stache/stache.svelte';
 export type { CreateStacheFn } from './stache/stache.svelte';
 export type { CreatePagedStacheFn } from './paged/paged.svelte';
-export type { MutationFn } from './mutation/mutation.class.svelte';
+export type { MutationFn, ShouldRetryFn, RetryDelayFn } from './mutation/mutation.class.svelte';

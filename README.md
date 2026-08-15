@@ -209,6 +209,9 @@ const useMutation = createMutation({
   afterMutate?: (params) => void,
   onSuccess?: ({ params, result }) => void,
   onError?: (error) => void,
+  retries?: number,        // max retry attempts, default 0
+  shouldRetry?: ({ error, attempt, params }) => boolean,
+  retryDelay?: number | (({ error, attempt, params }) => number), // ms, default 300
 });
 
 const mutation = useMutation({
@@ -223,8 +226,9 @@ const mutation = useMutation({
 {
   data: T | undefined,     // Mutation result
   error: unknown,          // Error if mutation failed
-  status: 'idle' | 'loading' | 'error' | 'success',
+  status: 'idle' | 'loading' | 'retrying' | 'error' | 'success',
   isLoading: boolean,
+  isRetrying: boolean,
   isError: boolean,
   isSuccess: boolean,
   mutate: (params) => Promise<T>,
