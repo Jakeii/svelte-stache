@@ -782,6 +782,14 @@ describe('createMutation', () => {
 	});
 
 	describe('retries', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
 		it(
 			'should not retry by default (retries: 0)',
 			withEffectRoot(async () => {
@@ -817,7 +825,7 @@ describe('createMutation', () => {
 				const useMutation = createMutation({
 					mutationFn,
 					retries: 3,
-					retryDelay: 0
+					retryDelay: 10
 				});
 
 				const mutation = useMutation();
@@ -828,6 +836,7 @@ describe('createMutation', () => {
 				await vi.waitUntil(() => mutation.status === 'retrying');
 				statusHistory.push(mutation.status);
 
+				await vi.advanceTimersByTimeAsync(10);
 				const result = await resultPromise;
 				flushSync();
 
@@ -847,11 +856,13 @@ describe('createMutation', () => {
 				const useMutation = createMutation({
 					mutationFn,
 					retries: 2,
-					retryDelay: 0
+					retryDelay: 10
 				});
 
 				const mutation = useMutation();
-				const result = await mutation.mutate({ id: 1 });
+				const resultPromise = mutation.mutate({ id: 1 });
+				await vi.advanceTimersByTimeAsync(20);
+				const result = await resultPromise;
 
 				expect(mutationFn).toHaveBeenCalledTimes(3);
 				expect(result).toBe(null);
@@ -870,7 +881,7 @@ describe('createMutation', () => {
 				const useMutation = createMutation({
 					mutationFn,
 					retries: 3,
-					retryDelay: 0,
+					retryDelay: 10,
 					shouldRetry
 				});
 
@@ -893,12 +904,14 @@ describe('createMutation', () => {
 				const useMutation = createMutation({
 					mutationFn,
 					retries: 2,
-					retryDelay: 0,
+					retryDelay: 10,
 					shouldRetry
 				});
 
 				const mutation = useMutation();
-				await mutation.mutate({ id: 1 });
+				const resultPromise = mutation.mutate({ id: 1 });
+				await vi.advanceTimersByTimeAsync(20);
+				await resultPromise;
 
 				expect(shouldRetry.mock.calls[0][0]).toEqual({ error, attempt: 0, params: { id: 1 } });
 				expect(shouldRetry.mock.calls[1][0]).toEqual({ error, attempt: 1, params: { id: 1 } });
@@ -920,7 +933,7 @@ describe('createMutation', () => {
 				const useMutation = createMutation({
 					mutationFn,
 					retries: 3,
-					retryDelay: 0
+					retryDelay: 10
 				});
 
 				const mutation = useMutation();
@@ -933,6 +946,7 @@ describe('createMutation', () => {
 				await vi.waitUntil(() => mutation.isRetrying);
 				expect(mutation.isRetrying).toBe(true);
 
+				await vi.advanceTimersByTimeAsync(10);
 				await resultPromise;
 				flushSync();
 				expect(mutation.isRetrying).toBe(false);
@@ -948,12 +962,14 @@ describe('createMutation', () => {
 				const useMutation = createMutation({
 					mutationFn,
 					retries: 2,
-					retryDelay: 0,
+					retryDelay: 10,
 					beforeMutate
 				});
 
 				const mutation = useMutation();
-				await mutation.mutate({ id: 1 });
+				const resultPromise = mutation.mutate({ id: 1 });
+				await vi.advanceTimersByTimeAsync(20);
+				await resultPromise;
 
 				expect(beforeMutate).toHaveBeenCalledTimes(1);
 			})
@@ -968,12 +984,14 @@ describe('createMutation', () => {
 				const useMutation = createMutation({
 					mutationFn,
 					retries: 2,
-					retryDelay: 0,
+					retryDelay: 10,
 					afterMutate
 				});
 
 				const mutation = useMutation();
-				await mutation.mutate({ id: 1 });
+				const resultPromise = mutation.mutate({ id: 1 });
+				await vi.advanceTimersByTimeAsync(20);
+				await resultPromise;
 
 				expect(afterMutate).toHaveBeenCalledTimes(1);
 			})
@@ -1008,8 +1026,9 @@ describe('createMutation', () => {
 
 				const mutation = useMutation();
 				const resultPromise = mutation.mutate({ id: 1 });
-
-				await vi.waitUntil(() => mutation.status === 'retrying');
+				await vi.advanceTimersByTimeAsync(0);
+				flushSync();
+				expect(mutation.status).toBe('retrying');
 				expect(mutationFn).toHaveBeenCalledTimes(1);
 
 				await vi.advanceTimersByTimeAsync(299);
@@ -1043,8 +1062,9 @@ describe('createMutation', () => {
 
 				const mutation = useMutation();
 				const resultPromise = mutation.mutate({ id: 1 });
-
-				await vi.waitUntil(() => mutation.status === 'retrying');
+				await vi.advanceTimersByTimeAsync(0);
+				flushSync();
+				expect(mutation.status).toBe('retrying');
 				expect(mutationFn).toHaveBeenCalledTimes(1);
 
 				await vi.advanceTimersByTimeAsync(999);
@@ -1080,8 +1100,8 @@ describe('createMutation', () => {
 
 				const mutation = useMutation();
 				const resultPromise = mutation.mutate({ id: 1 });
-
-				await vi.waitUntil(() => mutation.status === 'retrying');
+				await vi.advanceTimersByTimeAsync(0);
+				flushSync();
 				expect(retryDelay).toHaveBeenCalledTimes(1);
 				expect(retryDelay).toHaveBeenCalledWith({ error, attempt: 0, params: { id: 1 } });
 
@@ -1106,8 +1126,8 @@ describe('createMutation', () => {
 
 				const mutation = useMutation();
 				const resultPromise = mutation.mutate({ id: 1 });
-
-				await vi.waitUntil(() => mutation.status === 'retrying');
+				await vi.advanceTimersByTimeAsync(0);
+				flushSync();
 				expect(retryDelay).toHaveBeenCalledTimes(1);
 
 				await vi.advanceTimersByTimeAsync(100);
