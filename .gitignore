@@ -6,9 +6,12 @@ node_modules
 .vercel
 .netlify
 .wrangler
+.velite
 /.svelte-kit
 /build
 /dist
+static/llms.txt
+static/llms-full.txt
 
 # OS
 .DS_Store
