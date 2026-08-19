@@ -26,7 +26,7 @@ async function replaceIndexContents() {
 	});
 	if (!data) return;
 
-	const updatedContent = data.replaceAll(".json'", ".json' with { type: 'json' }");
+	const updatedContent = data.replaceAll(/\.json'$/g, ".json' with { type: 'json' }");
 	if (updatedContent === data) return;
 
 	await writeFile(indexPath, updatedContent, 'utf8').catch((err) => {
