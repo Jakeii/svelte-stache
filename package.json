@@ -3,7 +3,7 @@
 	"version": "1.2.0",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build && npm run prepack",
+		"build": "pnpm docs:build && vite build && pnpm prepack",
 		"preview": "vite preview",
 		"prepare": "husky && svelte-kit sync",
 		"prepack": "svelte-kit sync && svelte-package && publint",
@@ -14,7 +14,7 @@
 		"test": "vitest",
 		"test:run": "vitest run",
 		"test:storybook": "vitest --project=storybook",
-		"docs:build": "pnpm docs:build:search && pnpm \"/docs:build:(search|llms)/\" && vite build",
+		"docs:build": "pnpm docs:build:content && pnpm \"/docs:build:(search|llms)/\" && vite build",
 		"docs:build:content": "velite && node ./scripts/update-velite-output.js",
 		"docs:build:search": "node ./scripts/build-search-data.js",
 		"docs:build:llms": "node ./scripts/build-llms-txt.js",
