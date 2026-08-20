@@ -1,5 +1,11 @@
 # svelte-stache
 
+## 1.3.0
+
+### Minor Changes
+
+- 9750254: Add retry logic and options to mutations
+
 ## 1.2.0
 
 ### Minor Changes
