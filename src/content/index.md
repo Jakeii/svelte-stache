@@ -21,6 +21,7 @@ Data fetching in modern web applications involves more than just making API call
 - **Error handling** - Gracefully handle failures
 - **Stale data** - Know when to refetch
 - **Memory management** - Clean up unused data
+- **Server-side rendering** - Fetch on the server and hydrate on the client without refetching ([guide](/docs/guides/ssr))
 
 Stache handles all of this with a simple, declarative API that feels natural in Svelte.
 

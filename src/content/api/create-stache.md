@@ -150,6 +150,8 @@ createStache({
 });
 ```
 
+See the [SSR guide](/docs/guides/ssr) and the [SSR Fetch example](/docs/examples/ssr-fetch) for a full walkthrough.
+
 ## Return Value
 
 ### `useStache`
@@ -367,18 +369,18 @@ const { useStache: getUser, invalidate: invalidateUser } = createStache({
 
 ### Using with await (SSR)
 
+With `isHydratable: true` and Svelte's experimental async support enabled, awaiting the stache renders the data on the server and reuses it on the client:
+
 ```svelte
 <script lang="ts">
 	let { data } = $props(); // From +page.server.ts
 
-	const user = getUser(() => ({
+	const user = await getUser(() => ({
 		params: data.userId
 	}));
 </script>
 
-{#await user}
-	<p>Loading...</p>
-{:then result}
-	<h1>{result.data?.name}</h1>
-{/await}
+<h1>{user.data?.name}</h1>
 ```
+
+See the [SSR Fetch example](/docs/examples/ssr-fetch) for a live demo.
