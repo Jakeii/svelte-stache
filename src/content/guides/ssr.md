@@ -48,7 +48,7 @@ Set `isHydratable: true` on the stache definition:
 
 ```typescript title="src/lib/queries/user.ts"
 import { createStache } from 'svelte-stache';
-import { PUBLIC_API_URL } from '$env/static/public';
+import { PUBLIC_API_URL } from '$app/env/public';
 
 export const { useStache: getUser } = createStache({
 	id: 'user',
@@ -67,7 +67,7 @@ Then `await` the result of `useStache` in your component:
 
 ```svelte title="UserProfile.svelte"
 <script lang="ts">
-	import { getUser } from '$lib/queries/user';
+	import { getUser } from '#lib/queries/user';
 
 	let { userId } = $props();
 
