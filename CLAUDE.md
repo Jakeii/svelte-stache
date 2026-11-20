@@ -1,6 +1,6 @@
 # Stache
 
-A state management library for Svelte 5 inspired by TanStack Query, using Svelte runes for reactive data fetching and caching.
+A state management library for Svelte 5, using Svelte runes for reactive data fetching and caching.
 
 ## Project Structure
 
