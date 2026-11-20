@@ -264,7 +264,7 @@ const useCreatePost = createMutation({
 
 ```svelte
 <script lang="ts">
-	import { useCreatePost } from '$lib/mutations/post';
+	import { useCreatePost } from '#lib/mutations/post';
 	import { goto } from '$app/navigation';
 
 	const mutation = useCreatePost({
@@ -330,7 +330,7 @@ const useUpdatePost = createMutation({
 
 ```svelte
 <script lang="ts">
-	import { useDeletePost } from '$lib/mutations/post';
+	import { useDeletePost } from '#lib/mutations/post';
 
 	let { postId } = $props();
 
@@ -402,7 +402,7 @@ const useCreatePost = createMutation({
 
 ```svelte
 <script lang="ts">
-	import { useCreatePost, useUpdatePost, useDeletePost } from '$lib/mutations/post';
+	import { useCreatePost, useUpdatePost, useDeletePost } from '#lib/mutations/post';
 
 	const createMutation = useCreatePost();
 	const updateMutation = useUpdatePost();

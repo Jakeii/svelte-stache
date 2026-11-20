@@ -75,7 +75,7 @@ Now use the query in your Svelte component:
 
 ```svelte title="src/routes/profile/+page.svelte"
 <script lang="ts">
-	import { getUser } from '$lib/queries/user';
+	import { getUser } from '#lib/queries/user';
 
 	let { data } = $props();
 
@@ -127,7 +127,7 @@ Parameters can be reactive. When they change, a new fetch is triggered:
 
 ```svelte
 <script lang="ts">
-	import { getUser } from '$lib/queries/user';
+	import { getUser } from '#lib/queries/user';
 
 	let userId = $state('user-1');
 

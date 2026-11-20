@@ -5,7 +5,7 @@ section: Examples
 ---
 
 <script>
-  import BasicFetchDemo from '$lib/docs/examples/BasicFetchDemo.svelte';
+  import BasicFetchDemo from '#lib/docs/examples/BasicFetchDemo.svelte';
 </script>
 
 # Basic Fetch Example
@@ -56,7 +56,7 @@ Use the query in a Svelte component:
 
 ```svelte title="UserProfile.svelte"
 <script lang="ts">
-	import { getUser, invalidateUser } from '$lib/queries/user';
+	import { getUser, invalidateUser } from '#lib/queries/user';
 
 	let userId = $state('user-1');
 

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { createStache } from '$lib';
-	import { PUBLIC_API_URL } from '$env/static/public';
+	import { createStache } from '#lib';
+	import { PUBLIC_API_URL } from '$app/env/public';
 
 	interface User {
 		id: string;
@@ -29,11 +29,7 @@
 	let userId = $state('user-1');
 
 	let enabled = $state(true);
-
-	const user = getUser(() => ({
-		params: userId,
-		enabled: enabled
-	}));
+	const user = getUser(() => ({ params: userId, enabled }));
 </script>
 
 <div class="demo-container">

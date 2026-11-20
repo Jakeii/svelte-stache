@@ -1,4 +1,4 @@
-import { getDoc } from '$lib/docs/utils';
+import { getDoc } from '#lib/docs/utils.js';
 import type { PageLoad } from './$types';
 
 export const load = (async ({ params }) => {

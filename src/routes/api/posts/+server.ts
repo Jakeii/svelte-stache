@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { generatePosts } from '$lib/docs/generate-posts';
+import { generatePosts } from '#lib/docs/generate-posts.js';
 
 const allPosts = generatePosts(50);
 

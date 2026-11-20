@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { PUBLIC_API_URL } from '$env/static/public';
-	import { createPagedStache } from '$lib/index.js';
+	import { PUBLIC_API_URL } from '$app/env/public';
+	import { createPagedStache } from '#lib/index.js';
 
 	interface Post {
 		id: string;

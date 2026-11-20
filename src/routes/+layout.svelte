@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { StacheDevtools } from '$lib/devtools';
-	import { siteConfig } from '$lib/docs/site-config';
-	import StacheProvider from '$lib/StacheProvider.svelte';
+	import { StacheDevtools } from '#lib/devtools/index.js';
+	import { siteConfig } from '#lib/docs/site-config.js';
+	import StacheProvider from '#lib/StacheProvider.svelte';
 	import '../app.css';
 	import { useSiteConfig } from '@svecodocs/kit';
 
