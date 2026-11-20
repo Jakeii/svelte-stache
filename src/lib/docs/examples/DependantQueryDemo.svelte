@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { PUBLIC_API_URL } from '$app/env/public';
-	import { createStache } from '#lib/index.js';
+	import { PUBLIC_API_URL } from '$env/static/public';
+	import { createStache } from '$lib/index.js';
 
 	interface User {
 		id: string;

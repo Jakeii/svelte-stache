@@ -304,7 +304,7 @@ const { useStache: getPosts } = createPagedStache({
 
 ```svelte
 <script lang="ts">
-	import { getPosts } from '#lib/queries/posts';
+	import { getPosts } from '$lib/queries/posts';
 
 	let pageCount = $state(1);
 
@@ -346,7 +346,7 @@ const { useStache: getPosts } = createPagedStache({
 
 ```svelte
 <script lang="ts">
-	import { getPosts } from '#lib/queries/posts';
+	import { getPosts } from '$lib/queries/posts';
 
 	let category = $state('all');
 	let pageCount = $state(1);
@@ -386,7 +386,7 @@ Load a "window" of pages around the current view:
 
 ```svelte
 <script lang="ts">
-	import { getPosts } from '#lib/queries/posts';
+	import { getPosts } from '$lib/queries/posts';
 
 	let currentPage = $state(0);
 	const windowSize = 3; // Load 3 pages around current

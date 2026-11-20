@@ -1,5 +1,6 @@
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { generatePosts } from '#lib/docs/generate-posts.js';
+import { generatePosts } from '$lib/docs/generate-posts';
 
 const allPosts = generatePosts(50);
 
@@ -31,7 +32,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const end = start + limit;
 	const paginatedPosts = filtered.slice(start, end);
 
-	return Response.json({
+	return json({
 		data: paginatedPosts,
 		meta: {
 			total: filtered.length,
@@ -65,5 +66,5 @@ export const POST: RequestHandler = async ({ request }) => {
 	// In a real app, save to database
 	allPosts.unshift(newPost);
 
-	return Response.json(newPost, { status: 201 });
+	return json(newPost, { status: 201 });
 };

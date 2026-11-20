@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { PUBLIC_API_URL } from '$app/env/public';
-	import { createStache } from '#lib/index.js';
+	import { PUBLIC_API_URL } from '$env/static/public';
+	import { createStache } from '$lib/index.js';
 	import { Debounced } from 'runed';
 
 	interface User {
@@ -43,7 +43,7 @@
 				fill-rule="evenodd"
 				d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
 				clip-rule="evenodd"
-			></path>
+			/>
 		</svg>
 		<input
 			type="search"
@@ -69,10 +69,10 @@
 	{:else if debouncedQuery && results.data?.length === 0 && !results.isLoading}
 		<div class="no-results">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<circle cx="12" cy="12" r="10"></circle>
-				<path d="M8 15s1.5-2 4-2 4 2 4 2"></path>
-				<line x1="9" y1="9" x2="9.01" y2="9"></line>
-				<line x1="15" y1="9" x2="15.01" y2="9"></line>
+				<circle cx="12" cy="12" r="10" />
+				<path d="M8 15s1.5-2 4-2 4 2 4 2" />
+				<line x1="9" y1="9" x2="9.01" y2="9" />
+				<line x1="15" y1="9" x2="15.01" y2="9" />
 			</svg>
 			<span>No users found for "{debouncedQuery}"</span>
 		</div>
