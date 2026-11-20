@@ -4,8 +4,73 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    # A dependency joins the first group it matches, so the tightly coupled
+    # ecosystems come first. They take every update type because their
+    # packages have to move to a new major version together.
+    groups:
+      svelte:
+        patterns:
+          - 'svelte'
+          - 'svelte-check'
+          - '@sveltejs/*'
+          - 'eslint-plugin-svelte'
+          - 'prettier-plugin-svelte'
+      storybook:
+        patterns:
+          - 'storybook'
+          - '@storybook/*'
+          - 'eslint-plugin-storybook'
+          - '@chromatic-com/storybook'
+          - 'msw-storybook-addon'
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+          - 'playwright'
+      # These groups take only minor and patch updates, so each major
+      # version bump still arrives as its own PR.
+      lint-format:
+        update-types: ['minor', 'patch']
+        patterns:
+          - 'eslint'
+          - 'eslint-*'
+          - '@eslint/*'
+          - 'typescript-eslint'
+          - 'prettier'
+          - 'prettier-*'
+          - 'globals'
+          - 'husky'
+          - 'lint-staged'
+      docs:
+        update-types: ['minor', 'patch']
+        patterns:
+          - '@svecodocs/*'
+          - 'velite'
+          - 'mdsvex'
+          - 'mdsx'
+          - 'tailwindcss'
+          - '@tailwindcss/*'
+          - 'phosphor-svelte'
+      build-tooling:
+        update-types: ['minor', 'patch']
+        patterns:
+          - 'typescript'
+          - '@types/*'
+          - 'type-fest'
+          - 'vite'
+          - 'publint'
+          - 'wrangler'
+          - '@changesets/*'
+      # Catch-all for any remaining minor and patch updates
+      dev-dependencies:
+        dependency-type: 'development'
+        update-types: ['minor', 'patch']
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'daily'
     rebase-strategy: 'disabled'
+    groups:
+      actions:
+        patterns:
+          - '*'
