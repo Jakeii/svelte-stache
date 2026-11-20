@@ -129,6 +129,7 @@ const { useStache, invalidate } = createStache({
   cleanupTime?: number,            // Cleanup delay when unused (default: 5 min)
   refetchOnStale?: boolean,        // Auto-refetch when stale (default: false)
   refetchOnWindowFocus?: boolean,  // Refetch on window focus (default: true)
+  isHydratable?: boolean,          // Reuse SSR result on the client via hydratable() (default: false)
 });
 ```
 
