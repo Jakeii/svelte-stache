@@ -1,3 +1,4 @@
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 // Mock user data
@@ -61,7 +62,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		);
 	}
 
-	return Response.json(result);
+	return json(result);
 };
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -82,5 +83,5 @@ export const POST: RequestHandler = async ({ request }) => {
 	// In a real app, you'd save to a database
 	users.push(newUser);
 
-	return Response.json(newUser, { status: 201 });
+	return json(newUser, { status: 201 });
 };

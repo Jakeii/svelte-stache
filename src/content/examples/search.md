@@ -5,7 +5,7 @@ section: Examples
 ---
 
 <script>
-  import SearchDemo from '#lib/docs/examples/SearchDemo.svelte';
+  import SearchDemo from '$lib/docs/examples/SearchDemo.svelte';
 </script>
 
 # Search Example
@@ -53,7 +53,7 @@ export const { useStache: searchUsers } = createStache({
 
 ```svelte title="UserSearch.svelte"
 <script lang="ts">
-	import { searchUsers } from '#lib/queries/search-users';
+	import { searchUsers } from '$lib/queries/search-users';
 
 	let inputValue = $state('');
 	let debouncedQuery = $state('');

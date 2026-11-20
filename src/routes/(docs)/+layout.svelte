@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { DocsLayout } from '@svecodocs/kit';
-	import { navigation } from '#lib/docs/navigation.js';
+	import { navigation } from '$lib/docs/navigation';
 	import { asset } from '$app/paths';
 
 	let { children } = $props();
@@ -10,7 +10,7 @@
 	{#snippet logo()}
 		<span class="logo-text">
 			<span class="logo-icon">
-				<img src={asset('stache_logo.svg')} alt="Stache Logo" width="35" height="35" />
+				<img src={asset('/stache_logo.svg')} alt="Stache Logo" width="35" height="35" />
 			</span>
 			<span class="logo-name">Stache</span>
 		</span>
