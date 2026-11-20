@@ -101,6 +101,22 @@ createPagedStache({
 });
 ```
 
+#### `isHydratable`
+
+**Type:** `boolean`
+**Default:** `false`
+
+When `true`, each page fetch is wrapped in Svelte's `hydratable()` so pages fetched during SSR are reused on the client. Each page gets its own hydration key, built from the stache `id`, the hashed params, and the page index and size. See [`createStache`'s `isHydratable`](/docs/api/create-stache) for requirements.
+
+```typescript
+createPagedStache({
+	id: 'posts',
+	pageSize: 20,
+	fetch: fetchPosts,
+	isHydratable: true
+});
+```
+
 ## Return Value
 
 ### `useStache`
@@ -275,7 +291,7 @@ Like a regular stache, the paged stache object is thenable (`then`, `catch`, `fi
 {/each}
 ```
 
-It also works with `{#await}` blocks.
+It also works with `{#await}` blocks. With `isHydratable: true` and Svelte's experimental async support enabled, awaiting the paged stache renders the pages on the server and reuses them on the client. See the [SSR guide](/docs/guides/ssr).
 
 ## Examples
 

@@ -109,7 +109,16 @@ In development, SvelteKit logs _"Avoid calling `fetch` eagerly during server-sid
 
 ### Paged staches
 
-`createPagedStache` accepts the `isHydratable` option, but its return value is not thenable, so it can't be awaited to block server rendering.
+`createPagedStache` supports the same pattern. Its return value is thenable, and awaiting it resolves once every requested page has loaded. With `isHydratable` enabled, each page is hydrated under its own key, so changing `pageParams` on the client only fetches the pages that weren't rendered on the server.
+
+```svelte
+<script lang="ts">
+	const posts = await getPosts(() => ({
+		params: { category: 'news' },
+		pageParams: { pageOffset: 0, pageCount: 2 }
+	}));
+</script>
+```
 
 ## Without Async Svelte
 
