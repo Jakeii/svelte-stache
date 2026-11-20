@@ -259,6 +259,24 @@ Status properties are aggregated across all loaded pages:
 - `isSuccess` - True only if all pages succeeded
 - `cacheStatus` - `'fresh'` if all pages fresh, `'stale'` if any stale, `'empty'` otherwise
 
+### Awaiting
+
+Like a regular stache, the paged stache object is thenable (`then`, `catch`, `finally`). Awaiting it resolves with the paged stache once every requested page has finished loading, and rejects with the first page error if any page fails:
+
+```svelte
+<script lang="ts">
+	const posts = await getPosts(() => ({
+		pageParams: { pageOffset: 0, pageCount: 2 }
+	}));
+</script>
+
+{#each posts.data as post}
+	<p>{post.title}</p>
+{/each}
+```
+
+It also works with `{#await}` blocks.
+
 ## Examples
 
 ### Basic Pagination

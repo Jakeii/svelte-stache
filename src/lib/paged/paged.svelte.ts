@@ -70,6 +70,19 @@ type PagedStache<Params, Result, PageResult = Result[], PageFetchReturnData = un
 	}
 >;
 
+type PagedThenMethod<Params, Result, PageResult = Result[], PageFetchReturnData = unknown> = <
+	TResult1 = PagedStache<Params, Result, PageResult, PageFetchReturnData>,
+	TResult2 = never
+>(
+	onfulfilled?:
+		| ((
+				value: PagedStache<Params, Result, PageResult, PageFetchReturnData>
+		  ) => TResult1 | PromiseLike<TResult1>)
+		| null
+		| undefined,
+	onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
+) => PromiseLike<TResult1 | TResult2>;
+
 // Helper function to create/retrieve page staches
 const getOrCreatePageStaches = <
 	StacheParams,
@@ -254,7 +267,29 @@ const createPagedStache = <
 			};
 		});
 
-		const pagedStache: PagedStache<StacheParams, Result, PageResult, PageFetchReturnData> = {
+		let resolved = false;
+
+		// Settles once every page has finished its current fetch, rejecting with the first page error
+		const settle = () =>
+			Promise.all(pages.map((stache) => stache.promise)).then(() => {
+				// mark resolved before returning the (thenable) paged stache so promise adoption doesn't recurse
+				resolved = true;
+				const failed = pages.find((stache) => stache.fetchStatus === 'error');
+				if (failed) {
+					return Promise.reject(failed.error);
+				}
+				return pagedStache;
+			});
+
+		const pagedStache: PagedStache<StacheParams, Result, PageResult, PageFetchReturnData> & {
+			then: PagedThenMethod<StacheParams, Result, PageResult, PageFetchReturnData>;
+			catch: <TResult = never>(
+				onrejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null
+			) => Promise<PagedStache<StacheParams, Result, PageResult, PageFetchReturnData> | TResult>;
+			finally: (
+				onfinally?: (() => void) | null
+			) => Promise<PagedStache<StacheParams, Result, PageResult, PageFetchReturnData>>;
+		} = {
 			// Aggregate data from all page staches
 			get data() {
 				const pagesData = this.pages
@@ -326,6 +361,26 @@ const createPagedStache = <
 			},
 			invalidate: () => {
 				pages.forEach((stache) => stache.invalidate());
+			},
+			get then(): PagedThenMethod<StacheParams, Result, PageResult, PageFetchReturnData> {
+				if (!resolved) {
+					return (onfulfilled, onrejected) => settle().then(onfulfilled, onrejected);
+				}
+				// return undefined to indicate that the promise has already resolved and prevent further chaining
+				return undefined as unknown as PagedThenMethod<
+					StacheParams,
+					Result,
+					PageResult,
+					PageFetchReturnData
+				>;
+			},
+			get catch() {
+				return <TResult = never>(
+					onrejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null
+				) => settle().catch(onrejected);
+			},
+			get finally() {
+				return (onfinally?: (() => void) | null) => settle().finally(onfinally);
 			}
 		};
 

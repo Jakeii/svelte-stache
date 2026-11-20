@@ -429,4 +429,91 @@ describe('createPagedStache cache implementation', () => {
 			})
 		);
 	});
+	describe('thenable', () => {
+		it(
+			'should resolve with the paged stache once all pages have loaded',
+			withEffectRoot(async () => {
+				const fetchFn = vi
+					.fn()
+					.mockImplementation((params, { pageIndex, pageSize }) =>
+						Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
+					);
+
+				const { useStache } = createPagedStache({
+					id: 'thenable-success',
+					fetch: fetchFn,
+					pageSize: 10,
+					getData: (response) => response.data,
+					getTotalCount: (response) => response.totalCount
+				});
+
+				const params = $state({ query: 'test' });
+				const stache = useStache(() => ({
+					params,
+					pageParams: { pageOffset: 0, pageCount: 2 }
+				}));
+
+				const result = await stache;
+
+				expect(result).toBe(stache);
+				expect(result.isSuccess).toBe(true);
+				expect(result.data).toHaveLength(20);
+				expect(result.totalCount).toBe(100);
+			})
+		);
+
+		it(
+			'should reject with the error when any page fails',
+			withEffectRoot(async () => {
+				const error = new Error('Page failed');
+				const fetchFn = vi
+					.fn()
+					.mockImplementation((params, { pageIndex, pageSize }) =>
+						pageIndex === 1
+							? Promise.reject(error)
+							: Promise.resolve(createMockPagedResponse(pageIndex, pageSize, 100))
+					);
+
+				const { useStache } = createPagedStache({
+					id: 'thenable-error',
+					fetch: fetchFn,
+					pageSize: 10,
+					getData: (response) => response.data,
+					getTotalCount: (response) => response.totalCount
+				});
+
+				const params = $state({ query: 'test' });
+				const stache = useStache(() => ({
+					params,
+					pageParams: { pageOffset: 0, pageCount: 2 }
+				}));
+
+				await expect(Promise.resolve(stache)).rejects.toBe(error);
+				expect(stache.isError).toBe(true);
+			})
+		);
+
+		it(
+			'should support catch and finally',
+			withEffectRoot(async () => {
+				const error = new Error('Page failed');
+				const fetchFn = vi.fn().mockRejectedValue(error);
+
+				const { useStache } = createPagedStache({
+					id: 'thenable-catch-finally',
+					fetch: fetchFn,
+					pageSize: 10
+				});
+
+				const params = $state({ query: 'test' });
+				const stache = useStache(() => ({ params }));
+
+				const onFinally = vi.fn();
+				const caught = await stache.catch((err) => err).finally(onFinally);
+
+				expect(caught).toBe(error);
+				expect(onFinally).toHaveBeenCalledTimes(1);
+			})
+		);
+	});
 });
