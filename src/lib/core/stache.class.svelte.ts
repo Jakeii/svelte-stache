@@ -409,7 +409,9 @@ class CoreStache<FetchParams, FetchReturnData, InitialData = FetchReturnData> {
 		});
 		Promise.resolve(
 			maybeHydratable(
-				`stache:${this.id}:${this.cacheKey}`,
+				this.pageCacheKey
+					? `stache:${this.id}:${this.cacheKey}:${this.pageCacheKey}`
+					: `stache:${this.id}:${this.cacheKey}`,
 				() =>
 					this.fetchPageParams
 						? (this.fetch as PagedFetchFn<FetchParams, FetchReturnData>)(

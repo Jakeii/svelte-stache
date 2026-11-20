@@ -233,6 +233,17 @@ const createStache = <StacheParams, FetchReturnData>(
 
 		let resolved = false;
 
+		// Settles once the current fetch has finished, rejecting with the fetch error if it failed
+		const settle = () =>
+			stache.promise.then(() => {
+				// mark resolved before returning the (thenable) stache so promise adoption doesn't recurse
+				resolved = true;
+				if (stache.fetchStatus === 'error') {
+					return Promise.reject(stache.error);
+				}
+				return publicStache;
+			});
+
 		const publicStache = {
 			// Access the stache instance reactively because it is a $state
 			get data() {
@@ -268,27 +279,20 @@ const createStache = <StacheParams, FetchReturnData>(
 			invalidate: () => stache.invalidate(),
 			get then(): ThenMethod<StacheParams, FetchReturnData, InitialData> {
 				if (!resolved) {
-					return (onfulfilled, onrejected) =>
-						stache.promise
-							.then(() => {
-								resolved = true;
-								if (stache.fetchStatus === 'error') {
-									return Promise.reject(stache.error);
-								}
-								return publicStache;
-							})
-							.then(onfulfilled, onrejected);
+					return (onfulfilled, onrejected) => settle().then(onfulfilled, onrejected);
 				}
 				// return undefined to indicate that the promise has already resolved and prevent further chaining
 				return undefined as unknown as ThenMethod<StacheParams, FetchReturnData, InitialData>;
 			},
 
 			get catch() {
-				return (onrejected: (reason: unknown) => void) => stache.promise.catch(onrejected);
+				return <TResult = never>(
+					onrejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null
+				) => settle().catch(onrejected);
 			},
 
 			get finally() {
-				return stache.promise.finally(() => publicStache);
+				return (onfinally?: (() => void) | null) => settle().finally(onfinally);
 			}
 		};
 

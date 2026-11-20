@@ -291,4 +291,77 @@ describe('createStache cache implementation', () => {
 			})
 		);
 	});
+	describe('thenable catch and finally', () => {
+		it(
+			'should call catch handler with the fetch error',
+			withEffectRoot(async () => {
+				const error = new Error('Network error');
+				const fetchFn = vi.fn().mockRejectedValue(error);
+				const { useStache } = createStache({
+					id: 'catch-handler-test',
+					fetch: fetchFn
+				});
+
+				const params = $state('param');
+				const stache = useStache(() => ({ params }));
+
+				const onRejected = vi.fn((err: unknown) => err);
+				const caught = await stache.catch(onRejected);
+
+				expect(onRejected).toHaveBeenCalledTimes(1);
+				expect(caught).toBe(error);
+				expect(stache.isError).toBe(true);
+			})
+		);
+
+		it(
+			'should resolve catch with the stache when the fetch succeeds',
+			withEffectRoot(async () => {
+				const fetchFn = vi.fn().mockResolvedValue({ data: 'ok' });
+				const { useStache } = createStache({
+					id: 'catch-success-test',
+					fetch: fetchFn
+				});
+
+				const params = $state('param');
+				const stache = useStache(() => ({ params }));
+
+				const onRejected = vi.fn();
+				const result = await stache.catch(onRejected);
+
+				expect(onRejected).not.toHaveBeenCalled();
+				expect(result).toBe(stache);
+				expect(stache.data).toEqual({ data: 'ok' });
+			})
+		);
+
+		it(
+			'should call finally handler as a function on success and on error',
+			withEffectRoot(async () => {
+				const error = new Error('Network error');
+				const { useStache: useOk } = createStache({
+					id: 'finally-success-test',
+					fetch: vi.fn().mockResolvedValue('ok')
+				});
+				const { useStache: useFail } = createStache({
+					id: 'finally-error-test',
+					fetch: vi.fn().mockRejectedValue(error)
+				});
+
+				const params = $state('param');
+				const ok = useOk(() => ({ params }));
+				const fail = useFail(() => ({ params }));
+
+				const onFinallyOk = vi.fn();
+				const onFinallyFail = vi.fn();
+
+				const result = await ok.finally(onFinallyOk);
+				await expect(fail.finally(onFinallyFail)).rejects.toBe(error);
+
+				expect(result).toBe(ok);
+				expect(onFinallyOk).toHaveBeenCalledTimes(1);
+				expect(onFinallyFail).toHaveBeenCalledTimes(1);
+			})
+		);
+	});
 });

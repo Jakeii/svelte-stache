@@ -128,6 +128,7 @@ const getOrCreatePageStaches = <
 					refetchOnStale: createOptions.refetchOnStale,
 					refetchOnWindowFocus: createOptions.refetchOnWindowFocus,
 					globalCache: createOptions.globalCache,
+					isHydratable: createOptions.isHydratable,
 					onSuccess: createOptions.onSuccess,
 					onError: createOptions.onError
 				};
