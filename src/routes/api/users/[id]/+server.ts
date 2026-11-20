@@ -1,4 +1,4 @@
-import { json, error } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 // Mock user data - same as parent route
@@ -67,10 +67,10 @@ export const GET: RequestHandler = async ({ params }) => {
 	const user = users.find((u) => u.id === params.id);
 
 	if (!user) {
-		error(404, { message: 'User not found' });
+		error(404, 'User not found');
 	}
 
-	return json(user);
+	return Response.json(user);
 };
 
 export const PATCH: RequestHandler = async ({ params, request }) => {
@@ -80,14 +80,14 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	const userIndex = users.findIndex((u) => u.id === params.id);
 
 	if (userIndex === -1) {
-		error(404, { message: 'User not found' });
+		error(404, 'User not found');
 	}
 
 	const data = await request.json();
 	const updatedUser = { ...users[userIndex], ...data };
 	users[userIndex] = updatedUser;
 
-	return json(updatedUser);
+	return Response.json(updatedUser);
 };
 
 export const DELETE: RequestHandler = async ({ params }) => {
@@ -97,7 +97,7 @@ export const DELETE: RequestHandler = async ({ params }) => {
 	const userIndex = users.findIndex((u) => u.id === params.id);
 
 	if (userIndex === -1) {
-		error(404, { message: 'User not found' });
+		error(404, 'User not found');
 	}
 
 	users.splice(userIndex, 1);
