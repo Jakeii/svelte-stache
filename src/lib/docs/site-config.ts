@@ -9,17 +9,9 @@ export const siteConfig = defineSiteConfig({
 		width: '1200'
 	},
 	description:
-		'A state management library for Svelte 5 inspired by TanStack Query, using runes for reactive data fetching and caching.',
+		'A state management library for Svelte 5, using runes for reactive data fetching and caching.',
 	author: 'Jake',
-	keywords: [
-		'svelte',
-		'svelte 5',
-		'state management',
-		'data fetching',
-		'cache',
-		'tanstack query',
-		'runes'
-	],
+	keywords: ['svelte', 'svelte 5', 'state management', 'data fetching', 'cache', 'runes'],
 	license: {
 		name: 'MIT',
 		url: 'https://github.com/jake/svelte-stache/blob/main/LICENSE'

@@ -1,8 +1,12 @@
+<p align="center">
+	<img src="static/stache_logo.svg" alt="Stache Logo" width="128" height="128" />
+</p>
+
 # Stache
 
-A state management library for Svelte 5 inspired by [TanStack Query](https://tanstack.com/query), built with Svelte runes for reactive data fetching, caching, and mutations.
+A state management library for Svelte 5, built with Svelte runes for reactive data fetching, caching, and mutations.
 
-Supports experimental Svelte 5 features like top-level await and hydration, providing a seamless experience across client and server rendering.
+Supports experimental Svelte 5 features like top-level await and hydration, for a seamless experience across client and server rendering.
 
 Can be used with or instead of sveltekit remote functions, making it flexible for various data fetching strategies.
 
