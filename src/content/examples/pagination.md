@@ -5,7 +5,7 @@ section: Examples
 ---
 
 <script>
-  import PaginationDemo from '$lib/docs/examples/PaginationDemo.svelte';
+  import PaginationDemo from '#lib/docs/examples/PaginationDemo.svelte';
 </script>
 
 # Pagination Example
@@ -75,7 +75,7 @@ export const { useStache: getPosts, invalidate: invalidatePosts } = createPagedS
 
 ```svelte title="PostList.svelte"
 <script lang="ts">
-	import { getPosts } from '$lib/queries/posts';
+	import { getPosts } from '#lib/queries/posts';
 
 	let category = $state<string>('all');
 	let pageCount = $state(1);

@@ -1,4 +1,4 @@
-import { json, error } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 // We'd normally import from a shared data module
@@ -41,10 +41,10 @@ export const GET: RequestHandler = async ({ params }) => {
 	const post = posts.find((p) => p.id === params.id);
 
 	if (!post) {
-		error(404, { message: 'Post not found' });
+		error(404, 'Post not found');
 	}
 
-	return json(post);
+	return Response.json(post);
 };
 
 export const PATCH: RequestHandler = async ({ params, request }) => {
@@ -54,14 +54,14 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	const postIndex = posts.findIndex((p) => p.id === params.id);
 
 	if (postIndex === -1) {
-		error(404, { message: 'Post not found' });
+		error(404, 'Post not found');
 	}
 
 	const data = await request.json();
 	const updatedPost = { ...posts[postIndex], ...data };
 	posts[postIndex] = updatedPost;
 
-	return json(updatedPost);
+	return Response.json(updatedPost);
 };
 
 export const DELETE: RequestHandler = async ({ params }) => {
@@ -71,7 +71,7 @@ export const DELETE: RequestHandler = async ({ params }) => {
 	const postIndex = posts.findIndex((p) => p.id === params.id);
 
 	if (postIndex === -1) {
-		error(404, { message: 'Post not found' });
+		error(404, 'Post not found');
 	}
 
 	posts.splice(postIndex, 1);

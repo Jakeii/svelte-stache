@@ -5,7 +5,7 @@ section: Examples
 ---
 
 <script>
-  import SSRFetchDemo from '$lib/docs/examples/SSRFetchDemo.svelte';
+  import SSRFetchDemo from '#lib/docs/examples/SSRFetchDemo.svelte';
 </script>
 
 # SSR Fetch Example
@@ -72,7 +72,7 @@ export const { useStache: getUser, invalidate: invalidateUser } = createStache({
 
 ```svelte title="UserProfile.svelte"
 <script lang="ts">
-	import { getUser } from '$lib/queries/user';
+	import { getUser } from '#lib/queries/user';
 
 	let userId = $state('user-1');
 

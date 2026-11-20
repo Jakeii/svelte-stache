@@ -5,7 +5,7 @@ section: Examples
 ---
 
 <script>
-  import MutationsDemo from '$lib/docs/examples/MutationsDemo.svelte';
+  import MutationsDemo from '#lib/docs/examples/MutationsDemo.svelte';
 </script>
 
 # Mutations Example
@@ -24,7 +24,7 @@ Create a mutation for creating posts:
 
 ```typescript title="src/lib/mutations/post.ts"
 import { createMutation } from 'svelte-stache';
-import { invalidatePosts } from '$lib/queries/posts';
+import { invalidatePosts } from '#lib/queries/posts';
 
 interface CreatePostInput {
 	title: string;
@@ -69,7 +69,7 @@ export const useCreatePost = createMutation({
 
 ```svelte title="CreatePostForm.svelte"
 <script lang="ts">
-	import { useCreatePost } from '$lib/mutations/post';
+	import { useCreatePost } from '#lib/mutations/post';
 
 	const mutation = useCreatePost({
 		onSuccess: ({ result }) => {
