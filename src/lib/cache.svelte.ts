@@ -1,4 +1,3 @@
-/* eslint-disable svelte/prefer-svelte-reactivity -- plain Maps are intentional; reactivity is exposed via `version` */
 import { createContext } from 'svelte';
 import type { CoreStache } from './core/stache.class.svelte';
 
@@ -16,14 +15,15 @@ type PagedStacheGroup = Map<string, PagedStache<any, any>>;
  * A cache for staches, organized by stache ID and hashed parameters. Provides methods for retrieving, setting, and invalidating staches.
  */
 class StacheCache {
+	/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 	readonly stacheCache: Map<string, StacheGroup> = new Map();
 
+	/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 	readonly pagedStacheCache: Map<string, PagedStacheGroup> = new Map();
 
 	/**
-	 * Incremented whenever an entry is added to or removed from either cache.
-	 * Read it inside an effect or derived to re-run when the cache structure changes,
-	 * without making the cache maps themselves reactive.
+	 * This represents the version of the cache. Incremented whenever an entry is added to or removed from either cache.
+	 * This allows consumers to track changes to the cache without making the cache maps themselves reactive.
 	 */
 	version = $state(0);
 
@@ -41,6 +41,7 @@ class StacheCache {
 	): void {
 		let stacheGroup = this.stacheCache.get(id);
 		if (!stacheGroup) {
+			/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 			stacheGroup = new Map<string, CoreStache<FetchParams, FetchReturnData>>();
 			this.stacheCache.set(id, stacheGroup);
 		}
@@ -101,11 +102,13 @@ class StacheCache {
 	): void {
 		let stacheGroup = this.pagedStacheCache.get(id);
 		if (!stacheGroup) {
+			/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 			stacheGroup = new Map<string, PagedStache<FetchParams, FetchReturnData>>();
 			this.pagedStacheCache.set(id, stacheGroup);
 		}
 		let pageCache = stacheGroup.get(stacheKey);
 		if (!pageCache) {
+			/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 			pageCache = new Map<string, CoreStache<FetchParams, FetchReturnData>>();
 			stacheGroup.set(stacheKey, pageCache);
 		}
