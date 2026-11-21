@@ -1,5 +1,12 @@
 # svelte-stache
 
+## 1.4.1
+
+### Patch Changes
+
+- 8c95149: Fix devtools visual flash bug and issue with tracking the cache
+- 8c95149: Fix staches using the wrong cache when a page has more than one `StacheProvider`. Factory `invalidate` now applies to every provider on the page, and does nothing (with a warning) during SSR
+
 ## 1.4.0
 
 ### Minor Changes
