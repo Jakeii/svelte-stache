@@ -42,13 +42,15 @@ Stache stores its cache in Svelte context for SSR safety. Wrap your root layout 
 
 This creates a `StacheCache` instance that all stache factories share. Without this wrapper, `createStache` and `createPagedStache` will fail to find the cache context.
 
+Because the cache comes from context, `useStache` must be called during component initialisation: at the top level of a component's `<script>`, or in a function called from there. Calling it from an event handler or `onMount` throws Svelte's `lifecycle_outside_component` error. See the [Svelte Context guide](/docs/guides/context) for patterns that work.
+
 ## Your First Query
 
 Let's create a simple query that fetches user data from an API.
 
 ### 1. Create a Stache Definition
 
-First, define your query using `createStache`. This is typically done in a shared module:
+First, define your query using `createStache`. This is typically done in a shared module, so any component can import the query and its `invalidate` function. The fetch logic, options and cache key are written once, here:
 
 ```typescript title="src/lib/queries/user.ts"
 import { createStache } from 'svelte-stache';

@@ -8,17 +8,92 @@ A state management library for Svelte 5, built with Svelte runes for reactive da
 
 Supports experimental Svelte 5 features like top-level await and hydration, for a seamless experience across client and server rendering.
 
-Can be used with or instead of sveltekit remote functions, making it flexible for various data fetching strategies.
+Use it **instead of** SvelteKit remote functions, or **with** them to add more controlled client-side caching, pagination and mutation state on top.
 
 ## Features
 
+- **Define Once, Use Anywhere** - A query is a value you import, with its own `useStache` and `invalidate`. No cache keys to repeat or remember
 - **Automatic Caching** - Same parameters reuse cached data
 - **Smart Cleanup** - Unused data auto-removed after configurable delay when no longer referenced
 - **Stale Management** - Configurable stale times with auto-refetch
 - **Pagination Support** - Built-in multi-page fetching and aggregation
-- **Mutations** - Handle data modifications with lifecycle hooks
+- **Mutations** - Handle data modifications with status, retries and lifecycle hooks
 - **Window Focus Refetch** - Optionally refresh stale data on focus
+- **SSR Hydration** - Await on the server, reuse the result on the client without refetching
 - **TypeScript** - Full type safety and inference
+
+## Define Once, Use Anywhere
+
+You define a query once with `createStache`. It gives you back the functions you need to work with it, ready to export and import wherever they're needed:
+
+```typescript
+// src/lib/queries/user.ts
+import { createStache } from 'svelte-stache';
+
+export const { useStache: useUser, invalidate: invalidateUser } = createStache({
+	id: 'user',
+	fetch: (userId: string) => api.getUser(userId),
+	staleTime: 1000 * 60
+});
+```
+
+Any component can then use the query by importing it. The fetch function, options and cache key all stay in the definition, so call sites can't drift apart:
+
+```svelte
+<script lang="ts">
+	import { useUser } from '$lib/queries/user';
+
+	const user = useUser(() => ({ params: userId }));
+</script>
+```
+
+Invalidating works the same way. Import `invalidateUser` and call it, with no key to look up or rebuild:
+
+```typescript
+invalidateUser('user-123'); // one user
+invalidateUser(); // every cached user
+```
+
+Because these are plain functions, TypeScript checks the params at every call site. Renaming or moving a query is a normal refactor, and "find references" shows everywhere it's used.
+
+## Stache vs Remote Functions
+
+Stache does much of what SvelteKit [remote functions](https://svelte.dev/docs/kit/remote-functions) do on the client, and more:
+
+| Feature                                           | Remote functions         | Stache                                 |
+| ------------------------------------------------- | ------------------------ | -------------------------------------- |
+| Deduplicate identical requests                    | ✅                       | ✅                                     |
+| `await` in components                             | ✅                       | ✅                                     |
+| SSR hydration without a second fetch              | ✅                       | ✅ `isHydratable`                      |
+| Keep data after unmount (instant back-navigation) | ❌                       | ✅ `cleanupTime`                       |
+| Stale time, refetch on focus / when stale         | ❌                       | ✅ `staleTime`, `refetchOnWindowFocus` |
+| Retries for failed fetches                        | ❌                       | ✅ `retries`                           |
+| Pagination with per-page caching                  | ❌                       | ✅ `createPagedStache`                 |
+| Mutation status, retries and lifecycle hooks      | ❌                       | ✅ `createMutation`                    |
+| Invalidate every cached variant at once           | ❌                       | ✅ `invalidate()`                      |
+| Cache inspection devtools                         | ❌                       | ✅                                     |
+| Any backend, with or without SvelteKit            | ❌ your SvelteKit server | ✅                                     |
+
+They also work well together. A remote `query` or `command` can be used directly as a stache's `fetch` or `mutationFn`:
+
+```typescript
+import { createStache, createMutation } from 'svelte-stache';
+import { getPost, likePost } from './posts.remote';
+
+export const { useStache: usePost, invalidate: invalidatePost } = createStache({
+	id: 'post',
+	fetch: (slug: string) => getPost(slug), // remote query
+	staleTime: 1000 * 60
+});
+
+export const useLikePost = createMutation({
+	mutationFn: (slug: string) => likePost(slug), // remote command
+	retries: 2,
+	onSuccess: ({ params }) => invalidatePost(params)
+});
+```
+
+Remote functions still do things Stache doesn't, like forms, `query.batch`, `query.live`, single-flight mutations, and the ability to perform server-side only operations. See the [Remote Functions guide](https://svelte-stache.dev/docs/guides/remote-functions) for the full comparison.
 
 ## Installation
 
@@ -31,6 +106,44 @@ pnpm add svelte-stache
 Requires Svelte 5.0.0 or higher.
 
 ## Quick Start
+
+### Setup
+
+Stache keeps its cache in Svelte context, so each server request gets its own cache. Wrap your root layout in `StacheProvider`:
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script lang="ts">
+	import StacheProvider from 'svelte-stache/StacheProvider.svelte';
+
+	let { children } = $props();
+</script>
+
+<StacheProvider>
+	{@render children()}
+</StacheProvider>
+```
+
+Because the cache comes from context, `useStache` must be called during component initialisation: at the top level of a component's `<script>`, or in a function called from there. Calling it later, for example in an event handler or `onMount`, throws Svelte's `lifecycle_outside_component` error. `createStache` and the `invalidate` function it returns work anywhere.
+
+To group queries in a module, wrap them in a function and call it from a component. For SSR, return the stache from that function and `await` it in the component:
+
+```typescript
+// src/lib/queries/profile.ts
+export const useProfileUser = (getUserId: () => string) => useUser(() => ({ params: getUserId() }));
+```
+
+```svelte
+<script lang="ts">
+	import { useProfileUser } from '$lib/queries/profile';
+
+	let { userId } = $props();
+
+	const user = await useProfileUser(() => userId);
+</script>
+```
+
+See the [Svelte Context guide](https://svelte-stache.dev/docs/guides/context) for more.
 
 ### Basic Query
 

@@ -81,6 +81,8 @@ Then `await` the result of `useStache` in your component:
 
 `useStache` returns a thenable, so `await` resolves once the first fetch completes. On the server, rendering waits for it, so `user.data` is already set when the HTML is generated.
 
+The `await` has to happen in a component's `<script>`. If you create the stache in a module function, return it unawaited and await it in the component. See the [Svelte Context guide](/docs/guides/context#awaiting-for-ssr).
+
 After the first await, `user` behaves like any other stache. When `userId` changes, the new fetch runs on the client and `isLoading`, `data` and `cacheStatus` update reactively.
 
 ## How Hydration Works
