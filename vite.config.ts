@@ -9,6 +9,9 @@ import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
+	ssr: {
+		target: 'webworker'
+	},
 	server: {
 		fs: {
 			allow: [resolve(import.meta.dirname, './.velite')]
