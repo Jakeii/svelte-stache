@@ -125,11 +125,13 @@ A function to use the paginated query in a component.
 
 ### `invalidate`
 
-A function to manually invalidate cached pages. Returns a `Promise<void>` that resolves when all invalidated fetches complete.
+A function to manually invalidate cached pages. It returns a `Promise<void>` that resolves as soon as the refetches have started, not when they finish. To wait for the new data, `await` the paged stache returned by `useStache`.
 
 - **`invalidate()`** — invalidates all pages across every cached param variant
 - **`invalidate(params)`** — invalidates all pages for the given params
 - **`invalidate(params, pageArgs)`** — invalidates a specific page for the given params, where `pageArgs` is `{ pageIndex: number; pageSize: number }`
+
+`invalidate` can be called from anywhere in the browser. During SSR it does nothing and logs a warning. See the [Svelte Context guide](/docs/guides/context#not-during-ssr).
 
 ## useStache Options
 

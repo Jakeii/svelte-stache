@@ -182,6 +182,8 @@ invalidateUser('user-123');
 invalidateUser();
 ```
 
+`invalidate` can be called from anywhere in the browser, such as event handlers or mutation callbacks. During SSR it does nothing and logs a warning. See the [Svelte Context guide](/docs/guides/context#not-during-ssr).
+
 ## useStache Options
 
 When calling `useStache`, pass an options function that returns an object. This allows Svelte's reactivity system to track changes to the options.

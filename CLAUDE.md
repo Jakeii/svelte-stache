@@ -50,6 +50,8 @@ Both `createStache` and `createPagedStache` return an `invalidate` function:
 
 `createPagedStache`'s `invalidate` also accepts an optional second `pageArgs` parameter to target a specific page.
 
+Factories hold no reference to a cache. The factory `invalidate` dispatches a `stache:invalidate` event on `window` (`dispatchInvalidation` in `cache.ts`), and each `StacheProvider` listens in a browser-only `$effect` (`listenForInvalidation`) and applies it to its own cache. With a `globalCache` option, `invalidate` applies to that cache directly. During SSR it warns and does nothing. Tests that call `initStacheCache()` without a provider must attach `listenForInvalidation` themselves for the factory `invalidate` to work.
+
 Types exported: `Mutation`, `UseStacheFn`, `CreateStacheFn`, `CreatePagedStacheFn`, `MutationFn`, `Stache`
 
 Library also exports a `./devtools` entrypoint: `StacheDevtools`, `StacheDevtoolsPanel`, `JsonViewer`, `StatusBadge`

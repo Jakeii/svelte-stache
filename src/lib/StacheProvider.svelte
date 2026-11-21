@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { initStacheCache } from './cache.svelte';
+	import { initStacheCache, listenForInvalidation } from './cache.svelte';
 
 	let { children } = $props();
 
-	initStacheCache();
+	const cache = initStacheCache();
+
+	$effect(() => listenForInvalidation(cache));
 </script>
 
 {@render children()}

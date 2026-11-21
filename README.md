@@ -124,7 +124,7 @@ Stache keeps its cache in Svelte context, so each server request gets its own ca
 </StacheProvider>
 ```
 
-Because the cache comes from context, `useStache` must be called during component initialisation: at the top level of a component's `<script>`, or in a function called from there. Calling it later, for example in an event handler or `onMount`, throws Svelte's `lifecycle_outside_component` error. `createStache` and the `invalidate` function it returns work anywhere.
+Because the cache comes from context, `useStache` must be called during component initialisation: at the top level of a component's `<script>`, or in a function called from there. Calling it later, for example in an event handler or `onMount`, throws Svelte's `lifecycle_outside_component` error. `createStache` works anywhere, and the `invalidate` function it returns works anywhere in the browser. During SSR, `invalidate` does nothing and logs a warning.
 
 To group queries in a module, wrap them in a function and call it from a component. For SSR, return the stache from that function and `await` it in the component:
 

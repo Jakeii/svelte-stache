@@ -180,8 +180,43 @@ class StacheCache {
 
 const [getStacheCacheContext, setStacheCacheContext] = createContext<StacheCache>();
 
-const initStacheCache = (): void => {
-	setStacheCacheContext(new StacheCache());
+const initStacheCache = (): StacheCache => {
+	const cache = new StacheCache();
+	setStacheCacheContext(cache);
+	return cache;
+};
+
+const INVALIDATE_EVENT = 'stache:invalidate';
+
+type InvalidateDetail =
+	| { kind: 'stache'; id: string; stacheKey?: string }
+	| { kind: 'paged'; id: string; stacheKey?: string; pageKey?: string };
+
+const applyInvalidation = (cache: StacheCache, detail: InvalidateDetail): void => {
+	if (detail.kind === 'stache') {
+		cache.invalidateStache(detail.id, detail.stacheKey);
+	} else {
+		cache.invalidatePagedStache(detail.id, detail.stacheKey, detail.pageKey);
+	}
+};
+
+const dispatchInvalidation = (detail: InvalidateDetail): void => {
+	window.dispatchEvent(new CustomEvent<InvalidateDetail>(INVALIDATE_EVENT, { detail }));
+};
+
+/**
+ * Applies factory-level invalidations to the given cache. Browser only.
+ *
+ * @returns A function that stops listening.
+ */
+const listenForInvalidation = (cache: StacheCache): (() => void) => {
+	const listener = (event: Event) => {
+		if (event instanceof CustomEvent) {
+			applyInvalidation(cache, event.detail);
+		}
+	};
+	window.addEventListener(INVALIDATE_EVENT, listener);
+	return () => window.removeEventListener(INVALIDATE_EVENT, listener);
 };
 
 const getStacheCache = (): StacheCache => {
@@ -204,5 +239,12 @@ const getStacheCache = (): StacheCache => {
 	}
 };
 
-export { StacheCache, getStacheCache, initStacheCache };
-export type { StacheGroup, PagedStacheGroup, PagedStache };
+export {
+	StacheCache,
+	getStacheCache,
+	initStacheCache,
+	applyInvalidation,
+	dispatchInvalidation,
+	listenForInvalidation
+};
+export type { StacheGroup, PagedStacheGroup, PagedStache, InvalidateDetail };
