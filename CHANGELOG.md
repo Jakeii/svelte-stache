@@ -1,5 +1,15 @@
 # svelte-stache
 
+## 1.4.0
+
+### Minor Changes
+
+- a9fa00c: Paged staches now await-able for ssr and hydration
+
+### Patch Changes
+
+- a9fa00c: Add missing thenable methods to regular stache
+
 ## 1.3.0
 
 ### Minor Changes
