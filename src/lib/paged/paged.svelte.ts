@@ -1,6 +1,6 @@
 import { SvelteDate } from 'svelte/reactivity';
 import { tick, untrack } from 'svelte';
-import { getStacheCache, StacheCache } from '../cache';
+import { getStacheCache, StacheCache } from '../cache.svelte';
 import {
 	CoreStache,
 	type StacheConstructorOptions,

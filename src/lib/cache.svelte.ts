@@ -15,9 +15,17 @@ type PagedStacheGroup = Map<string, PagedStache<any, any>>;
  * A cache for staches, organized by stache ID and hashed parameters. Provides methods for retrieving, setting, and invalidating staches.
  */
 class StacheCache {
+	/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 	readonly stacheCache: Map<string, StacheGroup> = new Map();
 
+	/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 	readonly pagedStacheCache: Map<string, PagedStacheGroup> = new Map();
+
+	/**
+	 * This represents the version of the cache. Incremented whenever an entry is added to or removed from either cache.
+	 * This allows consumers to track changes to the cache without making the cache maps themselves reactive.
+	 */
+	version = $state(0);
 
 	getStache<FetchParams, FetchReturnData>(
 		id: string,
@@ -33,19 +41,21 @@ class StacheCache {
 	): void {
 		let stacheGroup = this.stacheCache.get(id);
 		if (!stacheGroup) {
+			/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 			stacheGroup = new Map<string, CoreStache<FetchParams, FetchReturnData>>();
 			this.stacheCache.set(id, stacheGroup);
 		}
 		stacheGroup.set(hashedParamsKey, stache);
+		this.version++;
 	}
 
 	deleteStache(id: string, hashedParamsKey: string): void {
 		const stacheGroup = this.stacheCache.get(id);
-		if (stacheGroup) {
-			stacheGroup.delete(hashedParamsKey);
+		if (stacheGroup?.delete(hashedParamsKey)) {
 			if (stacheGroup.size === 0) {
 				this.stacheCache.delete(id);
 			}
+			this.version++;
 		}
 	}
 
@@ -92,15 +102,18 @@ class StacheCache {
 	): void {
 		let stacheGroup = this.pagedStacheCache.get(id);
 		if (!stacheGroup) {
+			/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 			stacheGroup = new Map<string, PagedStache<FetchParams, FetchReturnData>>();
 			this.pagedStacheCache.set(id, stacheGroup);
 		}
 		let pageCache = stacheGroup.get(stacheKey);
 		if (!pageCache) {
+			/* eslint-disable-next-line svelte/prefer-svelte-reactivity -- intentional use of plain Map for cache */
 			pageCache = new Map<string, CoreStache<FetchParams, FetchReturnData>>();
 			stacheGroup.set(stacheKey, pageCache);
 		}
 		pageCache.set(pageKey, stache);
+		this.version++;
 	}
 
 	getPagedStache<FetchParams, FetchReturnData>(
@@ -117,14 +130,14 @@ class StacheCache {
 	deletePagedStachePage(id: string, stacheKey: string, pageKey: string): void {
 		const stacheGroup = this.pagedStacheCache.get(id);
 		const pageCache = stacheGroup?.get(stacheKey);
-		if (pageCache) {
-			pageCache.delete(pageKey);
+		if (pageCache?.delete(pageKey)) {
 			if (pageCache.size === 0) {
 				stacheGroup?.delete(stacheKey);
 				if (stacheGroup?.size === 0) {
 					this.pagedStacheCache.delete(id);
 				}
 			}
+			this.version++;
 		}
 	}
 
@@ -161,6 +174,7 @@ class StacheCache {
 			stacheGroup.clear();
 		});
 		this.pagedStacheCache.clear();
+		this.version++;
 	}
 }
 

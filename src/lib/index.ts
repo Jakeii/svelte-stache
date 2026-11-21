@@ -4,13 +4,13 @@ export { createMutation } from './mutation/mutation.svelte';
 
 export { default as StacheProvider } from './StacheProvider.svelte';
 
-export { getStacheCache, initStacheCache } from './cache';
+export { getStacheCache, initStacheCache } from './cache.svelte';
 
 export type { Mutation } from './mutation/mutation.class.svelte';
 export type { Stache } from './stache/stache.svelte';
 export type { PagedStache } from './paged/paged.svelte';
 
-export type { StacheCache } from './cache';
+export type { StacheCache } from './cache.svelte';
 
 export type { UseStacheFn } from './stache/stache.svelte';
 export type { CreateStacheFn } from './stache/stache.svelte';

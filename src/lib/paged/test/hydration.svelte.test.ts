@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPagedStache } from '../paged.svelte';
-import { StacheCache } from '../../cache';
+import { StacheCache } from '../../cache.svelte';
 
 const hydratableMock = vi.hoisted(() =>
 	vi.fn(<T>(key: string, fetcher: () => Promise<T>) => Promise.resolve(fetcher()))

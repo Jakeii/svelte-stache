@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getStacheCache } from '../cache';
+	import { getStacheCache } from '../cache.svelte';
 	import StacheItem from './StacheItem.svelte';
 	import PagedStacheItem from './PagedStacheItem.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -43,8 +43,8 @@
 	};
 
 	const stacheCache = getStacheCache();
-	const globalCache = stacheCache.stacheCache;
-	const pagedGlobalCache = stacheCache.pagedStacheCache;
+	// const globalCache = stacheCache.stacheCache;
+	// const pagedGlobalCache = stacheCache.pagedStacheCache;
 
 	let activeTab = $state<'staches' | 'paged'>('staches');
 	let searchFilter = $state('');
@@ -58,6 +58,16 @@
 		}
 	};
 
+	// Snapshots of the (non-reactive) cache maps, re-taken whenever the cache version changes
+	const globalCache = $derived.by(() => {
+		void stacheCache.version;
+		return $state.snapshot(stacheCache.stacheCache);
+	});
+
+	const pagedGlobalCache = $derived.by(() => {
+		void stacheCache.version;
+		return $state.snapshot(stacheCache.pagedStacheCache);
+	});
 	// Filtered stache IDs
 	const filteredStacheIds = $derived(
 		[...globalCache.keys()].filter((id) => id.toLowerCase().includes(searchFilter.toLowerCase()))

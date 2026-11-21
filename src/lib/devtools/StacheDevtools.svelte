@@ -4,8 +4,6 @@
 	type ButtonPosition = 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
 
 	interface Props {
-		/** Initial open state of the devtools panel */
-		initialOpen?: boolean;
 		/** Position of the toggle button */
 		buttonPosition?: ButtonPosition;
 		/** Custom z-index for the devtools */
@@ -21,7 +19,6 @@
 	}
 
 	let {
-		initialOpen = false,
 		buttonPosition = 'bottom-right',
 		zIndex = 99999,
 		panelHeight: initialPanelHeight = 400,
@@ -39,12 +36,12 @@
 
 	// Initialize from localStorage if available
 	const getInitialOpen = (): boolean => {
-		if (!isBrowser) return initialOpen;
+		if (!isBrowser) return false;
 		try {
 			const stored = localStorage.getItem(STORAGE_KEY_OPEN);
-			return stored !== null ? stored === 'true' : initialOpen;
+			return stored !== null ? stored === 'true' : false;
 		} catch {
-			return initialOpen;
+			return false;
 		}
 	};
 

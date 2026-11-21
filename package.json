@@ -1,6 +1,7 @@
 {
 	"name": "svelte-stache",
 	"version": "1.4.0",
+	"license": "MIT",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "pnpm docs:build && vite build && pnpm prepack",

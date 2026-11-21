@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { PagedStacheGroup } from '../cache';
-	import { getStacheCache } from '../cache';
+	import type { PagedStacheGroup } from '../cache.svelte';
+	import { getStacheCache } from '../cache.svelte';
 	import StatusBadge from './StatusBadge.svelte';
 	import StacheItem from './StacheItem.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -27,69 +27,44 @@
 		}
 	};
 
-	// Count total pages across all param combinations
-	const totalPages = $derived(() => {
-		let count = 0;
-		for (const pageCache of pagedCache.values()) {
-			count += pageCache.size;
-		}
-		return count;
+	const stacheCache = getStacheCache();
+
+	// Snapshot of the (non-reactive) paged cache, re-taken whenever the cache version changes
+	const paramGroups = $derived.by(() => {
+		void stacheCache.version;
+		return [...pagedCache].map(([paramsKey, pageCache]) => ({ paramsKey, pages: [...pageCache] }));
 	});
+
+	const allStaches = $derived(
+		paramGroups.flatMap(({ pages }) => pages.map(([, stache]) => stache))
+	);
+
+	// Count total pages across all param combinations
+	const totalPages = $derived(allStaches.length);
 
 	// Count loading pages
-	const loadingPages = $derived(() => {
-		let count = 0;
-		for (const pageCache of pagedCache.values()) {
-			for (const stache of pageCache.values()) {
-				if (stache.fetchStatus === 'loading') count++;
-			}
-		}
-		return count;
-	});
+	const loadingPages = $derived(
+		allStaches.filter((stache) => stache.fetchStatus === 'loading').length
+	);
 
 	// Get overall status (loading if any page is loading, error if any has error, success otherwise)
-	const overallStatus = $derived((): 'idle' | 'loading' | 'error' | 'success' => {
-		let hasError = false;
-		let hasLoading = false;
-		let hasSuccess = false;
-
-		for (const pageCache of pagedCache.values()) {
-			for (const stache of pageCache.values()) {
-				if (stache.fetchStatus === 'loading') hasLoading = true;
-				if (stache.fetchStatus === 'error') hasError = true;
-				if (stache.fetchStatus === 'success') hasSuccess = true;
-			}
-		}
-
-		if (hasLoading) return 'loading';
-		if (hasError) return 'error';
-		if (hasSuccess) return 'success';
+	const overallStatus = $derived.by((): 'idle' | 'loading' | 'error' | 'success' => {
+		if (allStaches.some((stache) => stache.fetchStatus === 'loading')) return 'loading';
+		if (allStaches.some((stache) => stache.fetchStatus === 'error')) return 'error';
+		if (allStaches.some((stache) => stache.fetchStatus === 'success')) return 'success';
 		return 'idle';
 	});
 
 	// Get overall cache status (stale if any page is stale)
-	const overallCacheStatus = $derived((): 'fresh' | 'stale' => {
-		for (const pageCache of pagedCache.values()) {
-			for (const stache of pageCache.values()) {
-				if (stache.cacheStatus === 'stale') return 'stale';
-			}
-		}
-		return 'fresh';
-	});
+	const overallCacheStatus = $derived<'fresh' | 'stale'>(
+		allStaches.some((stache) => stache.cacheStatus === 'stale') ? 'stale' : 'fresh'
+	);
 
 	// Total references across all pages
-	const totalRefs = $derived(() => {
-		let count = 0;
-		for (const pageCache of pagedCache.values()) {
-			for (const stache of pageCache.values()) {
-				count += stache.referenceCount;
-			}
-		}
-		return count;
-	});
+	const totalRefs = $derived(allStaches.reduce((sum, stache) => sum + stache.referenceCount, 0));
 
 	const handleInvalidateAll = () => {
-		getStacheCache().invalidatePagedStache(id);
+		stacheCache.invalidatePagedStache(id);
 	};
 </script>
 
@@ -100,7 +75,7 @@
 				<path d="M4 3l4 3-4 3z" />
 			</svg>
 		</span>
-		<StatusBadge fetchStatus={overallStatus()} cacheStatus={overallCacheStatus()} />
+		<StatusBadge fetchStatus={overallStatus} cacheStatus={overallCacheStatus} />
 		<span class="paged-id">{id}</span>
 		<span class="paged-stats">
 			<span class="stat" title="Total pages">
@@ -116,12 +91,12 @@
 					<line x1="8" y1="21" x2="16" y2="21"></line>
 					<line x1="12" y1="17" x2="12" y2="21"></line>
 				</svg>
-				{totalPages()}
+				{totalPages}
 			</span>
-			{#if loadingPages() > 0}
+			{#if loadingPages > 0}
 				<span class="stat loading" title="Loading pages">
 					<span class="mini-spinner"></span>
-					{loadingPages()}
+					{loadingPages}
 				</span>
 			{/if}
 			<span class="stat" title="Total references">
@@ -136,14 +111,14 @@
 					<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
 					<circle cx="9" cy="7" r="4"></circle>
 				</svg>
-				{totalRefs()}
+				{totalRefs}
 			</span>
 		</span>
 	</button>
 
 	{#if expanded}
 		<div class="paged-details">
-			{#each [...pagedCache.entries()] as [paramsKey, pageCache] (paramsKey)}
+			{#each paramGroups as { paramsKey, pages } (paramsKey)}
 				<div class="params-group">
 					<button
 						class="params-header"
@@ -158,12 +133,12 @@
 						<span class="params-key" title={paramsKey}>
 							{paramsKey === 'no-params' ? '(no params)' : paramsKey}
 						</span>
-						<span class="page-count">{pageCache.size} pages</span>
+						<span class="page-count">{pages.length} pages</span>
 					</button>
 
 					{#if expandedParams.has(paramsKey)}
 						<div class="pages-list">
-							{#each [...pageCache.entries()] as [pageKey, stache] (pageKey)}
+							{#each pages as [pageKey, stache] (pageKey)}
 								<div class="page-item">
 									<div class="page-label">
 										<span class="page-index">Page {pageKey}</span>
