@@ -5,13 +5,21 @@ import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 import path from 'node:path';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
+import { builtinModules } from 'node:module';
+
+const prefixNodeBuiltIns = {
+	name: 'prefix-node-builtins',
+	enforce: 'pre',
+	resolveId(source: string) {
+		if (builtinModules.includes(source) && !source.startsWith('node:')) {
+			return { id: `node:${source}`, external: true };
+		}
+	}
+};
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
-	plugins: [sveltekit(), tailwindcss()],
-	ssr: {
-		target: 'webworker'
-	},
+	plugins: [prefixNodeBuiltIns, sveltekit(), tailwindcss()],
 	server: {
 		fs: {
 			allow: [resolve(import.meta.dirname, './.velite')]
