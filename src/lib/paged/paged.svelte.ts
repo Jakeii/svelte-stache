@@ -1,6 +1,12 @@
 import { SvelteDate } from 'svelte/reactivity';
 import { tick, untrack } from 'svelte';
-import { getStacheCache, StacheCache } from '../cache.svelte';
+import {
+	applyInvalidation,
+	dispatchInvalidation,
+	getStacheCache,
+	StacheCache,
+	type InvalidateDetail
+} from '../cache.svelte';
 import {
 	CoreStache,
 	type StacheConstructorOptions,
@@ -11,7 +17,7 @@ import {
 	type PageParams
 } from '../core/stache.class.svelte';
 import type { UseStacheFn } from '../stache/stache.svelte';
-import { hashKey } from '../utils';
+import { hashKey, SSR_INVALIDATE_WARNING } from '../utils';
 
 import type { Exact, Merge } from 'type-fest';
 
@@ -177,8 +183,7 @@ const createPagedStache = <
 >(
 	createOptions: CreatePagedStacheOptions<StacheParams, PageResult, PageFetchReturnData>
 ) => {
-	// We initialize stacheCache as null and assign it later in useStache function as it may rely on the global cache which utilizes svelte's context which is only available during component initialization. This allows createStache to be used outside of a component as it doesn't immediately access the global cache.
-	let stacheCache: StacheCache | null = null;
+	// Do not store any stateful cache references in the factory itself; it would be shared across requests on the server.
 	const useStache = <
 		T extends Exact<
 			UsePagedStacheOptions<
@@ -192,7 +197,7 @@ const createPagedStache = <
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
 		type InitialData = ExtractInitialData<T, PageFetchReturnData>;
-		stacheCache = createOptions.globalCache ?? getStacheCache();
+		const cache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UsePagedStacheOptions<
 			StacheParams,
 			PageFetchReturnData,
@@ -206,7 +211,7 @@ const createPagedStache = <
 		let effectHasRun = $state(false);
 		let pages = $state.raw(
 			getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData, InitialData>(
-				stacheCache,
+				cache,
 				createOptions,
 				useOptions
 			)
@@ -224,16 +229,13 @@ const createPagedStache = <
 
 			// Use untrack to avoid infinite loops when updating pages
 			untrack(() => {
-				if (!stacheCache) {
-					stacheCache = createOptions.globalCache ?? getStacheCache();
-				}
 				if (!effectHasRun) {
 					effectHasRun = true;
 					return;
 				}
 				// Get new pages based on updated pageParams
 				pages = getOrCreatePageStaches<StacheParams, PageResult, PageFetchReturnData, InitialData>(
-					stacheCache,
+					cache,
 					createOptions,
 					useOptions
 				);
@@ -257,7 +259,7 @@ const createPagedStache = <
 							if (stache.referenceCount <= 0) {
 								stache.cleanupTimeout = setTimeout(() => {
 									if (stache.referenceCount <= 0) {
-										stacheCache?.deletePagedStachePage(createOptions.id, stacheKey, pageStacheKey);
+										cache.deletePagedStachePage(createOptions.id, stacheKey, pageStacheKey);
 									}
 									stache.cleanupTimeout = null;
 								}, stache.cleanupTime);
@@ -390,18 +392,27 @@ const createPagedStache = <
 
 	/**
 	 * Invalidates the paged stache with the given parameters, if it exists. If no parameters are provided, invalidates all page staches in this `pagedStache` instance.
+	 * Does nothing during SSR.
 	 *
 	 * @param args
-	 * @returns
+	 * @returns void
 	 */
-	const invalidate = async (args?: StacheParams, pageArgs?: PageParams) => {
-		if (!args) {
-			// Invalidate all staches in the cache
-			stacheCache?.invalidatePagedStache(createOptions.id);
+	const invalidate = (args?: StacheParams, pageArgs?: PageParams) => {
+		if (!globalThis?.window) {
+			console.warn(SSR_INVALIDATE_WARNING);
+			return;
+		}
+		const detail: InvalidateDetail = {
+			kind: 'paged',
+			id: createOptions.id,
+			// No params invalidates every param variant
+			stacheKey: args ? hashKey(args) : undefined,
+			pageKey: args && pageArgs ? hashKey(pageArgs) : undefined
+		};
+		if (createOptions.globalCache) {
+			applyInvalidation(createOptions.globalCache, detail);
 		} else {
-			const stacheKey = hashKey(args);
-			const pageKey = pageArgs ? hashKey(pageArgs) : undefined;
-			stacheCache?.invalidatePagedStache(createOptions.id, stacheKey, pageKey);
+			dispatchInvalidation(detail);
 		}
 	};
 

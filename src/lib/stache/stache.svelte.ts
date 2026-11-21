@@ -4,8 +4,14 @@ import {
 	type StacheConstructorOptions,
 	type UseStacheOptions
 } from '../core/stache.class.svelte';
-import { getStacheCache, StacheCache } from '../cache.svelte';
-import { hashKey } from '../utils';
+import {
+	applyInvalidation,
+	dispatchInvalidation,
+	getStacheCache,
+	StacheCache,
+	type InvalidateDetail
+} from '../cache.svelte';
+import { hashKey, SSR_INVALIDATE_WARNING } from '../utils';
 import { tick, untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';
 
@@ -129,8 +135,7 @@ const getOrCreateStache = <StacheParams, FetchReturnData, InitialData = FetchRet
 const createStache = <StacheParams, FetchReturnData>(
 	createOptions: CreateStacheOptions<StacheParams, FetchReturnData>
 ) => {
-	// We initialize stacheCache as null and assign it later in useStache function as it may rely on the global cache which utilizes svelte's context which is only available during component initialization. This allows createStache to be used outside of a component as it doesn't immediately access the global cache.
-	let stacheCache: StacheCache | null = null;
+	// Do not store any stateful cache references in the factory itself; it would be shared across requests on the server.
 	const useStache = <
 		T extends Exact<
 			UseStacheOptions<StacheParams, FetchReturnData, ExtractInitialData<T, FetchReturnData>>,
@@ -140,7 +145,7 @@ const createStache = <StacheParams, FetchReturnData>(
 		useOptionsFn: () => T = () => ({}) as T
 	) => {
 		type InitialData = ExtractInitialData<T, FetchReturnData>;
-		stacheCache = createOptions.globalCache ?? getStacheCache();
+		const cache = createOptions.globalCache ?? getStacheCache();
 		const useOptions = useOptionsFn() as UseStacheOptions<
 			StacheParams,
 			FetchReturnData,
@@ -152,7 +157,7 @@ const createStache = <StacheParams, FetchReturnData>(
 		// why not a derived? because state is mutated in the stache instance which isn't allowed in a derived.
 		let stache: CoreStache<StacheParams, FetchReturnData, InitialData> = $state.raw(
 			getOrCreateStache<StacheParams, FetchReturnData, InitialData>(
-				stacheCache,
+				cache,
 				createOptions.id,
 				stacheKey,
 				createOptions,
@@ -171,9 +176,6 @@ const createStache = <StacheParams, FetchReturnData>(
 			const stacheKey = hashKey(useOptions?.params);
 
 			untrack(() => {
-				if (!stacheCache) {
-					stacheCache = createOptions.globalCache ?? getStacheCache();
-				}
 				// If this is the first run, we don't need to do anything
 				// The stache was already created or retrieved outside the effect
 				if (!effectHasRun || (useOptions.params === undefined && createOptions.fetch.length > 0)) {
@@ -182,11 +184,11 @@ const createStache = <StacheParams, FetchReturnData>(
 				}
 
 				// Check if an existing stache is in the cache, used to determine if we need to update options later
-				const hasExistingStache = stacheCache.hasStache(createOptions.id, stacheKey);
+				const hasExistingStache = cache.hasStache(createOptions.id, stacheKey);
 
 				// Get or create the stache instance based on the updated parameters
 				const nextStache = getOrCreateStache<StacheParams, FetchReturnData, InitialData>(
-					stacheCache,
+					cache,
 					createOptions.id,
 					stacheKey,
 					createOptions,
@@ -203,10 +205,7 @@ const createStache = <StacheParams, FetchReturnData>(
 
 			return () => {
 				// create our own reference to the stache instance to ensure we have the correct one during cleanup, since the reactive `stache` variable may have changed after `tick()`
-				const stache = stacheCache?.getStache<StacheParams, FetchReturnData>(
-					createOptions.id,
-					stacheKey
-				);
+				const stache = cache.getStache<StacheParams, FetchReturnData>(createOptions.id, stacheKey);
 				if (stache) {
 					// Decrement the reference count on cleanup
 					if (stache.referenceCount > 0) {
@@ -218,7 +217,7 @@ const createStache = <StacheParams, FetchReturnData>(
 							stache.cleanupTimeout = setTimeout(() => {
 								// Double-check reference count before deleting from cache
 								if (stache.referenceCount <= 0) {
-									stacheCache?.deleteStache(createOptions.id, stacheKey);
+									cache.deleteStache(createOptions.id, stacheKey);
 								}
 								stache.cleanupTimeout = null;
 							}, stache.cleanupTime);
@@ -300,15 +299,24 @@ const createStache = <StacheParams, FetchReturnData>(
 
 	/**
 	 * Invalidates the stache with the given parameters, if it exists. If no parameters are provided, it invalidates all staches created with this `createStache` instance.
+	 * Does nothing during SSR.
 	 *
 	 * @param args The parameters of the stache to invalidate. If undefined, all staches in this cache will be invalidated.
 	 */
 	const invalidate = (args?: StacheParams) => {
-		if (args === undefined) {
-			stacheCache?.invalidateStache(createOptions.id);
+		if (!globalThis?.window) {
+			console.warn(SSR_INVALIDATE_WARNING);
+			return;
+		}
+		const detail: InvalidateDetail = {
+			kind: 'stache',
+			id: createOptions.id,
+			stacheKey: args === undefined ? undefined : hashKey(args)
+		};
+		if (createOptions.globalCache) {
+			applyInvalidation(createOptions.globalCache, detail);
 		} else {
-			const stacheKey = hashKey(args);
-			stacheCache?.invalidateStache(createOptions.id, stacheKey);
+			dispatchInvalidation(detail);
 		}
 	};
 

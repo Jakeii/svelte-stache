@@ -12,13 +12,13 @@ The trade-off is that Svelte context can only be read while a component is initi
 
 ## What Needs a Component
 
-| Call                                 | Where it can run                                                 |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| `createStache` / `createPagedStache` | Anywhere, including the top level of a module                    |
-| `useStache`                          | During component initialisation                                  |
-| `await` a stache for SSR             | In a component's `<script>`                                      |
-| Factory `invalidate()`               | Anywhere, e.g. event handlers, mutation callbacks, other modules |
-| Instance `query.invalidate()`        | Anywhere you have the query object                               |
+| Call                                 | Where it can run                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| `createStache` / `createPagedStache` | Anywhere, including the top level of a module                                   |
+| `useStache`                          | During component initialisation                                                 |
+| `await` a stache for SSR             | In a component's `<script>`                                                     |
+| Factory `invalidate()`               | Anywhere in the browser, e.g. event handlers, mutation callbacks, other modules |
+| Instance `query.invalidate()`        | Anywhere you have the query object                                              |
 
 `createStache` doesn't touch the cache until `useStache` is called, so you can define staches in shared modules and import them wherever you need them.
 
@@ -153,4 +153,8 @@ export const useUpdateUser = createMutation({
 });
 ```
 
-The factory `invalidate` acts on the cache that the stache's `useStache` last used, so it does nothing if that query hasn't been used yet. There's nothing cached to refresh in that case anyway.
+### Not During SSR
+
+Having invalidate work outside of components relies on browser-only APIs. During SSR, there is no browser environment to listen for these events, so calling `invalidate` on the server will do nothing and log a warning.
+
+You shouldn't ever need to call `invalidate` during SSR anyway.

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createPagedStache } from '../paged.svelte';
-import { initStacheCache } from '../../cache.svelte';
+import { initStacheCache, listenForInvalidation } from '../../cache.svelte';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -48,11 +48,14 @@ function createMockPagedResponse(pageIndex: number, pageSize: number, totalCount
 describe('createPagedStache cache implementation', () => {
 	let cleanupFns: Array<() => void> = [];
 
+	// No StacheProvider here, so listen for factory invalidation the way it would
+	let stopListening = () => {};
 	beforeEach(() => {
-		initStacheCache();
+		stopListening = listenForInvalidation(initStacheCache());
 	});
 
 	afterEach(() => {
+		stopListening();
 		cleanupFns.forEach((fn) => fn());
 		cleanupFns = [];
 	});

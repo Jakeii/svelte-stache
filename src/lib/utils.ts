@@ -22,4 +22,7 @@ function hashKey(queryKey?: unknown[] | unknown): string {
 	);
 }
 
-export { hashKey };
+const SSR_INVALIDATE_WARNING =
+	'invalidate() was called during SSR and has no effect. Invalidate in the browser instead, e.g. in an event handler or mutation callback.';
+
+export { hashKey, SSR_INVALIDATE_WARNING };

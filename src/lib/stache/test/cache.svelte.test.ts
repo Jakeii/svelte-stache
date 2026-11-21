@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache, type Stache } from '../stache.svelte';
 import { hashKey } from '../../utils';
-import { initStacheCache, StacheCache } from '../../cache.svelte';
+import { initStacheCache, listenForInvalidation, StacheCache } from '../../cache.svelte';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
@@ -34,11 +34,14 @@ vi.mock('svelte', async () => {
 });
 
 describe('createStache cache implementation', () => {
+	// No StacheProvider here, so listen for factory invalidation the way it would
+	let stopListening = () => {};
 	beforeEach(() => {
 		vi.useFakeTimers();
-		initStacheCache();
+		stopListening = listenForInvalidation(initStacheCache());
 	});
 	afterEach(() => {
+		stopListening();
 		vi.restoreAllMocks();
 	});
 
