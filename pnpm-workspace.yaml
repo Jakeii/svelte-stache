@@ -3,3 +3,6 @@ allowBuilds:
   msw: true
   sharp: true
   workerd: true
+
+overrides:
+  flexsearch: ^0.8.212
