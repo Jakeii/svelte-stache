@@ -92,8 +92,7 @@ const getOrCreateStache = <StacheParams, FetchReturnData, InitialData = FetchRet
 	useOptions: UseStacheOptions<StacheParams, FetchReturnData, InitialData>
 ): CoreStache<StacheParams, FetchReturnData, InitialData> => {
 	let stache = stacheCache.getStache<StacheParams, FetchReturnData>(id, stacheKey) as
-		| CoreStache<StacheParams, FetchReturnData, InitialData>
-		| undefined;
+		CoreStache<StacheParams, FetchReturnData, InitialData> | undefined;
 	if (!stache) {
 		stache = new CoreStache<StacheParams, FetchReturnData, InitialData>(createOptions, useOptions);
 		stacheCache.setStache(

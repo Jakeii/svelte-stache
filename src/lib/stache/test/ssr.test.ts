@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createStache } from '../stache.svelte';
 import { createPagedStache } from '../../paged/paged.svelte';
-import { StacheCache } from '../../cache';
+import { StacheCache } from '../../cache.svelte';
 import { SSR_INVALIDATE_WARNING } from '../../utils';
 
 // Runs in the node (server) project, where there is no `window`

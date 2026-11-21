@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getStacheCache, type StacheCache } from '../../../cache';
+	import { getStacheCache, type StacheCache } from '../../../cache.svelte';
 
 	type Props = {
 		name: string;

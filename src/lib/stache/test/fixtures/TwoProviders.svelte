@@ -1,6 +1,6 @@
 <script lang="ts">
 	import StacheProvider from '../../../StacheProvider.svelte';
-	import type { StacheCache } from '../../../cache';
+	import type { StacheCache } from '../../../cache.svelte';
 	import CacheChild from './CacheChild.svelte';
 
 	type Props = {
