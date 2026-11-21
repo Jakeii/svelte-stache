@@ -318,9 +318,12 @@ The object returned by `useStache` with reactive properties:
 
 ### Methods
 
-| Method         | Description     |
-| -------------- | --------------- |
-| `invalidate()` | Force a refetch |
+| Method                          | Description                                                                                                              |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `invalidate()`                  | Force a refetch                                                                                                          |
+| `then(onfulfilled, onrejected)` | Resolves with the stache once the first fetch completes, or rejects with the fetch error. Enables `await` and `{#await}` |
+| `catch(onrejected)`             | Handles a failed fetch. Resolves with the stache if the fetch succeeds                                                   |
+| `finally(onfinally)`            | Runs `onfinally` once the fetch settles, whether it succeeded or failed                                                  |
 
 ## Examples
 

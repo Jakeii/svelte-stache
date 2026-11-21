@@ -161,6 +161,7 @@ const query = useStache(() => ({
   isFetching: boolean,             // Currently fetching
   lastFetched: Date | undefined,   // Last successful fetch time
   invalidate: () => void,          // Force refetch
+  then, catch, finally,            // Thenable: `await` resolves once the fetch completes, rejects on error
 }
 ```
 
