@@ -219,8 +219,7 @@ class CoreStache<FetchParams, FetchReturnData, InitialData = FetchReturnData> {
 	 * Function to fetch the stache data.
 	 */
 	readonly fetch:
-		| FetchFn<FetchParams, FetchReturnData>
-		| PagedFetchFn<FetchParams, FetchReturnData>;
+		FetchFn<FetchParams, FetchReturnData> | PagedFetchFn<FetchParams, FetchReturnData>;
 
 	/**
 	 * Number of times to retry fetching the stache on failure.
