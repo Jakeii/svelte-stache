@@ -4,7 +4,7 @@ import {
 	type StacheConstructorOptions,
 	type UseStacheOptions
 } from '../core/stache.class.svelte';
-import { getStacheCache, StacheCache } from '../cache';
+import { getStacheCache, StacheCache } from '../cache.svelte';
 import { hashKey } from '../utils';
 import { tick, untrack } from 'svelte';
 import type { Exact, Merge } from 'type-fest';

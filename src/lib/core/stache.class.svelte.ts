@@ -1,5 +1,5 @@
 import { hashKey } from '../utils';
-import type { StacheCache } from '../cache';
+import type { StacheCache } from '../cache.svelte';
 import { SvelteDate } from 'svelte/reactivity';
 import { hydratable } from 'svelte';
 

@@ -12,5 +12,5 @@
 
 <StacheProvider>
 	{@render children?.()}
-	<StacheDevtools initialOpen={true} buttonPosition="bottom-left" panelHeight={500} />
+	<StacheDevtools buttonPosition="bottom-left" panelHeight={500} />
 </StacheProvider>

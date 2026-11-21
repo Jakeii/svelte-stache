@@ -8,7 +8,7 @@ A state management library for Svelte 5, using Svelte runes for reactive data fe
 src/lib/
 ├── index.ts                    # Main exports
 ├── utils.ts                    # Utilities (hashKey)
-├── cache.ts                    # StacheCache class + Svelte context (unified cache)
+├── cache.svelte.ts                    # StacheCache class + Svelte context (unified cache)
 ├── StacheProvider.svelte         # Context provider component (wraps app)
 ├── core/
 │   └── stache.class.svelte.ts  # CoreStache class (base fetch/cache engine)
@@ -84,7 +84,7 @@ A custom `StacheCache` can still be injected per-factory via the `globalCache` o
 
 ### Caching
 
-- Cache managed by the `StacheCache` class (`src/lib/cache.ts`), stored in Svelte context
+- Cache managed by the `StacheCache` class (`src/lib/cache.svelte.ts`), stored in Svelte context
 - `StacheCache` unifies both stache and paged stache caches (previously separate modules)
 - Keyed by stache `id` + hashed params (`hashKey`)
 - Reference counting for automatic cleanup after `cleanupTime`

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { initStacheCache } from './cache';
+	import { initStacheCache } from './cache.svelte';
 
 	let { children } = $props();
 

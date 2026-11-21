@@ -1,3 +1,4 @@
+/* eslint-disable svelte/prefer-svelte-reactivity -- plain Maps are intentional; reactivity is exposed via `version` */
 import { createContext } from 'svelte';
 import type { CoreStache } from './core/stache.class.svelte';
 
@@ -19,6 +20,13 @@ class StacheCache {
 
 	readonly pagedStacheCache: Map<string, PagedStacheGroup> = new Map();
 
+	/**
+	 * Incremented whenever an entry is added to or removed from either cache.
+	 * Read it inside an effect or derived to re-run when the cache structure changes,
+	 * without making the cache maps themselves reactive.
+	 */
+	version = $state(0);
+
 	getStache<FetchParams, FetchReturnData>(
 		id: string,
 		hashedParamsKey: string
@@ -37,15 +45,16 @@ class StacheCache {
 			this.stacheCache.set(id, stacheGroup);
 		}
 		stacheGroup.set(hashedParamsKey, stache);
+		this.version++;
 	}
 
 	deleteStache(id: string, hashedParamsKey: string): void {
 		const stacheGroup = this.stacheCache.get(id);
-		if (stacheGroup) {
-			stacheGroup.delete(hashedParamsKey);
+		if (stacheGroup?.delete(hashedParamsKey)) {
 			if (stacheGroup.size === 0) {
 				this.stacheCache.delete(id);
 			}
+			this.version++;
 		}
 	}
 
@@ -101,6 +110,7 @@ class StacheCache {
 			stacheGroup.set(stacheKey, pageCache);
 		}
 		pageCache.set(pageKey, stache);
+		this.version++;
 	}
 
 	getPagedStache<FetchParams, FetchReturnData>(
@@ -117,14 +127,14 @@ class StacheCache {
 	deletePagedStachePage(id: string, stacheKey: string, pageKey: string): void {
 		const stacheGroup = this.pagedStacheCache.get(id);
 		const pageCache = stacheGroup?.get(stacheKey);
-		if (pageCache) {
-			pageCache.delete(pageKey);
+		if (pageCache?.delete(pageKey)) {
 			if (pageCache.size === 0) {
 				stacheGroup?.delete(stacheKey);
 				if (stacheGroup?.size === 0) {
 					this.pagedStacheCache.delete(id);
 				}
 			}
+			this.version++;
 		}
 	}
 
@@ -161,6 +171,7 @@ class StacheCache {
 			stacheGroup.clear();
 		});
 		this.pagedStacheCache.clear();
+		this.version++;
 	}
 }
 

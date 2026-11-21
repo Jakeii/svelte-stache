@@ -1,7 +1,7 @@
 import { describe, it, expect, expectTypeOf, vi, afterEach, beforeEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createStache } from '../stache.svelte';
-import { StacheCache } from '../../cache';
+import { StacheCache } from '../../cache.svelte';
 
 function withEffectRoot(fn: () => void | Promise<void>) {
 	return async () => {
