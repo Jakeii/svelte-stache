@@ -150,7 +150,7 @@ Stache requires a context provider at the root of your app to initialize its cac
 </StacheProvider>
 ```
 
-This stores the cache in Svelte context, ensuring each server request gets its own cache instance. See [Getting Started](/docs/getting-started) for more details.
+This stores the cache in Svelte context, ensuring each server request gets its own cache instance. It also means `useStache` has to be called during component initialisation. See [Getting Started](/docs/getting-started) for more details, and the [Svelte Context guide](/docs/guides/context) for where each part of the API can be used.
 
 ## Requirements
 

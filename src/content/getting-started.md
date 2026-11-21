@@ -42,6 +42,8 @@ Stache stores its cache in Svelte context for SSR safety. Wrap your root layout 
 
 This creates a `StacheCache` instance that all stache factories share. Without this wrapper, `createStache` and `createPagedStache` will fail to find the cache context.
 
+Because the cache comes from context, `useStache` must be called during component initialisation: at the top level of a component's `<script>`, or in a function called from there. Calling it from an event handler or `onMount` throws Svelte's `lifecycle_outside_component` error. See the [Svelte Context guide](/docs/guides/context) for patterns that work.
+
 ## Your First Query
 
 Let's create a simple query that fetches user data from an API.
