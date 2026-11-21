@@ -10,7 +10,18 @@ A state management library for Svelte 5, built with Svelte runes for reactive da
 
 Supports experimental Svelte 5 features like top-level await and hydration, providing a seamless experience across client and server rendering.
 
-Can be used with or instead of sveltekit remote functions, making it flexible for various data fetching strategies.
+## Stache and Remote Functions
+
+Stache covers much of what SvelteKit [remote functions](https://svelte.dev/docs/kit/remote-functions) do on the client: deduplicated requests, `await` in components, and SSR hydration with no second fetch. It also adds things remote functions don't have:
+
+- **Data that outlives the component.** Cached results survive navigation, so going back to a page renders immediately.
+- **Stale time and refetching.** `fresh` / `stale` status, refetch on window focus, and refetch on stale.
+- **Pagination.** Per-page caching with `hasMore` and `totalCount`.
+- **Mutation state.** Loading, error and retrying status, retries, and lifecycle hooks.
+- **Invalidate everything at once.** Refresh every cached variant of a query with one call.
+- **Any backend.** Works with any async function, with or without SvelteKit.
+
+Use it **instead of** remote functions, or **with** them by calling a remote `query` or `command` from a stache. See the [Remote Functions guide](/docs/guides/remote-functions) for a full comparison.
 
 ## Why Stache?
 
