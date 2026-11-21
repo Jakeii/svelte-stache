@@ -12,6 +12,7 @@ Use it **instead of** SvelteKit remote functions, or **with** them to add more c
 
 ## Features
 
+- **Define Once, Use Anywhere** - A query is a value you import, with its own `useStache` and `invalidate`. No cache keys to repeat or remember
 - **Automatic Caching** - Same parameters reuse cached data
 - **Smart Cleanup** - Unused data auto-removed after configurable delay when no longer referenced
 - **Stale Management** - Configurable stale times with auto-refetch
@@ -20,6 +21,40 @@ Use it **instead of** SvelteKit remote functions, or **with** them to add more c
 - **Window Focus Refetch** - Optionally refresh stale data on focus
 - **SSR Hydration** - Await on the server, reuse the result on the client without refetching
 - **TypeScript** - Full type safety and inference
+
+## Define Once, Use Anywhere
+
+You define a query once with `createStache`. It gives you back the functions you need to work with it, ready to export and import wherever they're needed:
+
+```typescript
+// src/lib/queries/user.ts
+import { createStache } from 'svelte-stache';
+
+export const { useStache: useUser, invalidate: invalidateUser } = createStache({
+	id: 'user',
+	fetch: (userId: string) => api.getUser(userId),
+	staleTime: 1000 * 60
+});
+```
+
+Any component can then use the query by importing it. The fetch function, options and cache key all stay in the definition, so call sites can't drift apart:
+
+```svelte
+<script lang="ts">
+	import { useUser } from '$lib/queries/user';
+
+	const user = useUser(() => ({ params: userId }));
+</script>
+```
+
+Invalidating works the same way. Import `invalidateUser` and call it, with no key to look up or rebuild:
+
+```typescript
+invalidateUser('user-123'); // one user
+invalidateUser(); // every cached user
+```
+
+Because these are plain functions, TypeScript checks the params at every call site. Renaming or moving a query is a normal refactor, and "find references" shows everywhere it's used.
 
 ## Stache vs Remote Functions
 

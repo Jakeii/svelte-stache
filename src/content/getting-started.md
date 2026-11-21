@@ -48,7 +48,7 @@ Let's create a simple query that fetches user data from an API.
 
 ### 1. Create a Stache Definition
 
-First, define your query using `createStache`. This is typically done in a shared module:
+First, define your query using `createStache`. This is typically done in a shared module, so any component can import the query and its `invalidate` function. The fetch logic, options and cache key are written once, here:
 
 ```typescript title="src/lib/queries/user.ts"
 import { createStache } from 'svelte-stache';

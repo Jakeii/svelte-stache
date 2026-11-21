@@ -91,6 +91,8 @@ When multiple components request the same data, they share a single stache insta
 
 Both components receive the same reactive stache object. When one component triggers a refetch, both see the updated data.
 
+Sharing comes from importing the same definition. Neither component has to know the stache's `id` or repeat its fetch function and options, which keeps them from drifting apart.
+
 ## Cache Status
 
 Data in the cache has three possible statuses:
@@ -214,6 +216,8 @@ invalidateUser('user-1');
 // Factory function — invalidates all cached variants
 invalidateUser();
 ```
+
+Because `invalidateUser` comes from the definition, it already knows the cache key. You only pass the params, which are type-checked like any other call.
 
 Calling `invalidate()` with no arguments is useful after mutations that affect all entries — for example, invalidating all posts after a bulk operation.
 
