@@ -3,7 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { createStache } from '../stache.svelte';
 import { createPagedStache } from '../../paged/paged.svelte';
 import { hashKey } from '../../utils';
-import type { StacheCache } from '../../cache';
+import type { StacheCache } from '../../cache.svelte';
 import TwoProviders from './fixtures/TwoProviders.svelte';
 
 // Uses real Svelte context (no createContext mock) so each StacheProvider has its own cache
