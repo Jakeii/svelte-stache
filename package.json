@@ -2,6 +2,9 @@
 	"name": "svelte-stache",
 	"version": "1.4.1",
 	"license": "MIT",
+	"repository": "https://github.com/jakeii/svelte-stache",
+	"bugs": "https://github.com/jakeii/svelte-stache/issues",
+	"homepage": "https://svelte-stache.pages.dev/docs",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "pnpm docs:build && vite build && pnpm prepack",
