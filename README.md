@@ -22,7 +22,7 @@ Use it **instead of** SvelteKit remote functions, or **with** them to add more c
 - **SSR Hydration** - Await on the server, reuse the result on the client without refetching
 - **TypeScript** - Full type safety and inference
 
-## Define Once, Use Anywhere
+## Define Once, Use Anywhere - Reactively
 
 You define a query once with `createStache`. It gives you back the functions you need to work with it, ready to export and import wherever they're needed:
 
@@ -47,6 +47,12 @@ Any component can then use the query by importing it. The fetch function, option
 </script>
 ```
 
+The type of `params` is inferred from the arguments of the fetch function, ensuring type safety at every call site.
+
+`useStache` options are passed as a thunk, meaning you provide a function that returns the options object. This allows staches to reactively update based on changing parameters or other reactive values.
+
+See the [Reactive Queries guide](https://svelte-stache.pages.dev/docs/guides/reactive-queries) for more details on using reactive parameters with `useStache`.
+
 Invalidating works the same way. Import `invalidateUser` and call it, with no key to look up or rebuild:
 
 ```typescript
@@ -56,44 +62,7 @@ invalidateUser(); // every cached user
 
 Because these are plain functions, TypeScript checks the params at every call site. Renaming or moving a query is a normal refactor, and "find references" shows everywhere it's used.
 
-## Stache vs Remote Functions
-
-Stache does much of what SvelteKit [remote functions](https://svelte.dev/docs/kit/remote-functions) do on the client, and more:
-
-| Feature                                           | Remote functions         | Stache                                 |
-| ------------------------------------------------- | ------------------------ | -------------------------------------- |
-| Deduplicate identical requests                    | ✅                       | ✅                                     |
-| `await` in components                             | ✅                       | ✅                                     |
-| SSR hydration without a second fetch              | ✅                       | ✅ `isHydratable`                      |
-| Keep data after unmount (instant back-navigation) | ❌                       | ✅ `cleanupTime`                       |
-| Stale time, refetch on focus / when stale         | ❌                       | ✅ `staleTime`, `refetchOnWindowFocus` |
-| Retries for failed fetches                        | ❌                       | ✅ `retries`                           |
-| Pagination with per-page caching                  | ❌                       | ✅ `createPagedStache`                 |
-| Mutation status, retries and lifecycle hooks      | ❌                       | ✅ `createMutation`                    |
-| Invalidate every cached variant at once           | ❌                       | ✅ `invalidate()`                      |
-| Cache inspection devtools                         | ❌                       | ✅                                     |
-| Any backend, with or without SvelteKit            | ❌ your SvelteKit server | ✅                                     |
-
-They also work well together. A remote `query` or `command` can be used directly as a stache's `fetch` or `mutationFn`:
-
-```typescript
-import { createStache, createMutation } from 'svelte-stache';
-import { getPost, likePost } from './posts.remote';
-
-export const { useStache: usePost, invalidate: invalidatePost } = createStache({
-	id: 'post',
-	fetch: (slug: string) => getPost(slug), // remote query
-	staleTime: 1000 * 60
-});
-
-export const useLikePost = createMutation({
-	mutationFn: (slug: string) => likePost(slug), // remote command
-	retries: 2,
-	onSuccess: ({ params }) => invalidatePost(params)
-});
-```
-
-Remote functions still do things Stache doesn't, like forms, `query.batch`, `query.live`, single-flight mutations, and the ability to perform server-side only operations. See the [Remote Functions guide](https://svelte-stache.dev/docs/guides/remote-functions) for the full comparison.
+The underlying key is generated from the stache ID and the parameters you pass to `useStache`. You don't need to manage it manually; it's handled internally to ensure consistent caching and invalidation.
 
 ## Installation
 
@@ -124,24 +93,7 @@ Stache keeps its cache in Svelte context, so each server request gets its own ca
 </StacheProvider>
 ```
 
-Because the cache comes from context, `useStache` must be called during component initialisation: at the top level of a component's `<script>`, or in a function called from there. Calling it later, for example in an event handler or `onMount`, throws Svelte's `lifecycle_outside_component` error. `createStache` works anywhere, and the `invalidate` function it returns works anywhere in the browser. During SSR, `invalidate` does nothing and logs a warning.
-
-To group queries in a module, wrap them in a function and call it from a component. For SSR, return the stache from that function and `await` it in the component:
-
-```typescript
-// src/lib/queries/profile.ts
-export const useProfileUser = (getUserId: () => string) => useUser(() => ({ params: getUserId() }));
-```
-
-```svelte
-<script lang="ts">
-	import { useProfileUser } from '$lib/queries/profile';
-
-	let { userId } = $props();
-
-	const user = await useProfileUser(() => userId);
-</script>
-```
+Because the cache comes from context, `useStache` must be called during component initialisation: at the top level of a component's `<script>`, or in a function called from there. Calling it later, for example in an event handler or `onMount`, throws Svelte's `lifecycle_outside_component` error. `createStache` works anywhere, and the `invalidate` function it returns works anywhere in the browser.
 
 See the [Svelte Context guide](https://svelte-stache.dev/docs/guides/context) for more.
 
@@ -385,6 +337,45 @@ createStache({
 	refetchOnWindowFocus: true // default
 });
 ```
+
+## Stache vs Remote Functions
+
+Stache does much of what SvelteKit [remote functions](https://svelte.dev/docs/kit/remote-functions) do on the client, and more:
+
+| Feature                                           | Remote functions         | Stache                                 |
+| ------------------------------------------------- | ------------------------ | -------------------------------------- |
+| Deduplicate identical requests                    | ✅                       | ✅                                     |
+| `await` in components                             | ✅                       | ✅                                     |
+| SSR hydration without a second fetch              | ✅                       | ✅ `isHydratable`                      |
+| Keep data after unmount (instant back-navigation) | ❌                       | ✅ `cleanupTime`                       |
+| Stale time, refetch on focus / when stale         | ❌                       | ✅ `staleTime`, `refetchOnWindowFocus` |
+| Retries for failed fetches                        | ❌                       | ✅ `retries`                           |
+| Pagination with per-page caching                  | ❌                       | ✅ `createPagedStache`                 |
+| Mutation status, retries and lifecycle hooks      | ❌                       | ✅ `createMutation`                    |
+| Invalidate every cached variant at once           | ❌                       | ✅ `invalidate()`                      |
+| Cache inspection devtools                         | ❌                       | ✅                                     |
+| Any backend, with or without SvelteKit            | ❌ your SvelteKit server | ✅                                     |
+
+They also work well together. A remote `query` or `command` can be used directly as a stache's `fetch` or `mutationFn`:
+
+```typescript
+import { createStache, createMutation } from 'svelte-stache';
+import { getPost, likePost } from './posts.remote';
+
+export const { useStache: usePost, invalidate: invalidatePost } = createStache({
+	id: 'post',
+	fetch: (slug: string) => getPost(slug), // remote query
+	staleTime: 1000 * 60
+});
+
+export const useLikePost = createMutation({
+	mutationFn: (slug: string) => likePost(slug), // remote command
+	retries: 2,
+	onSuccess: ({ params }) => invalidatePost(params)
+});
+```
+
+Remote functions still do things Stache doesn't, like forms, `query.batch`, `query.live`, single-flight mutations, and the ability to perform server-side only operations. See the [Remote Functions guide](https://svelte-stache.pages.dev/docs/guides/remote-functions) for the full comparison.
 
 ## License
 

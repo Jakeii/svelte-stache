@@ -10,24 +10,13 @@ A state management library for Svelte 5, built with Svelte runes for reactive da
 
 Supports experimental Svelte 5 features like top-level await and hydration, providing a seamless experience across client and server rendering.
 
-## Stache and Remote Functions
-
-Stache covers much of what SvelteKit [remote functions](https://svelte.dev/docs/kit/remote-functions) do on the client: deduplicated requests, `await` in components, and SSR hydration with no second fetch. It also adds things remote functions don't have:
-
-- **Data that outlives the component.** Cached results survive navigation, so going back to a page renders immediately.
-- **Stale time and refetching.** `fresh` / `stale` status, refetch on window focus, and refetch on stale.
-- **Pagination.** Per-page caching with `hasMore` and `totalCount`.
-- **Mutation state.** Loading, error and retrying status, retries, and lifecycle hooks.
-- **Invalidate everything at once.** Refresh every cached variant of a query with one call.
-- **Any backend.** Works with any async function, with or without SvelteKit.
-
-Use it **instead of** remote functions, or **with** them by calling a remote `query` or `command` from a stache. See the [Remote Functions guide](/docs/guides/remote-functions) for a full comparison.
-
 ## Why Stache?
 
 Data fetching in modern web applications involves more than just making API calls. You need to handle:
 
 - **Caching** - Avoid redundant network requests
+- **Reactive** - Automatically refetch when query parameters change
+- **Type safety** - Parameter and return types are inferred from your fetch function and checked at every call site.
 - **Loading states** - Show feedback while fetching
 - **Error handling** - Gracefully handle failures
 - **Stale data** - Know when to refetch
@@ -54,7 +43,7 @@ This gives you:
 
 - **One source of truth.** The fetch function, options and cache key live in the definition. Every component that imports `useUser` gets the same behaviour and shares the same cache.
 - **Invalidation without keys.** Call `invalidateUser('user-123')` for one entry, or `invalidateUser()` for all of them. You never need to look up or rebuild a cache key.
-- **Type safety everywhere.** Params are checked at every call site, including invalidation.
+- **Type safety everywhere.** Params and return types are inferred from your fetch function and available at every call site, including invalidation.
 - **Easy refactoring.** A query is a normal export, so "find references", rename and move work as they do for any other code.
 
 ```svelte
@@ -71,7 +60,7 @@ This gives you:
 
 ### Stache
 
-A "stache" (short for cache + state) represents a cached piece of server data. Each stache is identified by a unique ID and parameters, and automatically manages its lifecycle.
+A "stache" represents a cached piece of server data. Each stache is identified by a unique ID and parameters, and automatically manages its lifecycle.
 
 ```typescript
 const { useStache } = createStache({
@@ -151,6 +140,19 @@ Stache requires a context provider at the root of your app to initialize its cac
 ```
 
 This stores the cache in Svelte context, ensuring each server request gets its own cache instance. It also means `useStache` has to be called during component initialisation. See [Getting Started](/docs/getting-started) for more details, and the [Svelte Context guide](/docs/guides/context) for where each part of the API can be used.
+
+## Stache and Remote Functions
+
+Stache covers much of what SvelteKit [remote functions](https://svelte.dev/docs/kit/remote-functions) do on the client: deduplicated requests, `await` in components, and SSR hydration with no second fetch. It also adds things remote functions don't have:
+
+- **Data that outlives the component.** Cached results survive navigation, so going back to a page renders immediately.
+- **Stale time and refetching.** `fresh` / `stale` status, refetch on window focus, and refetch on stale.
+- **Pagination.** Per-page caching with `hasMore` and `totalCount`.
+- **Mutation state.** Loading, error and retrying status, retries, and lifecycle hooks.
+- **Invalidate everything at once.** Refresh every cached variant of a query with one call.
+- **Any backend.** Works with any async function, with or without SvelteKit.
+
+Use it **instead of** remote functions, or **with** them by calling a remote `query` or `command` from a stache. See the [Remote Functions guide](/docs/guides/remote-functions) for a full comparison.
 
 ## Requirements
 

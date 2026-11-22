@@ -105,6 +105,12 @@ The global `fetch` on the server can't resolve relative URLs like `/api/users/1`
 
 Hydrated values are serialized with [devalue](https://github.com/Rich-Harris/devalue). Plain objects, arrays, `Date`, `Map`, `Set` and similar types are supported. Class instances and functions are not, so return plain data from your fetch function, or leave `isHydratable` off for that stache.
 
+### Auth
+
+When fetching data that requires authentication, make sure to include the necessary headers or cookies in your fetch function. On the server, you may need to forward the request's authentication information to your API. This ensures that the stache fetches the correct data for the current user both during SSR and on the client.
+
+SvelteKit does provide a special [`fetch`](https://svelte.dev/docs/kit/web-standards#Fetch-APIs) function in server-side `load` functions and endpoints that can automatically include cookies and other authentication information, this is unavailable when staches are likely to be created.
+
 ### Dev server warning
 
 In development, SvelteKit logs _"Avoid calling `fetch` eagerly during server-side rendering"_ when a stache fetches during SSR. This is expected with this pattern.
