@@ -131,11 +131,10 @@ When you await more than one stache, create them all before the first `await`. E
 ```svelte
 <script lang="ts">
 	// Both fetches start here
-	const userQuery = getUser(() => ({ params: userId }));
-	const postsQuery = getPosts(() => ({ params: { authorId: userId } }));
+	const user = getUser(() => ({ params: userId }));
+	const posts = getPosts(() => ({ params: { authorId: userId } }));
 
-	const user = await userQuery;
-	const posts = await postsQuery;
+	await Promise.all([user, posts]);
 </script>
 ```
 
