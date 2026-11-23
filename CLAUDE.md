@@ -7,7 +7,9 @@ A state management library for Svelte 5, using Svelte runes for reactive data fe
 ```
 src/lib/
 ├── index.ts                    # Main exports
-├── utils.ts                    # Utilities (hashKey)
+├── utils.ts                    # Internal utilities (hashKey)
+├── utils/
+│   └── fetch.ts                # createFetchProvider (public ./utils entrypoint)
 ├── cache.svelte.ts                    # StacheCache class + Svelte context (unified cache)
 ├── StacheProvider.svelte         # Context provider component (wraps app)
 ├── core/
@@ -55,6 +57,8 @@ Factories hold no reference to a cache. The factory `invalidate` dispatches a `s
 Types exported: `Mutation`, `UseStacheFn`, `CreateStacheFn`, `CreatePagedStacheFn`, `MutationFn`, `Stache`
 
 Library also exports a `./devtools` entrypoint: `StacheDevtools`, `StacheDevtoolsPanel`, `JsonViewer`, `StatusBadge`
+
+And a `./utils` entrypoint (`src/lib/utils/`): `createFetchProvider`. Its `fetch` uses the current request's `event.fetch` on the server once `register(getRequestEvent)` is called from `hooks.server.ts`, and the global `fetch` otherwise. It stores no request data, so it is safe on the server and works outside component lifecycle in the browser. Documented in the SSR guide's "Authenticated Requests" section and the README.
 
 ## Keeping Docs in Sync
 
