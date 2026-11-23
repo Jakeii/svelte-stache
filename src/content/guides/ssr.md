@@ -102,6 +102,7 @@ On the server, the global `fetch` knows nothing about the page request it runs i
 Create a provider in a shared module:
 
 ```typescript title="src/lib/api.ts"
+// src/lib/api.ts
 import { createFetchProvider } from 'svelte-stache/utils';
 
 export const api = createFetchProvider();
@@ -110,6 +111,7 @@ export const api = createFetchProvider();
 Register SvelteKit's `getRequestEvent` once, at the top level of your server hooks:
 
 ```typescript title="src/hooks.server.ts"
+// src/hooks.server.ts
 import { getRequestEvent } from '$app/server';
 import { api } from '$lib/api';
 
@@ -119,6 +121,7 @@ api.register(getRequestEvent);
 Then call `api.fetch` instead of `fetch`:
 
 ```typescript title="src/lib/queries/user.ts"
+// src/lib/queries/user.ts
 import { createStache } from 'svelte-stache';
 import { api } from '$lib/api';
 
@@ -144,27 +147,37 @@ On the server, `api.fetch` uses `event.fetch`, which:
 
 In the browser, `api.fetch` is the global `fetch`, so the browser sends cookies as usual. It also works in fetches that start outside a component, like invalidation and refetching on focus or when stale.
 
-### APIs on another domain
+### Changing requests
 
-`event.fetch` only forwards cookies to your app's origin and its subdomains. For an API on another domain, add the credentials in `handleFetch`:
+SvelteKit's `handleFetch` hook only sees server requests. To change requests in the browser too, pass a `handleFetch` option to `createFetchProvider`. It runs for every `api.fetch` call, on the server and in the browser, and works like SvelteKit's: change the `request`, then call `fetch(request)`, or return a `Response` of your own.
 
-```typescript title="src/hooks.server.ts"
-import type { HandleFetch } from '@sveltejs/kit';
-import { getRequestEvent } from '$app/server';
+On the server, `event` is the current request's event. In the browser, it's `undefined`, so check it when the two sides need different things. For example, `event.fetch` only forwards cookies to your app's origin and its subdomains, so an API on another domain needs its credentials added on both sides:
+
+```typescript title="src/lib/api.ts"
+// src/lib/api.ts
+import type { RequestEvent } from '@sveltejs/kit';
 import { PUBLIC_API_URL } from '$env/static/public';
-import { api } from '$lib/api';
+import { createFetchProvider } from 'svelte-stache/utils';
 
-api.register(getRequestEvent);
-
-export const handleFetch: HandleFetch = ({ event, request, fetch }) => {
-	if (request.url.startsWith(PUBLIC_API_URL)) {
-		request.headers.set('authorization', `Bearer ${event.locals.token}`);
+export const api = createFetchProvider<RequestEvent>({
+	handleFetch: ({ request, fetch, event }) => {
+		if (!request.url.startsWith(PUBLIC_API_URL)) {
+			return fetch(request);
+		}
+		if (event) {
+			// On the server: forward the user's token from the current request
+			request.headers.set('authorization', `Bearer ${event.locals.token}`);
+			return fetch(request);
+		}
+		// In the browser: send cookies to the API (it must allow credentials through CORS)
+		return fetch(new Request(request, { credentials: 'include' }));
 	}
-	return fetch(request);
-};
+});
 ```
 
-In the browser, requests to another domain only include cookies with `api.fetch(url, { credentials: 'include' })`, and only if the API allows it through CORS. If that isn't an option, call a `+server` route in your app that forwards the request, so the credentials stay on your server.
+Passing `RequestEvent` as the type parameter types `event`, including `event.locals`. On the server, relative URLs are already resolved against the page URL, and requests still go through SvelteKit's `handleFetch` afterwards.
+
+If CORS with credentials isn't an option, call a `+server` route in your app that forwards the request, so the credentials stay on your server.
 
 ### Remote functions
 
