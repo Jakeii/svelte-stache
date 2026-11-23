@@ -145,11 +145,11 @@ On the server, `api.fetch` uses `event.fetch`, which:
 - calls your own `+server` routes directly, without an HTTP round trip
 - runs through your [`handleFetch`](https://svelte.dev/docs/kit/hooks#Server-hooks-handleFetch) hook
 
-In the browser, `api.fetch` is the global `fetch`, so the browser sends cookies as usual. It also works in fetches that start outside a component, like invalidation and refetching on focus or when stale.
+In the browser, `api.fetch` is the global `fetch`, so the browser sends cookies as usual.
 
 ### Changing requests
 
-SvelteKit's `handleFetch` hook only sees server requests. To change requests in the browser too, pass a `handleFetch` option to `createFetchProvider`. It runs for every `api.fetch` call, on the server and in the browser, and works like SvelteKit's: change the `request`, then call `fetch(request)`, or return a `Response` of your own.
+You can pass a `handleFetch` option to `createFetchProvider`. It runs for every `api.fetch` call, on the server and in the browser, and works like SvelteKit's own: change the `request`, then call `fetch(request)`, or return a `Response` of your own.
 
 On the server, `event` is the current request's event. In the browser, it's `undefined`, so check it when the two sides need different things. For example, `event.fetch` only forwards cookies to your app's origin and its subdomains, so an API on another domain needs its credentials added on both sides:
 
@@ -181,7 +181,7 @@ If CORS with credentials isn't an option, call a `+server` route in your app tha
 
 ### Remote functions
 
-If a stache's `fetch` calls a [remote function](/docs/guides/remote-functions), you don't need a provider. The remote function always runs on your server, and can read the user's cookies with `getRequestEvent()`, both during SSR and when called from the browser.
+If a stache's `fetch` calls a [remote function](/docs/guides/remote-functions), you don't need to use `api.fetch`. The remote function always runs on your server, and can read the user's cookies with `getRequestEvent()`, both during SSR and when called from the browser.
 
 ### Without AsyncLocalStorage
 
