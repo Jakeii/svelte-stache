@@ -1,26 +1,14 @@
-<p align="center">
+<div align="center">
 	<img src="static/stache_logo.svg" alt="Stache Logo" width="128" height="128" />
-</p>
+	<h1>Stache</h1>
+	<p><em><strong>Stache</strong> /stɑːʃ/ - Somewhere to stash your data</em></p>
+</div>
 
-# Stache
-
-A state management library for Svelte 5, built with Svelte runes for reactive data fetching, caching, and mutations.
+Stache is a state management library for Svelte 5, built with Svelte runes for reactive data fetching, caching, and mutations.
 
 Supports experimental Svelte 5 features like top-level await and hydration, for a seamless experience across client and server rendering.
 
-Use it **instead of** SvelteKit remote functions, or **with** them to add more controlled client-side caching, pagination and mutation state on top.
-
-## Features
-
-- **Define Once, Use Anywhere** - A query is a value you import, with its own `useStache` and `invalidate`. No cache keys to repeat or remember
-- **Automatic Caching** - Same parameters reuse cached data
-- **Smart Cleanup** - Unused data auto-removed after configurable delay when no longer referenced
-- **Stale Management** - Configurable stale times with auto-refetch
-- **Pagination Support** - Built-in multi-page fetching and aggregation
-- **Mutations** - Handle data modifications with status, retries and lifecycle hooks
-- **Window Focus Refetch** - Optionally refresh stale data on focus
-- **SSR Hydration** - Await on the server, reuse the result on the client without refetching
-- **TypeScript** - Full type safety and inference
+Can be used with or without SvelteKit remote functions, providing more controlled client-side caching, pagination and mutation state on top.
 
 ## Define Once, Use Anywhere - Reactively
 
@@ -64,6 +52,18 @@ Because these are plain functions, TypeScript checks the params at every call si
 
 The underlying key is generated from the stache ID and the parameters you pass to `useStache`. You don't need to manage it manually; it's handled internally to ensure consistent caching and invalidation.
 
+## Features
+
+- **Define Once, Use Anywhere** - A query is a value you import, with its own `useStache` and `invalidate`. No cache keys to repeat or remember
+- **Automatic Caching** - Same parameters reuse cached data
+- **Smart Cleanup** - Unused data auto-removed after configurable delay when no longer referenced
+- **Stale Management** - Configurable stale times with auto-refetch
+- **Pagination Support** - Built-in multi-page fetching and aggregation
+- **Mutations** - Handle data modifications with status, retries and lifecycle hooks
+- **Window Focus Refetch** - Optionally refresh stale data on focus
+- **SSR Hydration** - Await on the server, reuse the result on the client without refetching
+- **TypeScript** - Full type safety and inference
+
 ## Installation
 
 ```bash
@@ -75,6 +75,8 @@ pnpm add svelte-stache
 Requires Svelte 5.0.0 or higher.
 
 ## Quick Start
+
+Follow below or check out the [full getting stared guide](https://svelte-stache.pages.dev/docs/getting-started) for more details.
 
 ### Setup
 

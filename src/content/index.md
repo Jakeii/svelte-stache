@@ -1,29 +1,22 @@
 ---
 title: Introduction
-description: A state management library for Svelte 5, using runes for reactive data fetching and caching.
 section: Overview
 ---
 
-# Stache
+<script>
+	import StacheLogo from '$lib/docs/components/logos/Stache.svelte';
+</script>
 
-A state management library for Svelte 5, built with Svelte runes for reactive data fetching, caching, and mutations.
+<p align="center">
+	<br>
+	<em><strong>Stache</strong> /stɑːʃ/ - Somewhere to stash your data</em>
+</p>
 
-Supports experimental Svelte 5 features like top-level await and hydration, providing a seamless experience across client and server rendering.
+Stache is a state management library for Svelte 5, built with Svelte runes for reactive data fetching, caching, and mutations.
 
-## Why Stache?
+Supports experimental Svelte 5 features like top-level await and hydration, for a seamless experience across client and server rendering.
 
-Data fetching in modern web applications involves more than just making API calls. You need to handle:
-
-- **Caching** - Avoid redundant network requests
-- **Reactive** - Automatically refetch when query parameters change
-- **Type safety** - Parameter and return types are inferred from your fetch function and checked at every call site.
-- **Loading states** - Show feedback while fetching
-- **Error handling** - Gracefully handle failures
-- **Stale data** - Know when to refetch
-- **Memory management** - Clean up unused data
-- **Server-side rendering** - Fetch on the server and hydrate on the client without refetching ([guide](/docs/guides/ssr))
-
-Stache handles all of this with a simple, declarative API that feels natural in Svelte.
+Can be used with or without SvelteKit remote functions, providing more controlled client-side caching, pagination and mutation state on top.
 
 ## Define Once, Use Anywhere
 
@@ -55,6 +48,21 @@ This gives you:
 
 <button onclick={() => invalidateUser(userId)}>Refresh</button>
 ```
+
+## Why Stache?
+
+Data fetching in modern web applications involves more than just making API calls. You need to handle:
+
+- **Caching** - Avoid redundant network requests
+- **Reactive** - Automatically refetch when query parameters change
+- **Type safety** - Parameter and return types are inferred from your fetch function and checked at every call site.
+- **Loading states** - Show feedback while fetching
+- **Error handling** - Gracefully handle failures
+- **Stale data** - Know when to refetch
+- **Memory management** - Clean up unused data
+- **Server-side rendering** - Fetch on the server and hydrate on the client without refetching ([guide](/docs/guides/ssr))
+
+Stache handles all of this with a simple, declarative API that feels natural in Svelte.
 
 ## Core Concepts
 
