@@ -3,10 +3,6 @@ title: Introduction
 section: Overview
 ---
 
-<script>
-	import StacheLogo from '$lib/docs/components/logos/Stache.svelte';
-</script>
-
 <p align="center">
 	<br>
 	<em><strong>Stache</strong> /stɑːʃ/ - Somewhere to stash your data</em>
