@@ -1,5 +1,11 @@
 # svelte-stache
 
+## 1.5.0
+
+### Minor Changes
+
+- 51a4f50: Add util for augmenting fetch on both client and server for SvelteKit apps using authentication
+
 ## 1.4.1
 
 ### Patch Changes
