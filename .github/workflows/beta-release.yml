@@ -42,9 +42,9 @@ jobs:
         id: changeset
         uses: changesets/action@v2.1.2
         with:
-          publish: pnpm changeset publish --tag beta
-          title: 🦋 Release package updates
-          commit: Bump package versions
+          publish-script: pnpm changeset publish --tag beta
+          pr-title: 🦋 Release package updates
+          commit-message: Bump package versions
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

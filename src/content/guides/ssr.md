@@ -95,25 +95,183 @@ With `isHydratable` enabled, the fetch is wrapped in Svelte's [`hydratable()`](h
 
 Without `isHydratable`, the server still renders the data, but the client calls `fetch` again during hydration.
 
+## Authenticated Requests
+
+On the server, the global `fetch` knows nothing about the page request it runs in. It can't send the user's cookies, and it can't resolve relative URLs. SvelteKit's [`event.fetch`](https://svelte.dev/docs/kit/web-standards#Fetch-APIs) can do both. `createFetchProvider` from `svelte-stache/utils` gives your fetch functions the current request's `event.fetch` on the server, and the normal `fetch` in the browser.
+
+Create a provider in a shared module:
+
+```typescript title="src/lib/api.ts"
+// src/lib/api.ts
+import { createFetchProvider } from 'svelte-stache/utils';
+
+export const api = createFetchProvider();
+```
+
+Register SvelteKit's `getRequestEvent` once, at the top level of your server hooks:
+
+```typescript title="src/hooks.server.ts"
+// src/hooks.server.ts
+import { getRequestEvent } from '$app/server';
+import { api } from '$lib/api';
+
+api.register(getRequestEvent);
+```
+
+Then call `api.fetch` instead of `fetch`:
+
+```typescript title="src/lib/queries/user.ts"
+// src/lib/queries/user.ts
+import { createStache } from 'svelte-stache';
+import { api } from '$lib/api';
+
+export const { useStache: getUser } = createStache({
+	id: 'user',
+	fetch: async (userId: string) => {
+		const response = await api.fetch(`/api/users/${userId}`);
+		if (!response.ok) {
+			throw new Error('Failed to fetch user');
+		}
+		return response.json();
+	},
+	isHydratable: true
+});
+```
+
+On the server, `api.fetch` uses `event.fetch`, which:
+
+- sends the request's cookies to your app's origin and its subdomains
+- resolves relative URLs like `/api/users/1`
+- calls your own `+server` routes directly, without an HTTP round trip
+- runs through your [`handleFetch`](https://svelte.dev/docs/kit/hooks#Server-hooks-handleFetch) hook
+
+In the browser, `api.fetch` is the global `fetch`, so the browser sends cookies as usual.
+
+### Changing requests
+
+You can pass a `handleFetch` option to `createFetchProvider`. It runs for every `api.fetch` call, on the server and in the browser, and works like SvelteKit's own: change the `request`, then call `fetch(request)`, or return a `Response` of your own.
+
+On the server, `event` is the current request's event. In the browser, it's `undefined`, so check it when the two sides need different things. For example, `event.fetch` only forwards cookies to your app's origin and its subdomains, so an API on another domain needs its credentials added on both sides:
+
+```typescript title="src/lib/api.ts"
+// src/lib/api.ts
+import type { RequestEvent } from '@sveltejs/kit';
+import { PUBLIC_API_URL } from '$env/static/public';
+import { createFetchProvider } from 'svelte-stache/utils';
+
+export const api = createFetchProvider<RequestEvent>({
+	handleFetch: ({ request, fetch, event }) => {
+		if (!request.url.startsWith(PUBLIC_API_URL)) {
+			return fetch(request);
+		}
+		if (event) {
+			// On the server: forward the user's token from the current request
+			request.headers.set('authorization', `Bearer ${event.locals.token}`);
+			return fetch(request);
+		}
+		// In the browser: send cookies to the API (it must allow credentials through CORS)
+		return fetch(new Request(request, { credentials: 'include' }));
+	}
+});
+```
+
+Passing `RequestEvent` as the type parameter types `event`, including `event.locals`. On the server, relative URLs are already resolved against the page URL, and requests still go through SvelteKit's `handleFetch` afterwards.
+
+If CORS with credentials isn't an option, call a `+server` route in your app that forwards the request, so the credentials stay on your server.
+
+### Remote functions
+
+If a stache's `fetch` calls a [remote function](/docs/guides/remote-functions), you don't need to use `api.fetch`. The remote function always runs on your server, and can read the user's cookies with `getRequestEvent()`, both during SSR and when called from the browser.
+
+### Without AsyncLocalStorage
+
+`getRequestEvent` uses `AsyncLocalStorage` to find the request after an `await`. Async Svelte needs `AsyncLocalStorage` too, so the setup on this page already has it.
+
+If you render without async Svelte on a runtime that lacks it (for example Cloudflare without the `nodejs_compat` flag), call `api.fetch` before any `await` in your fetch function. Stache calls fetch functions synchronously while the component initialises, so `await api.fetch(...)` as the first statement works.
+
+### Other clients e.g. Supabase
+
+If you're using another client like Supabase, the `createServerClient` also requires cookies to be provided to the client. You could achieve this by creating a "provider" similar to `createFetchProvider`, instead of fetch you can use the provider to inject the cookies into the Supabase client.
+
+Example:
+
+```typescript title="src/lib/supabase.ts"
+// src/lib/supabase.ts
+import { createBrowserClient, createServerClient, isBrowser } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { RequestEvent } from '@sveltejs/kit';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
+
+let getRequestEvent: (() => RequestEvent) | undefined;
+
+export const registerRequestEvent = (fn: () => RequestEvent) => {
+	getRequestEvent = fn;
+};
+
+export const getSupabase = (): SupabaseClient => {
+	if (isBrowser()) {
+		// Returns the same client on every call
+		return createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+	}
+
+	if (!getRequestEvent) {
+		throw new Error('Call registerRequestEvent(getRequestEvent) in hooks.server.ts');
+	}
+
+	const event = getRequestEvent();
+
+	return createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
+		global: {
+			fetch: event.fetch
+		},
+		cookies: {
+			getAll: () => event.cookies.getAll()
+		}
+	});
+};
+```
+
+```typescript title="src/hooks.server.ts"
+// src/hooks.server.ts
+import { getRequestEvent } from '$app/server';
+import { registerRequestEvent } from '$lib/supabase';
+
+registerRequestEvent(getRequestEvent);
+```
+
+```typescript title="src/lib/queries/profile.ts"
+// src/lib/queries/profile.ts
+import { createStache } from 'svelte-stache';
+import { getSupabase } from '$lib/supabase';
+
+export const { useStache: getProfile } = createStache({
+	id: 'profile',
+	fetch: async (userId: string) => {
+		const { data, error } = await getSupabase()
+			.from('profiles')
+			.select('*')
+			.eq('id', userId)
+			.single();
+		if (error) {
+			throw error;
+		}
+		return data;
+	},
+	isHydratable: true
+});
+```
+
+The server client here only reads cookies, so it can't save a refreshed session. Keep refreshing the session in your `handle` hook, as in Supabase's SvelteKit setup, so the cookies are current before the page renders.
+
 ## Things to Watch Out For
-
-### Use absolute URLs on the server
-
-The global `fetch` on the server can't resolve relative URLs like `/api/users/1`. Use an absolute URL in your fetch function, for example by prefixing a `PUBLIC_API_URL` environment variable as shown above.
 
 ### Return serializable data
 
 Hydrated values are serialized with [devalue](https://github.com/Rich-Harris/devalue). Plain objects, arrays, `Date`, `Map`, `Set` and similar types are supported. Class instances and functions are not, so return plain data from your fetch function, or leave `isHydratable` off for that stache.
 
-### Auth
-
-When fetching data that requires authentication, make sure to include the necessary headers or cookies in your fetch function. On the server, you may need to forward the request's authentication information to your API. This ensures that the stache fetches the correct data for the current user both during SSR and on the client.
-
-SvelteKit does provide a special [`fetch`](https://svelte.dev/docs/kit/web-standards#Fetch-APIs) function in server-side `load` functions and endpoints that can automatically include cookies and other authentication information, this is unavailable when staches are likely to be created.
-
 ### Dev server warning
 
-In development, SvelteKit logs _"Avoid calling `fetch` eagerly during server-side rendering"_ when a stache fetches during SSR. This is expected with this pattern.
+In development, SvelteKit logs _"Avoid calling `fetch` eagerly during server-side rendering"_ when a stache fetches during SSR. This is expected with this pattern. Requests to your own app through `api.fetch` don't trigger it, but requests to other domains still do, because `event.fetch` hands them to the global `fetch`.
 
 ### Paged staches
 
